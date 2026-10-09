@@ -4,6 +4,7 @@ import { CareerProfile } from '../game/CareerProfile.js';
 import { TEAM_LEAGUES, NATIONAL_GROUPS, TEAM_GROUPS, PROFILE_TEAMS, TEAMS, getTeamById } from '../config/teams.js';
 import { CUP_COMPETITIONS, createChampionsDraw, createInternationalDraw, createLeagueOpponents, pickChampionsOpponent } from '../game/Competitions.js';
 import { MenuBackdrop } from './MenuBackdrop.js';
+import { Confetti } from './Confetti.js';
 import { clearCompetitionSave, loadCompetitionSave, setCompetitionSaveScope, storeCompetitionSave } from '../game/CompetitionSave.js';
 
 const ROUND_NAMES = ['OCTAVOS DE FINAL', 'CUARTOS DE FINAL', 'SEMIFINAL', 'FINAL'];
@@ -17,7 +18,7 @@ export class UI {
     this.settings = loadSettings(); this.progression = new Progression(storageScope); this.career = new CareerProfile(storageScope); this.game = null; this.sound = null;
     if (this.career.stats.matches === 0 && this.career.stats.wins === 0 && this.progression.wins > 0) this.career.ensureProgressionWins(this.progression.wins);
     this.tournament = null; this.league = null; this.pendingMode = null; this.pendingCompetition = null; this.pendingTeamType = 'all'; this.selectedCompetition = 'champions'; this.competitionIndex = 0; this.selectedTeamId = ''; this.teamCursor = new Map();
-    this.currentMatchMode = null; this.currentMatchOptions = null;
+    this.currentMatchMode = null; this.currentMatchOptions = null; this.confetti = new Confetti();
     this.activeLeague = TEAM_LEAGUES[0].id;
     this.screens = {
       home: document.querySelector('#home-screen'), customize: document.querySelector('#customize-screen'),
@@ -812,11 +813,12 @@ export class UI {
   handleMatchEnd(result) {
     const won = result.winner === 'player';
     if (result.mode !== 'training') this.career.recordMatch(won);
-    const reward = won ? this.progression.awardWin() : null;
+    const reward = result.mode !== 'training' ? this.progression.awardMatch(won) : null;
+    if (won) this.confetti.play();
     this.renderProgress();
-    const rewardText = !won ? 'Sin XP por esta derrota.' : (reward.gained ? `+${reward.gained} XP por la victoria.` : 'Nivel máximo alcanzado.');
+    const rewardText = !reward ? 'Sin XP en entrenamiento.' : (reward.gained ? `+${reward.gained} XP por jugar.` : 'Nivel máximo alcanzado.');
     const levelText = reward?.leveledUp ? ` ¡Has subido al nivel ${reward.level}!` : '';
-    this.result_xp.textContent = won ? (reward.gained ? `+${reward.gained} XP` : 'NIVEL MÁXIMO') : '0 XP';
+    this.result_xp.textContent = reward ? (reward.gained ? `+${reward.gained} XP` : 'NIVEL MÁXIMO') : '0 XP';
     this.result_level.textContent = `NIVEL ${this.progression.level}`;
     this.result_xp_fill.style.width = `${this.progression.progressRatio() * 100}%`;
     this.result_copy.textContent = `${result.playerScore} – ${result.botScore}. ${rewardText}${levelText}`;

@@ -22,6 +22,7 @@
             <p class="card-kicker">ELIGE TU PARTIDO</p>
             <button type="button" class="home-club-chip" data-view="customize" aria-label="Elegir o cambiar equipo"><span id="home-club-colors"></span><span id="home-club-name">SELECCIONA TU EQUIPO AL JUGAR</span><b>CAMBIAR ↗</b></button>
             <button class="primary-button menu-action" data-action="bot"><span><b class="play-icon">▶</b> Jugar contra BOT</span><kbd>↵</kbd></button>
+            <button class="menu-button menu-action online-menu-action" data-action="online"><span><b class="menu-symbol">◎</b> Juego online</span><span class="arrow">↗</span></button>
             <button id="continue-competition" class="menu-button resume-button hidden" type="button"><span><b class="menu-symbol">↻</b> Continuar competición</span><small id="continue-detail">PARTIDA GUARDADA</small></button>
             <button class="menu-button menu-action" data-action="training"><span><b class="menu-symbol">◎</b> Entrenamiento</span><span class="arrow">↗</span></button>
             <button class="menu-button menu-action" data-action="competitions"><span><b class="menu-symbol">♜</b> Competiciones</span><span class="arrow">↗</span></button>
@@ -33,6 +34,35 @@
           </div>
         </div>
         <footer class="home-footer"><span>WASD / FLECHAS <i>·</i> ESPACIO PARA DISPARAR</span><span>HECHO PARA DISFRUTAR EL JUEGO <b>↗</b></span></footer>
+      </section>
+
+      <section id="online-screen" class="screen sub-screen hidden">
+        <header class="sub-header"><button class="back-button" data-view="home">← <span>Volver</span></button><a class="brand" href="#"><span class="brand-mark">F</span> FIELD</a><span class="version">PARTIDA 1 CONTRA 1</span></header>
+        <div class="online-layout">
+          <div class="editor-copy"><p class="eyebrow">JUEGA CON OTRA PERSONA</p><h2>El campo<br><em>se comparte.</em></h2><p>Crea una sala y comparte el código con tu rival, o introduce el código que te han enviado.</p></div>
+          <div class="online-card">
+            <button id="online-create-room" class="primary-button">Crear sala <span>↗</span></button>
+            <div class="online-separator"><span>O ENTRA EN UNA SALA</span></div>
+            <label class="field-label" for="online-room-input">CÓDIGO DE SALA</label>
+            <input id="online-room-input" class="text-input online-code-input" maxlength="8" autocomplete="off" placeholder="ABCD2345" aria-label="Código de sala">
+            <button id="online-join-room" class="menu-button online-join-button">Unirme a la sala <span>→</span></button>
+            <div id="online-room-panel" class="online-room-panel hidden" aria-live="polite">
+              <p id="online-status" class="online-status">Conectando…</p>
+              <div id="online-room-code-wrap" class="online-room-code-wrap hidden"><span>CÓDIGO PARA TU RIVAL</span><b id="online-room-code"></b><button id="online-copy-code" type="button">Copiar código</button></div>
+              <button id="online-cancel" class="plain-button online-cancel" type="button">Cancelar sala</button>
+            </div>
+            <p class="online-footnote">El código permite entrar a la sala: compártelo solo con tu rival.</p>
+            <button class="leaderboard-link" data-action="leaderboard" type="button">Ver clasificación amistosa <span>↗</span></button>
+          </div>
+        </div>
+      </section>
+
+      <section id="leaderboard-screen" class="screen sub-screen hidden">
+        <header class="sub-header"><button class="back-button" data-view="home">← <span>Volver</span></button><a class="brand" href="#"><span class="brand-mark">F</span> FIELD</a><span class="version">RESULTADOS ONLINE</span></header>
+        <div class="leaderboard-layout">
+          <div class="editor-copy"><p class="eyebrow">PARTIDOS ENTRE JUGADORES</p><h2>El marcador<br><em>se comparte.</em></h2><p>Una clasificación amistosa basada en partidos online jugados con cuenta FIELD.</p><small class="leaderboard-casual-note">Tu nombre de jugador y tus marcadores se muestran públicamente. Los resultados son declarados por los jugadores; todavía no cuentan con verificación antitrampas.</small></div>
+          <div class="leaderboard-card"><div class="leaderboard-heading"><div><p class="card-kicker">CLASIFICACIÓN · TOP 50</p><span>Ordenada por victorias y porcentaje</span></div><button id="leaderboard-refresh" type="button" aria-label="Actualizar clasificación">↻</button></div><p id="leaderboard-message" class="leaderboard-message" aria-live="polite">Cargando resultados…</p><ol id="leaderboard-list" class="leaderboard-list"></ol></div>
+        </div>
       </section>
 
       <section id="customize-screen" class="screen sub-screen hidden">
@@ -122,8 +152,8 @@
 
       <section id="game-screen" class="screen game-screen hidden">
         <header class="game-header"><a class="brand" href="#"><span class="brand-mark">F</span> FIELD</a><div class="scoreboard"><div class="score-team"><i id="player-dot"></i><span id="hud-player-name">JUGADOR</span></div><b id="score">0 <small>:</small> 0</b><div class="score-team bot-team"><span id="hud-opponent-name">BOT</span><i id="opponent-dot"></i></div></div><div class="game-tools"><span id="timer">00:00</span><button id="pause-button" class="pause-button" aria-label="Pausar">Ⅱ</button></div></header>
-        <div class="field-wrap"><canvas id="game-canvas" aria-label="Campo de fútbol. Usa WASD o flechas para moverte y espacio para disparar."></canvas><div id="goal-banner" class="goal-banner hidden"><span>¡GOOOL!</span><small>QUÉ GOLAZO</small></div><div id="countdown-banner" class="countdown-banner hidden" aria-live="assertive" aria-label="Cuenta atrás"></div><div id="pause-overlay" class="pause-overlay hidden"><div class="pause-panel"><p class="eyebrow">PARTIDO EN PAUSA</p><h2>Toma aire.</h2><button id="resume-button" class="primary-button">Seguir jugando <span>▶</span></button><button id="quit-button" class="plain-button">Guardar y salir al menú</button></div></div><div id="result-overlay" class="pause-overlay result-overlay hidden"><div class="pause-panel result-panel"><p class="eyebrow" id="result-eyebrow">FINAL DEL PARTIDO</p><h2 id="result-title">Victoria</h2><p id="result-copy" class="result-copy"></p><div class="result-reward"><b id="result-xp">+100 XP</b><span id="result-level">NIVEL 1</span></div><div class="result-xp-track"><i id="result-xp-fill"></i></div><button id="result-next" class="primary-button hidden">Siguiente partido <span>↗</span></button><button id="result-finish" class="plain-button">Volver al menú</button></div></div></div>
-        <footer class="game-footer"><div class="controls-hint"><span class="keycap">W</span><span class="keycap">A</span><span class="keycap">S</span><span class="keycap">D</span><span>moverse</span><span class="keycap space-key">ESPACIO</span><span>disparar</span></div><div id="shot-power-status" class="shot-power-status"><span>✹</span><b>TIRO FUEGO</b><small id="shot-power-time">LISTO</small></div><div class="training-tools hidden" id="training-tools"><label class="trajectory-toggle"><input id="trajectory-toggle" type="checkbox"><span></span> Trayectoria de la pelota</label><button id="reset-ball" class="tiny-button">↻ Pelota</button><button id="reset-player" class="tiny-button">↻ Jugador</button></div><span class="mode-label" id="mode-label">PARTIDO CONTRA BOT</span></footer>
+        <div class="field-wrap"><canvas id="game-canvas" aria-label="Campo de fútbol. Usa WASD o flechas para moverte y espacio para disparar."></canvas><div id="connection-banner" class="connection-banner hidden" aria-live="assertive"></div><div id="goal-banner" class="goal-banner hidden"><span>¡GOOOL!</span><small>QUÉ GOLAZO</small></div><div id="countdown-banner" class="countdown-banner hidden" aria-live="assertive" aria-label="Cuenta atrás"></div><div class="touch-controls" aria-label="Controles táctiles"><div class="touch-pad"><button type="button" data-touch-code="KeyW" aria-label="Arriba">▲</button><button type="button" data-touch-code="KeyA" aria-label="Izquierda">◀</button><button type="button" data-touch-code="KeyS" aria-label="Abajo">▼</button><button type="button" data-touch-code="KeyD" aria-label="Derecha">▶</button></div><button type="button" data-touch-code="Space" class="touch-kick" aria-label="Disparar"><span>✹</span><b>TIRAR</b></button></div><div id="pause-overlay" class="pause-overlay hidden"><div class="pause-panel"><p class="eyebrow">PARTIDO EN PAUSA</p><h2>Toma aire.</h2><button id="resume-button" class="primary-button">Seguir jugando <span>▶</span></button><button id="quit-button" class="plain-button">Guardar y salir al menú</button></div></div><div id="result-overlay" class="pause-overlay result-overlay hidden"><div class="pause-panel result-panel"><p class="eyebrow" id="result-eyebrow">FINAL DEL PARTIDO</p><h2 id="result-title">Victoria</h2><p id="result-copy" class="result-copy"></p><div class="result-reward"><b id="result-xp">+100 XP</b><span id="result-level">NIVEL 1</span></div><div class="result-xp-track"><i id="result-xp-fill"></i></div><p id="result-online-status" class="result-online-status hidden" aria-live="polite"></p><button id="result-rematch" class="primary-button hidden" type="button">Pedir revancha <span>↻</span></button><button id="result-next" class="primary-button hidden">Siguiente partido <span>↗</span></button><button id="result-finish" class="plain-button">Volver al menú</button></div></div></div>
+        <footer class="game-footer"><div class="controls-hint"><span class="keycap">W</span><span class="keycap">A</span><span class="keycap">S</span><span class="keycap">D</span><span>moverse</span><span class="keycap space-key">ESPACIO</span><span>disparar</span></div><div id="shot-power-status" class="shot-power-status" role="status" aria-label="Tiro de fuego disponible"><span>✹</span><b>TIRO FUEGO</b><small id="shot-power-time">LISTO</small></div><div class="training-tools hidden" id="training-tools"><label class="trajectory-toggle"><input id="trajectory-toggle" type="checkbox"><span></span> Trayectoria de la pelota</label><button id="reset-ball" class="tiny-button">↻ Pelota</button><button id="reset-player" class="tiny-button">↻ Jugador</button></div><span class="mode-label" id="mode-label">PARTIDO CONTRA BOT</span></footer>
       </section>
     </main>
     <script type="module" src="/src/main.js"></script>

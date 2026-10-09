@@ -9,7 +9,8 @@
   "scripts": {
     "build": "vite build",
     "dev": "netlify dev",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node tests/OnlineMatch.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.117.3"

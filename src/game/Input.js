@@ -11,8 +11,25 @@ export class Input {
       this.down.add(e.code);
     };
     this.onKeyUp = e => this.down.delete(e.code);
-    this.onBlur = () => { this.down.clear(); this.pressed.clear(); };
+    this.onBlur = () => { this.down.clear(); this.pressed.clear(); document.querySelectorAll('[data-touch-code].pressed').forEach(control => control.classList.remove('pressed')); };
+    this.onPointerDown = e => {
+      const control = e.target.closest?.('[data-touch-code]');
+      if (!control) return;
+      e.preventDefault();
+      const code = control.dataset.touchCode;
+      control.setPointerCapture?.(e.pointerId);
+      this.press(code);
+      control.classList.add('pressed');
+    };
+    this.onPointerEnd = e => {
+      const control = e.target.closest?.('[data-touch-code]');
+      if (!control) return;
+      this.release(control.dataset.touchCode);
+      control.classList.remove('pressed');
+    };
     window.addEventListener('keydown', this.onKeyDown); window.addEventListener('keyup', this.onKeyUp); window.addEventListener('blur', this.onBlur);
+    document.addEventListener('pointerdown', this.onPointerDown);
+    for (const event of ['pointerup','pointercancel','lostpointercapture']) document.addEventListener(event, this.onPointerEnd);
   }
   axes() {
     const left = this.down.has('KeyA') || this.down.has('ArrowLeft'); const right = this.down.has('KeyD') || this.down.has('ArrowRight');
@@ -20,6 +37,8 @@ export class Input {
     return { x: Number(right) - Number(left), y: Number(down) - Number(up) };
   }
   consume(code) { const hit = this.pressed.has(code); this.pressed.delete(code); return hit; }
+  press(code) { if (!this.down.has(code)) this.pressed.add(code); this.down.add(code); }
+  release(code) { this.down.delete(code); this.pressed.delete(code); }
   endFrame() { this.pressed.clear(); }
 }
 

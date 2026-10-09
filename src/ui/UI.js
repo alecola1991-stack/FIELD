@@ -21,7 +21,7 @@ export class UI {
     this.activeLeague = TEAM_LEAGUES[0].id;
     this.screens = {
       home: document.querySelector('#home-screen'), customize: document.querySelector('#customize-screen'),
-      settings: document.querySelector('#settings-screen'), account: document.querySelector('#account-screen'), competitions: document.querySelector('#competition-screen'), tournament: document.querySelector('#tournament-screen'),
+      settings: document.querySelector('#settings-screen'), account: document.querySelector('#account-screen'), online: document.querySelector('#online-screen'), leaderboard: document.querySelector('#leaderboard-screen'), competitions: document.querySelector('#competition-screen'), tournament: document.querySelector('#tournament-screen'),
       league: document.querySelector('#league-screen'), game: document.querySelector('#game-screen'),
     };
     this.cacheElements(); this.menuBackdrop = new MenuBackdrop(this.menu_backdrop); this.populateTeamPicker(); this.populateLeagueCompetitions(); this.fillInputs(); this.bind(); this.updateLeaguePreview(); this.renderProgress(); this.show('home'); this.refreshContinueButton();
@@ -32,7 +32,7 @@ export class UI {
       'player-name','player-number','preview-name','preview-number','preview-ball','preview-team','saved-note','save-player',
       'difficulty','settings-difficulty','sound-enabled','volume','volume-value','score','timer','hud-player-name','hud-opponent-name','player-dot','opponent-dot',
       'goal-banner','countdown-banner','pause-overlay','result-overlay','result-eyebrow','result-title','result-copy','result-xp','result-level','result-xp-fill',
-      'result-next','result-finish','training-tools','trajectory-toggle','mode-label','game-canvas','level-value','xp-label','wins-label','xp-fill',
+      'result-next','result-finish','result-rematch','result-online-status','connection-banner','leaderboard-message','leaderboard-list','leaderboard-refresh','training-tools','trajectory-toggle','mode-label','game-canvas','level-value','xp-label','wins-label','xp-fill',
       'team-position','league-competition','league-competition-summary','league-tabs','team-grid','teams-prev','teams-next','chosen-team-label','tournament-roster',
       'competition-trophy','competition-eyebrow','competition-title','competition-description','competition-dots','competition-select','competition-prev','competition-next',
       'competition-picker-card',
@@ -41,12 +41,24 @@ export class UI {
       'profile-eyebrow','profile-title','profile-copy','home-club-colors','home-club-name',
       'menu-backdrop',
       'continue-competition','continue-detail','league-goal-target','trajectory-enabled','shot-power-time',
+      'online-room-input','online-room-panel','online-status','online-room-code-wrap','online-room-code',
     ];
     for (const id of ids) this[id.replaceAll('-', '_')] = document.getElementById(id);
   }
 
-  attach(game, sound, accountService = null) {
+  attach(game, sound, accountService = null, onlineMatch = null) {
     this.game = game; this.sound = sound; this.accountService = accountService;
+    this.onlineMatch = onlineMatch;
+    if (onlineMatch) onlineMatch.setHandlers({
+      onStatus: (status, detail) => this.updateOnlineStatus(status, detail),
+      onMatchStart: info => this.startOnlineMatch(info),
+      onInput: input => game.setRemoteInput(input),
+      onSnapshot: snapshot => game.applyOnlineSnapshot(snapshot),
+      onPeerLeft: () => this.handleOnlinePeerLeft(),
+      onPeerReconnecting: seconds => this.showConnectionStatus(seconds),
+      onPeerReconnected: () => this.hideConnectionStatus(),
+      onRematchRequested: () => this.showRematchRequest(),
+    });
     if (this.user && accountService) this.activateAccount(this.user).catch(error => this.setAccountMessage(error.message, true));
     else this.renderAccount();
   }
@@ -102,6 +114,12 @@ export class UI {
     }));
     document.getElementById('account-open').addEventListener('click', () => { this.renderAccount(); this.show('account'); });
     this.account_form.addEventListener('submit', event => { event.preventDefault(); this.submitAccount(); });
+    document.getElementById('online-create-room').addEventListener('click', () => this.createOnlineRoom());
+    document.getElementById('online-join-room').addEventListener('click', () => this.joinOnlineRoom());
+    document.getElementById('online-cancel').addEventListener('click', () => this.cancelOnlineRoom());
+    document.getElementById('online-copy-code').addEventListener('click', () => this.copyOnlineRoomCode());
+    this.result_rematch.addEventListener('click', () => this.requestOnlineRematch());
+    this.leaderboard_refresh.addEventListener('click', () => this.loadLeaderboard());
     document.getElementById('account-mode-toggle').addEventListener('click', () => this.toggleAccountMode());
     document.getElementById('account-sync-button').addEventListener('click', () => this.syncAccount(true));
     document.getElementById('account-logout').addEventListener('click', () => this.logOut());
@@ -288,7 +306,9 @@ export class UI {
   }
 
   selectMode(mode) {
+    if (mode === 'leaderboard') { this.show('leaderboard'); this.loadLeaderboard(); return; }
     if (mode === 'competitions') { this.show('competitions'); this.renderCompetitionPicker(); return; }
+    if (mode === 'online') { this.openOnline(); return; }
     if (!this.profileComplete()) { this.pendingMode = mode; this.openProfile(); return; }
     if (mode === 'tournament') this.openTournamentSetup();
     else if (mode === 'league') { this.updateLeaguePreview(); this.show(mode); }
@@ -458,6 +478,7 @@ export class UI {
     const nextMode = this.pendingMode; this.pendingMode = null; this.sound?.play('click');
     const nextCompetition = this.pendingCompetition; this.pendingCompetition = null; this.pendingTeamType = 'all';
     this.league_tabs.querySelectorAll('[data-league]').forEach(tab => { tab.hidden = false; });
+    if (nextMode === 'online') { this.openOnline(); return; }
     if (nextMode === 'tournament') { this.openTournamentSetup(nextCompetition); return; }
     if (nextMode === 'league') { this.updateLeaguePreview(); this.show('league'); return; }
     if (nextMode) { this.show('home'); this.start(nextMode); }
@@ -576,6 +597,7 @@ export class UI {
     this.currentMatchMode = mode; this.currentMatchOptions = options;
     this.countdown_banner.classList.add('hidden'); this.goal_banner.classList.add('hidden');
     this.pause_overlay.classList.add('hidden'); this.result_overlay.classList.add('hidden');
+    this.result_rematch.classList.add('hidden'); this.result_online_status.classList.add('hidden'); this.hideConnectionStatus();
     this.show('game'); this.game.start(mode, snapshot?.difficulty || this.settings.difficulty, options);
     if (snapshot) this.game.restoreSnapshot(snapshot);
     this.trajectory_toggle.checked = this.game.trajectory; this.trajectory_enabled.checked = this.game.trajectory;
@@ -586,6 +608,7 @@ export class UI {
     this.training_tools.classList.toggle('hidden', mode !== 'training');
     this.pause_overlay.classList.add('hidden'); this.result_overlay.classList.add('hidden'); this.goal_banner.classList.add('hidden');
     document.getElementById('pause-button').textContent = 'Ⅱ';
+    document.getElementById('pause-button').classList.toggle('hidden', mode === 'online');
     this.updatePowerCooldown(this.game.player?.powerCooldown || 0); this.saveCurrentCompetition();
   }
 
@@ -593,7 +616,135 @@ export class UI {
   updateTime(time) { this.timer.textContent = time; }
   updatePowerCooldown(seconds) {
     this.shot_power_time.textContent = seconds > 0 ? `${Math.ceil(seconds)}s` : 'LISTO';
-    document.getElementById('shot-power-status').classList.toggle('ready', seconds <= 0);
+    const status = document.getElementById('shot-power-status');
+    status.classList.toggle('ready', seconds <= 0);
+    status.style.setProperty('--power-progress', `${Math.max(0, Math.min(100, seconds / 20 * 100))}%`);
+    status.setAttribute('aria-label', seconds > 0 ? `Tiro de fuego disponible en ${Math.ceil(seconds)} segundos` : 'Tiro de fuego disponible');
+  }
+
+  openOnline() {
+    this.online_room_panel.classList.add('hidden');
+    this.online_room_code_wrap.classList.add('hidden');
+    this.online_room_input.value = '';
+    this.updateOnlineStatus('idle');
+    this.show('online');
+  }
+
+  async createOnlineRoom() {
+    if (!this.profileComplete()) { this.pendingMode = 'online'; this.openProfile(); return; }
+    try {
+      this.online_room_panel.classList.remove('hidden');
+      this.updateOnlineStatus('connecting');
+      const code = await this.onlineMatch.createRoom(this.onlinePlayer());
+      this.online_room_code.textContent = code;
+      this.online_room_code_wrap.classList.remove('hidden');
+    } catch (error) { this.updateOnlineStatus('error', error?.message); }
+  }
+
+  async joinOnlineRoom() {
+    if (!this.profileComplete()) { this.pendingMode = 'online'; this.openProfile(); return; }
+    try {
+      this.online_room_panel.classList.remove('hidden');
+      this.online_room_code_wrap.classList.add('hidden');
+      this.updateOnlineStatus('connecting');
+      await this.onlineMatch.joinRoom(this.online_room_input.value, this.onlinePlayer());
+    } catch (error) { this.updateOnlineStatus('error', error?.message); }
+  }
+
+  onlinePlayer() { return { name: this.settings.name, number: this.settings.number, teamId: this.settings.teamId }; }
+
+  updateOnlineStatus(status, detail = '') {
+    if (!this.online_status) return;
+    this.online_room_panel.classList.toggle('hidden', status === 'idle');
+    const messages = {
+      idle: '', connecting: 'Conectando con Supabase Realtime…',
+      ready: this.onlineMatch?.role === 'host' ? 'Sala creada. Comparte el código y espera a tu rival.' : 'Conectado. Buscando la sala…',
+      waiting: 'Sala encontrada. Preparando el partido…', 'peer-left': 'Tu rival se ha desconectado.',
+    };
+    this.online_status.textContent = status === 'error' ? (detail || 'No se pudo conectar. Comprueba el código e inténtalo de nuevo.') : (messages[status] || 'Conectando…');
+    this.online_status.classList.toggle('error', status === 'error' || status === 'peer-left');
+  }
+
+  async copyOnlineRoomCode() {
+    try {
+      await navigator.clipboard.writeText(this.online_room_code.textContent);
+      this.online_status.textContent = 'Código copiado. Envíalo a tu rival.';
+      this.online_status.classList.remove('error');
+    } catch { this.online_status.textContent = `Comparte este código: ${this.online_room_code.textContent}`; }
+  }
+
+  startOnlineMatch(info) {
+    const other = info.opponent || {};
+    const opponentTeam = getTeamById(other.teamId);
+    const team = opponentTeam ? { name: opponentTeam.name, primary: opponentTeam.primary, secondary: opponentTeam.secondary } : null;
+    this.online_room_panel.classList.add('hidden');
+    this.result_rematch.disabled = false; this.result_rematch.innerHTML = 'Pedir revancha <span>↻</span>';
+    this.result_online_status.classList.add('hidden');
+    this.start('online', {
+      localSide: info.localSide, opponentName: other.name || 'RIVAL', opponentNumber: other.number,
+      opponentTeam: team, roomCode: info.roomCode, label: `ONLINE · SALA ${info.roomCode}`,
+    });
+  }
+
+  handleOnlinePeerLeft() {
+    this.onlineMatch?.leave(false);
+    if (this.currentMatchMode === 'online') {
+      this.game?.stop(); this.currentMatchMode = null; this.currentMatchOptions = null;
+      this.show('online'); this.online_room_panel.classList.remove('hidden');
+      this.updateOnlineStatus('peer-left');
+    }
+  }
+
+  showConnectionStatus(seconds) {
+    this.connection_banner.textContent = `Conexión con tu rival perdida. Reconectando… ${seconds}s`;
+    this.connection_banner.classList.remove('hidden');
+  }
+
+  hideConnectionStatus() { this.connection_banner.classList.add('hidden'); }
+
+  showRematchRequest() {
+    if (this.currentMatchMode !== 'online' || this.result_overlay.classList.contains('hidden')) return;
+    this.result_rematch.disabled = false;
+    this.result_rematch.innerHTML = 'Aceptar revancha <span>↻</span>';
+    this.result_online_status.textContent = 'Tu rival quiere jugar otra vez. Acepta para empezar.';
+    this.result_online_status.classList.remove('hidden');
+  }
+
+  requestOnlineRematch() {
+    this.result_rematch.disabled = true;
+    this.result_rematch.innerHTML = 'Esperando al rival… <span>⌛</span>';
+    this.result_online_status.textContent = 'Se iniciará cuando ambos aceptéis.';
+    this.result_online_status.classList.remove('hidden');
+    this.onlineMatch?.requestRematch();
+  }
+
+  async loadLeaderboard() {
+    this.leaderboard_refresh.disabled = true;
+    this.leaderboard_message.textContent = 'Cargando resultados…';
+    this.leaderboard_list.replaceChildren();
+    try {
+      const rows = await this.accountService?.listOnlineLeaderboard();
+      if (!rows) throw new Error('No se pudo conectar con la clasificación.');
+      if (!rows.length) { this.leaderboard_message.textContent = 'Aún no hay resultados. Juega online e inicia sesión para aparecer aquí.'; return; }
+      this.leaderboard_message.textContent = this.user
+        ? 'Clasificación amistosa · resultados declarados por los jugadores.'
+        : 'Puedes consultar la tabla. Inicia sesión para guardar tus resultados.';
+      rows.forEach((row, index) => {
+        const item = document.createElement('li'); item.className = 'leaderboard-row';
+        const place = document.createElement('b'); place.className = 'leaderboard-place'; place.textContent = String(index + 1).padStart(2, '0');
+        const name = document.createElement('span'); name.className = 'leaderboard-name'; name.textContent = row.playerName;
+        const record = document.createElement('small'); record.textContent = `${row.winRate}% · ${row.wins}V · ${row.played}P · ${row.goals}G`;
+        item.append(place, name, record); this.leaderboard_list.append(item);
+      });
+    } catch (error) {
+      this.leaderboard_message.textContent = error?.message || 'No se pudo cargar la clasificación.';
+    } finally { this.leaderboard_refresh.disabled = false; }
+  }
+
+  async cancelOnlineRoom() {
+    await this.onlineMatch?.leave();
+    this.game?.stop(); this.currentMatchMode = null; this.currentMatchOptions = null;
+    this.openOnline();
   }
 
   saveCurrentCompetition(snapshot = null) {
@@ -669,7 +820,7 @@ export class UI {
     this.result_level.textContent = `NIVEL ${this.progression.level}`;
     this.result_xp_fill.style.width = `${this.progression.progressRatio() * 100}%`;
     this.result_copy.textContent = `${result.playerScore} – ${result.botScore}. ${rewardText}${levelText}`;
-    this.result_next.classList.add('hidden'); this.result_finish.textContent = 'Volver al menú';
+    this.result_next.classList.add('hidden'); this.result_rematch.classList.add('hidden'); this.result_online_status.classList.add('hidden'); this.result_finish.textContent = 'Volver al menú';
     this.result_eyebrow.textContent = 'FINAL DEL PARTIDO'; this.result_title.textContent = won ? 'Victoria' : 'Derrota';
 
     if (result.mode === 'tournament' && this.tournament) {
@@ -700,6 +851,26 @@ export class UI {
         this.result_copy.textContent = `${season.points} puntos · ${season.wins} victorias · ${season.losses} derrotas. ${rewardText}${levelText}`;
       }
     }
+    if (result.mode === 'online') {
+      this.result_rematch.classList.remove('hidden');
+      this.result_rematch.disabled = false; this.result_rematch.innerHTML = 'Pedir revancha <span>↻</span>';
+      this.result_finish.textContent = 'Salir de la sala';
+      this.result_online_status.classList.remove('hidden');
+      if (!this.user) {
+        this.result_online_status.textContent = 'Inicia sesión para guardar tu resultado en la clasificación amistosa.';
+      } else {
+        this.result_online_status.textContent = 'Guardando resultado…';
+        this.accountService.recordOnlineResult({
+          matchId: this.onlineMatch?.matchId,
+          playerName: this.settings.name,
+          opponentName: this.onlineMatch?.opponent?.name || 'RIVAL',
+          playerScore: result.playerScore,
+          opponentScore: result.botScore,
+        }).then(saved => {
+          this.result_online_status.textContent = saved ? 'Resultado guardado en la clasificación amistosa.' : 'Ya habías guardado este partido.';
+        }).catch(error => { this.result_online_status.textContent = error?.message || 'No se pudo guardar el resultado.'; });
+      }
+    }
     this.pause_overlay.classList.add('hidden'); this.result_overlay.classList.remove('hidden');
     this.renderAccount();
     if ((this.league?.status === 'next') || (this.tournament?.status === 'next')) this.saveCurrentCompetition();
@@ -714,13 +885,14 @@ export class UI {
   }
 
   pause(paused) {
-    if (!this.game?.state.running || !this.result_overlay.classList.contains('hidden')) return;
+    if (!this.game?.state.running || this.currentMatchMode === 'online' || !this.result_overlay.classList.contains('hidden')) return;
     this.game.setPaused(paused); this.pause_overlay.classList.toggle('hidden', !paused);
     if (paused) this.saveCurrentCompetition();
     document.getElementById('pause-button').textContent = paused ? '▶' : 'Ⅱ';
   }
 
   quit() {
+    if (this.currentMatchMode === 'online') this.onlineMatch?.leave();
     if (this.league || this.tournament) { clearCompetitionSave(); this.refreshContinueButton(null); }
     this.game.stop(); this.tournament = null; this.league = null;
     this.currentMatchMode = null; this.currentMatchOptions = null;

@@ -1,6 +1,6 @@
 const BASE_STORAGE_KEY = 'field-progression';
 const MAX_LEVEL = 100;
-const WIN_XP = 100;
+const MATCH_XP = 50;
 
 export class Progression {
   constructor(scope = 'guest') {
@@ -40,13 +40,14 @@ export class Progression {
   }
 
   static get maxLevel() { return MAX_LEVEL; }
-  static get winReward() { return WIN_XP; }
+  static get matchReward() { return MATCH_XP; }
+  static get winReward() { return MATCH_XP; }
   xpForNextLevel() { return this.level >= MAX_LEVEL ? 0 : 100 + this.level * 20; }
   progressRatio() { const need = this.xpForNextLevel(); return need === 0 ? 1 : this.xp / need; }
 
-  awardWin() {
-    this.wins++;
-    let gained = this.level === MAX_LEVEL ? 0 : WIN_XP;
+  awardMatch(won = false) {
+    if (won) this.wins++;
+    let gained = this.level === MAX_LEVEL ? 0 : MATCH_XP;
     const oldLevel = this.level;
     this.xp += gained;
     while (this.level < MAX_LEVEL && this.xp >= this.xpForNextLevel()) {
@@ -57,6 +58,8 @@ export class Progression {
     this.save();
     return { gained, oldLevel, level: this.level, leveledUp: this.level > oldLevel, xp: this.xp, next: this.xpForNextLevel(), wins: this.wins };
   }
+
+  awardWin() { return this.awardMatch(true); }
 
   save() {
     try { localStorage.setItem(this.storageKey, JSON.stringify(this.toJSON())); } catch { /* Progress still works for the current session. */ }

@@ -18,7 +18,7 @@ export class Game {
     this.last = 0; this.raf = 0; this.boundLoop = time => this.loop(time); this.goalResetTimer = 0;
     this.countdown = 0; this.countdownClock = 0; this.fieldTheme = 'arcade'; this.competitionRound = 0;
     this.goalTarget = 5; this.shotRangeTimer = 0; this.autosaveClock = 0; this.powerHudClock = 0;
-    this.onlineSnapshotClock = 0; this.onlineInputClock = 0; this.localSide = 'left'; this.onlineAuthority = true; this.remoteInput = { x: 0, y: 0, kick: false }; this.onlineMatchEnded = false;
+    this.onlineSnapshotClock = 0; this.onlineInputClock = 0; this.localSide = 'left'; this.onlineAuthority = true; this.remoteInput = { x: 0, y: 0, kick: false }; this.onlineMatchEnded = false; this.onlinePendingKick = false;
   }
   start(mode = 'bot', difficulty = this.settings.difficulty, options = {}) {
     this.state.start(mode); this.settings.difficulty = difficulty; this.botAI.setDifficulty(difficulty);
@@ -28,7 +28,8 @@ export class Game {
     this.goalTarget = mode === 'league' ? (Number(options.goalTarget) || 2) : mode === 'tournament' ? 3 : 5;
     this.localSide = options.localSide === 'right' ? 'right' : 'left';
     this.onlineAuthority = mode !== 'online' || this.localSide === 'left';
-    this.onlineSnapshotClock = 0; this.onlineInputClock = 0; this.remoteInput = { x: 0, y: 0, kick: false }; this.onlineMatchEnded = false;
+    this.onlineSnapshotClock = 0; this.onlineInputClock = 0; this.remoteInput = { x: 0, y: 0, kick: false }; this.onlineMatchEnded = false; this.onlinePendingKick = false;
+    this.input.down.clear(); this.input.pressed.clear();
     this.trajectory = !!this.settings.trajectory; this.shotRangeTimer = 0; this.autosaveClock = 0; this.powerHudClock = 0;
     const localX = this.localSide === 'left' ? WORLD.width * .31 : WORLD.width * .69;
     this.player = new Player({ x: localX, y: WORLD.height / 2, name: this.settings.name, number: this.settings.number, color: team?.primary || '#68746e', secondaryColor: team?.secondary || null });
@@ -61,17 +62,19 @@ export class Game {
     const dt = this.last ? Math.min((time - this.last) / 1000, .033) : 0; this.last = time;
     if (!this.state.paused) {
       if (this.state.mode === 'online' && !this.onlineAuthority) {
+        this.predictOnlineGuest(dt);
         this.onlineInputClock += dt;
         if (this.onlineInputClock >= 1 / 30) {
           this.onlineInputClock %= 1 / 30;
           const axes = this.input.axes();
-          this.hooks.onOnlineInput?.({ x: axes.x, y: axes.y, kick: this.input.consume('Space') });
+          this.hooks.onOnlineInput?.({ x: axes.x, y: axes.y, kick: this.onlinePendingKick });
+          this.onlinePendingKick = false;
         }
       } else this.update(dt);
       if (this.state.mode === 'online' && this.onlineAuthority && !this.state.paused) {
         this.onlineSnapshotClock += dt;
-        if (this.onlineSnapshotClock >= 1 / 12) {
-          this.onlineSnapshotClock %= 1 / 12;
+        if (this.onlineSnapshotClock >= 1 / 20) {
+          this.onlineSnapshotClock %= 1 / 20;
           this.hooks.onOnlineSnapshot?.(this.captureSnapshot());
         }
       }
@@ -156,6 +159,28 @@ export class Game {
     if (goalSide !== 0) { this.recordGoal(goalSide); return; }
     resolveBallWalls(this.ball, () => this.sound.bump());
   }
+  predictOnlineGuest(dt) {
+    if (dt <= 0 || !this.player) return;
+    const axes = this.input.axes();
+    const kickPressed = this.input.consume('Space');
+    if (kickPressed) this.onlinePendingKick = true;
+    if (this.countdown > 0 || this.state.goalTimer > 0 || this.state.matchOver) return;
+    this.player.powerCooldown = Math.max(0, this.player.powerCooldown - dt);
+    this.player.powerFlash = Math.max(0, this.player.powerFlash - dt);
+    this.shotRangeTimer = Math.max(0, this.shotRangeTimer - dt);
+    this.player.move(axes.x, axes.y, dt);
+    resolvePlayerWalls(this.player);
+    if (kickPressed) {
+      this.shotRangeTimer = .62;
+      const powered = this.player.powerCooldown <= 0;
+      const kicked = kickBall(this.player, this.ball, () => {
+        this.sound.play('kick');
+        if (powered) { this.renderer.fireBurst(this.ball.x, this.ball.y); this.player.powerFlash = .48; }
+        else this.renderer.burst(this.ball.x, this.ball.y, '#c5f4d8', 7, 100);
+      }, null, powered ? 1.45 : 1);
+      if (kicked && powered) this.player.powerCooldown = POWER_SHOT_COOLDOWN_SECONDS;
+    }
+  }
   recordGoal(side) {
     if (this.state.mode === 'training') this.state.scorePlayer++;
     else if (this.state.mode === 'online'
@@ -195,7 +220,6 @@ export class Game {
     this.fieldTheme = snapshot.fieldTheme || this.fieldTheme; this.competitionRound = Number(snapshot.competitionRound) || this.competitionRound;
     restoreBody(this.player, snapshot.player); restoreBody(this.bot, snapshot.bot); restoreBody(this.ball, snapshot.ball);
     if (snapshot.ai) Object.assign(this.botAI, snapshot.ai);
-    this.input.down.clear(); this.input.pressed.clear();
     if (notify) {
       this.hooks.onScore?.(this.state.scorePlayer, this.state.scoreBot); this.hooks.onTime?.(this.state.formatTime());
       this.hooks.onCountdown?.(this.countdown > 0 ? this.countdown : null); this.hooks.onPowerCooldown?.(this.player.powerCooldown || 0);
@@ -220,7 +244,18 @@ export class Game {
     };
     const priorScorePlayer = this.state.scorePlayer, priorScoreBot = this.state.scoreBot;
     const priorCountdown = this.countdown;
+    const predictedPlayer = this.localSide === 'right' ? { x: this.player.x, y: this.player.y, vx: this.player.vx, vy: this.player.vy, faceX: this.player.faceX, faceY: this.player.faceY } : null;
     this.restoreSnapshot(mapped, false);
+    if (predictedPlayer) {
+      const authoritative = this.player;
+      const error = Math.hypot(predictedPlayer.x - authoritative.x, predictedPlayer.y - authoritative.y);
+      const predictionWeight = error < 50 ? .72 : error < 150 ? .42 : .18;
+      authoritative.x += (predictedPlayer.x - authoritative.x) * predictionWeight;
+      authoritative.y += (predictedPlayer.y - authoritative.y) * predictionWeight;
+      authoritative.vx += (predictedPlayer.vx - authoritative.vx) * .7;
+      authoritative.vy += (predictedPlayer.vy - authoritative.vy) * .7;
+      authoritative.faceX = predictedPlayer.faceX; authoritative.faceY = predictedPlayer.faceY;
+    }
     this.hooks.onTime?.(this.state.formatTime());
     if (this.countdown !== priorCountdown) this.hooks.onCountdown?.(this.countdown > 0 ? this.countdown : null);
     this.hooks.onPowerCooldown?.(this.player.powerCooldown || 0);

@@ -54,3 +54,35 @@ $$;
 
 revoke all on function public.save_player_profile(jsonb) from public, anon;
 grant execute on function public.save_player_profile(jsonb) to authenticated;
+
+-- Casual online leaderboard. These scores are client-reported, not anti-cheat verified.
+create table if not exists public.online_match_results (
+  match_id uuid not null,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  player_name text not null check (char_length(player_name) between 1 and 16),
+  opponent_name text not null check (char_length(opponent_name) between 1 and 16),
+  player_score smallint not null check (player_score between 0 and 5),
+  opponent_score smallint not null check (opponent_score between 0 and 5),
+  played_at timestamptz not null default now(),
+  primary key (match_id, user_id)
+);
+
+alter table public.online_match_results enable row level security;
+revoke all on table public.online_match_results from anon, authenticated;
+grant select on table public.online_match_results to anon, authenticated;
+grant insert on table public.online_match_results to authenticated;
+
+drop policy if exists "Anyone can read casual online results" on public.online_match_results;
+create policy "Anyone can read casual online results"
+  on public.online_match_results for select to anon, authenticated
+  using (true);
+
+drop policy if exists "Players can add their own online results" on public.online_match_results;
+create policy "Players can add their own online results"
+  on public.online_match_results for insert to authenticated
+  with check ((select auth.uid()) = user_id);
+
+create index if not exists online_match_results_played_at_idx
+  on public.online_match_results (played_at desc);
+create index if not exists online_match_results_user_id_idx
+  on public.online_match_results (user_id);

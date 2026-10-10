@@ -11,6 +11,10 @@ globalThis.sessionStorage = {
 };
 
 const rooms = new Map();
+const presences = new Map();
+function emitPresence(topic, event, payload = {}) {
+  for (const channel of rooms.get(topic) || []) channel.handlers.get(`presence:${event}`)?.(payload);
+}
 class FakeChannel {
   constructor(topic) {
     this.topic = topic; this.handlers = new Map();
@@ -18,9 +22,17 @@ class FakeChannel {
     rooms.get(topic).add(this);
   }
   on(type, options, callback) { this.handlers.set(`${type}:${options.event || ''}`, callback); return this; }
-  subscribe(callback) { queueMicrotask(() => callback('SUBSCRIBED')); return this; }
-  track() { return Promise.resolve('ok'); }
-  presenceState() { return {}; }
+  subscribe(callback) { queueMicrotask(() => { callback('SUBSCRIBED'); emitPresence(this.topic, 'sync'); }); return this; }
+  track(state) {
+    this.clientId = state.clientId;
+    if (!presences.has(this.topic)) presences.set(this.topic, new Map());
+    const topicPresences = presences.get(this.topic);
+    topicPresences.set(state.clientId, state);
+    emitPresence(this.topic, 'join', { newPresences: [state] });
+    emitPresence(this.topic, 'sync');
+    return Promise.resolve('ok');
+  }
+  presenceState() { return Object.fromEntries([...(presences.get(this.topic) || new Map())].map(([key, value]) => [key, [value]])); }
   send(message) {
     for (const peer of rooms.get(this.topic) || []) {
       if (peer !== this) peer.handlers.get(`broadcast:${message.event}`)?.({ payload: message.payload });
@@ -31,7 +43,12 @@ class FakeChannel {
 
 const client = {
   channel: topic => new FakeChannel(topic),
-  removeChannel: async channel => rooms.get(channel.topic)?.delete(channel),
+  removeChannel: async channel => {
+    rooms.get(channel.topic)?.delete(channel);
+    const topicPresences = presences.get(channel.topic);
+    const left = topicPresences?.get(channel.clientId);
+    if (left) { topicPresences.delete(channel.clientId); emitPresence(channel.topic, 'leave', { leftPresences: [left] }); }
+  },
 };
 
 test('empareja dos jugadores, transmite entradas y estado, y espera el voto mutuo para la revancha', async () => {
@@ -55,6 +72,9 @@ test('empareja dos jugadores, transmite entradas y estado, y espera el voto mutu
   const snapshot = { mode: 'online', scorePlayer: 2, scoreBot: 1 };
   host.sendSnapshot(snapshot);
   assert.deepEqual(receivedSnapshot, snapshot);
+  host.send('snapshot', { clientId: host.clientId, sequence: 99, snapshot: { ...snapshot, scorePlayer: 9 } });
+  host.send('snapshot', { clientId: host.clientId, sequence: 98, snapshot: { ...snapshot, scorePlayer: 1 } });
+  assert.equal(receivedSnapshot.scorePlayer, 9);
 
   const finishedMatchId = host.matchId;
   guest.requestRematch();
@@ -88,4 +108,25 @@ test('muestra la pérdida temporal y cancela el margen al volver el rival', asyn
 
   await guest.leave();
   await host.leave();
+});
+
+test('empareja automáticamente a dos jugadores que buscan partida', async () => {
+  sessionValues = new Map();
+  const first = new OnlineMatch(client);
+  sessionValues = new Map();
+  const second = new OnlineMatch(client);
+  let firstStarts = 0, secondStarts = 0;
+  first.setHandlers({ onMatchStart: () => firstStarts++ });
+  second.setHandlers({ onMatchStart: () => secondStarts++ });
+
+  await first.findMatch({ name: 'Ana' });
+  await second.findMatch({ name: 'Luis' });
+  await new Promise(resolve => setTimeout(resolve, 850));
+  assert.equal(firstStarts, 1);
+  assert.equal(secondStarts, 1);
+  assert.equal(first.matchId, second.matchId);
+  assert.equal(first.code, second.code);
+
+  await second.leave();
+  await first.leave();
 });

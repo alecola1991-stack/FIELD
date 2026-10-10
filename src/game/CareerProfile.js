@@ -90,7 +90,14 @@ function safeCount(value) { return Number.isFinite(Number(value)) ? Math.max(0, 
 function normalizeScope(scope) { return scope && scope !== 'guest' ? String(scope).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 100) || 'guest' : 'guest'; }
 function normalizeStats(value = {}) { return Object.fromEntries(statKeys.map(key => [key, safeCount(value?.[key])])); }
 function normalizeEquipped(value = {}) {
-  return { circleRelief: ['off', 'raised'].includes(value?.circleRelief) ? value.circleRelief : 'off', shotEffect: ['off', 'neon', 'fire'].includes(value?.shotEffect) ? value.shotEffect : 'off', ballSkin: ['classic', 'gold'].includes(value?.ballSkin) ? value.ballSkin : 'classic' };
+  return {
+    circleRelief: ['off', 'raised', 'gold'].includes(value?.circleRelief) ? value.circleRelief : 'off',
+    fieldTint: ['off', 'mint', 'dusk', 'lagoon'].includes(value?.fieldTint) ? value.fieldTint : 'off',
+    shotEffect: ['off', 'neon', 'fire', 'lightning', 'aurora'].includes(value?.shotEffect) ? value.shotEffect : 'off',
+    ballSkin: ['classic', 'gold', 'lava', 'ice', 'cosmic', 'carbon'].includes(value?.ballSkin) ? value.ballSkin : 'classic',
+    playerEffect: ['off', 'halo', 'speed'].includes(value?.playerEffect) ? value.playerEffect : 'off',
+    goalEffect: ['off', 'shockwave', 'fireworks'].includes(value?.goalEffect) ? value.goalEffect : 'off',
+  };
 }
 function normalizeShards(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};

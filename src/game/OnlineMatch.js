@@ -1,6 +1,7 @@
 const ROOM_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const HELLO_INTERVAL_MS = 1000;
+const HELLO_INTERVAL_MS = 500;
 const RECONNECT_GRACE_MS = 15000;
+const MATCHMAKING_TOPIC = 'field-matchmaking-v1';
 
 export class OnlineMatch {
   constructor(client) {
@@ -21,7 +22,14 @@ export class OnlineMatch {
     this.remoteRematchVote = false;
     this.rematchStarting = false;
     this.latestInput = { x: 0, y: 0, kick: false, receivedAt: 0 };
+    this.inputSequence = 0;
+    this.lastInputSequence = 0;
+    this.snapshotSequence = 0;
+    this.lastSnapshotSequence = 0;
     this.closedByUser = false;
+    this.searching = false;
+    this.matchmakingAt = 0;
+    this.matchmakingStarting = false;
   }
 
   setHandlers(handlers = {}) { this.handlers = handlers; }
@@ -36,6 +44,67 @@ export class OnlineMatch {
     return this.connect(normalized, 'guest', profile);
   }
 
+  async findMatch(profile) {
+    await this.leave(false);
+    this.profile = safeProfile(profile);
+    this.role = 'searching';
+    this.searching = true;
+    this.matchmakingStarting = false;
+    this.matchmakingAt = Date.now();
+    this.closedByUser = false;
+    this.handlers.onStatus?.('searching');
+
+    const channel = this.client.channel(MATCHMAKING_TOPIC, {
+      config: { broadcast: { self: false, ack: false }, presence: { key: this.clientId } },
+    });
+    this.channel = channel;
+    channel.on('broadcast', { event: 'match-offer' }, message => this.handleMatchOffer(message?.payload ?? message));
+    channel.on('presence', { event: 'sync' }, () => this.tryMatchmake(channel));
+    channel.on('presence', { event: 'join' }, () => this.tryMatchmake(channel));
+    channel.subscribe(status => {
+      if (this.channel !== channel || !this.searching) return;
+      if (status === 'SUBSCRIBED') {
+        channel.track({ clientId: this.clientId, profile: this.profile, queuedAt: this.matchmakingAt, status: 'searching' }).catch(() => {});
+        this.handlers.onStatus?.('searching');
+        this.tryMatchmake(channel);
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        this.handlers.onStatus?.('error', 'No se pudo conectar con la búsqueda online. Revisa la conexión e inténtalo de nuevo.');
+      }
+    });
+  }
+
+  tryMatchmake(channel = this.channel) {
+    if (!this.searching || this.matchmakingStarting || this.channel !== channel || !channel?.presenceState) return;
+    const players = Object.values(channel.presenceState() || {}).flat()
+      .filter(presence => presence?.clientId && Number.isFinite(presence.queuedAt) && presence.status === 'searching')
+      .sort((a, b) => a.queuedAt - b.queuedAt || String(a.clientId).localeCompare(String(b.clientId)));
+    const ownIndex = players.findIndex(player => player.clientId === this.clientId);
+    if (ownIndex < 0 || ownIndex % 2 !== 0 || !players[ownIndex + 1]) return;
+
+    const opponent = players[ownIndex + 1];
+    this.matchmakingStarting = true;
+    this.searching = false;
+    const code = makeRoomCode();
+    channel.send({ type: 'broadcast', event: 'match-offer', payload: {
+      target: opponent.clientId, clientId: this.clientId, profile: this.profile, code,
+    } }).catch(() => {});
+    this.handlers.onStatus?.('matching');
+    // Give the targeted player time to receive the offer before leaving the shared lobby.
+    setTimeout(() => {
+      if (this.channel !== channel || !this.matchmakingStarting) return;
+      this.connect(code, 'host', this.profile).catch(error => this.handlers.onStatus?.('error', error?.message));
+    }, 180);
+  }
+
+  handleMatchOffer(message) {
+    if (!this.searching || this.matchmakingStarting || message?.target !== this.clientId || !/^[A-Z2-9]{8}$/.test(message.code || '')) return;
+    this.searching = false;
+    this.matchmakingStarting = true;
+    const profile = this.profile;
+    this.handlers.onStatus?.('matching');
+    this.connect(message.code, 'guest', profile).catch(error => this.handlers.onStatus?.('error', error?.message));
+  }
+
   async connect(code, role, profile) {
     await this.leave(false);
     this.code = code; this.role = role; this.profile = safeProfile(profile); this.opponent = null;
@@ -43,6 +112,8 @@ export class OnlineMatch {
     this.localRematchVote = false; this.remoteRematchVote = false; this.rematchStarting = false;
     this.peerDisconnectedAt = 0; clearInterval(this.disconnectTimer); this.disconnectTimer = 0;
     this.latestInput = { x: 0, y: 0, kick: false, receivedAt: 0 };
+    this.inputSequence = 0; this.lastInputSequence = 0;
+    this.snapshotSequence = 0; this.lastSnapshotSequence = 0;
     const channel = this.client.channel(`field-match-${code.toLowerCase()}`, {
       config: { broadcast: { self: false, ack: false }, presence: { key: this.clientId } },
     });
@@ -127,6 +198,8 @@ export class OnlineMatch {
 
   handleInput(message) {
     if (this.role !== 'host' || !this.matched || message?.clientId !== this.opponent?.clientId) return;
+    if (Number.isInteger(message.sequence) && message.sequence <= this.lastInputSequence) return;
+    if (Number.isInteger(message.sequence)) this.lastInputSequence = message.sequence;
     this.latestInput = {
       x: clampAxis(message.x), y: clampAxis(message.y), kick: message.kick === true,
       receivedAt: Date.now(),
@@ -136,6 +209,8 @@ export class OnlineMatch {
 
   handleSnapshot(message) {
     if (this.role !== 'guest' || !this.matched || message?.clientId !== this.opponent?.clientId || !message.snapshot) return;
+    if (Number.isInteger(message.sequence) && message.sequence <= this.lastSnapshotSequence) return;
+    if (Number.isInteger(message.sequence)) this.lastSnapshotSequence = message.sequence;
     this.handlers.onSnapshot?.(message.snapshot);
   }
 
@@ -208,12 +283,12 @@ export class OnlineMatch {
 
   sendInput(input) {
     if (this.role !== 'guest' || !this.matched) return;
-    this.send('input', { clientId: this.clientId, x: clampAxis(input.x), y: clampAxis(input.y), kick: input.kick === true });
+    this.send('input', { clientId: this.clientId, sequence: ++this.inputSequence, x: clampAxis(input.x), y: clampAxis(input.y), kick: input.kick === true });
   }
 
   sendSnapshot(snapshot) {
     if (this.role !== 'host' || !this.matched) return;
-    this.send('snapshot', { clientId: this.clientId, snapshot });
+    this.send('snapshot', { clientId: this.clientId, sequence: ++this.snapshotSequence, snapshot });
   }
 
   send(event, payload) {
@@ -229,6 +304,7 @@ export class OnlineMatch {
     this.channel = null;
     if (notifyPeer && channel && this.matched) channel.send({ type: 'broadcast', event: 'signal', payload: { kind: 'leave', clientId: this.clientId } }).catch(() => {});
     this.matched = false; this.opponent = null; this.role = null; this.code = null; this.matchId = null;
+    this.searching = false; this.matchmakingStarting = false; this.matchmakingAt = 0;
     this.localRematchVote = false; this.remoteRematchVote = false; this.rematchStarting = false;
     if (channel) await this.client.removeChannel(channel).catch(() => {});
   }

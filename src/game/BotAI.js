@@ -10,23 +10,27 @@ export class BotAI {
     this.targetY = WORLD.height / 2;
     this.shotsTaken = 0;
     this.mode = 'defend';
+    this.teamStars = 3;
   }
 
   setDifficulty(level) {
     this.difficulty = level in BOT_LEVELS ? level : 'normal';
   }
 
+  setTeamStrength(stars) { this.teamStars = clamp(Math.round(Number(stars) || 3), 1, 5); }
+
   update(bot, ball, player, dt) {
     const config = BOT_LEVELS[this.difficulty];
+    const strength = (this.teamStars - 3) / 2;
     this.thinkTimer -= dt;
 
     if (this.thinkTimer <= 0) {
-      this.thinkTimer = config.reaction;
+      this.thinkTimer = config.reaction * (1 - strength * .18);
         const centerX = WORLD.width / 2;
         const centerY = WORLD.height / 2;
       // React to the ball's current position and velocity only. Velocity helps
       // decide whether to defend; the bot never predicts a future ball position.
-      const threat = ball.x > 620 || (ball.x > 485 && ball.vx > 115);
+      const threat = ball.x > 620 - strength * 28 || (ball.x > 485 - strength * 24 && ball.vx > 115 - strength * 12);
       const playerHasBall = Math.hypot(player.x - ball.x, player.y - ball.y)
         < player.radius + ball.radius + 18;
 
@@ -38,7 +42,7 @@ export class BotAI {
         this.targetY = clamp(keeperY, WORLD.goalTop + 32, WORLD.goalBottom - 32);
 
         // Step out to challenge when the ball is deep or the human has control.
-        if (ball.x > WORLD.width * .78 || (playerHasBall && ball.x > centerX + 25)) {
+        if (ball.x > WORLD.width * (.78 - strength * .035) || (playerHasBall && ball.x > centerX + 25 - strength * 35)) {
           this.targetX = clamp(ball.x + bot.radius + 11, WORLD.left + bot.radius, WORLD.right - bot.radius);
           this.targetY = clamp(ball.y, WORLD.goalTop + 25, WORLD.goalBottom - 25);
         }
@@ -49,7 +53,8 @@ export class BotAI {
         this.targetX = clamp(this.targetX, WORLD.left + bot.radius, WORLD.right - bot.radius);
       } else {
         this.mode = 'attack';
-        const miss = Math.sin((this.shotsTaken + 1) * 2.399) * (1 - config.accuracy) * 125;
+        const accuracy = clamp(config.accuracy + strength * .09, .25, .96);
+        const miss = Math.sin((this.shotsTaken + 1) * 2.399) * (1 - accuracy) * 125;
         const aimY = clamp(WORLD.height / 2 + miss, WORLD.goalTop + 18, WORLD.goalBottom - 18);
         const goalX = WORLD.left - 4;
         const fromGoalX = ball.x - goalX;
@@ -67,12 +72,13 @@ export class BotAI {
     const moveX = distance > 10 ? toX / distance : 0;
     const moveY = distance > 10 ? toY / distance : 0;
     const ballDistance = Math.hypot(ball.x - bot.x, ball.y - bot.y);
-    const strikeReach = bot.radius + ball.radius + 12 + (1 - config.accuracy) * 15;
+    const accuracy = clamp(config.accuracy + strength * .09, .25, .96);
+    const strikeReach = bot.radius + ball.radius + 12 + (1 - accuracy) * 15 + (this.teamStars - 3) * 2;
     const kick = ballDistance <= strikeReach && bot.shotCooldown <= 0;
 
     let kickDirection = null;
     if (kick) {
-      const miss = Math.sin((this.shotsTaken + 1) * 2.399) * (1 - config.accuracy) * 125;
+      const miss = Math.sin((this.shotsTaken + 1) * 2.399) * (1 - accuracy) * 125;
       const aimY = clamp(WORLD.height / 2 + miss, WORLD.goalTop + 18, WORLD.goalBottom - 18);
       kickDirection = { x: WORLD.left - 4 - ball.x, y: aimY - ball.y };
       this.shotsTaken++;
@@ -81,7 +87,7 @@ export class BotAI {
     return {
       x: moveX,
       y: moveY,
-      speedMultiplier: config.speed / bot.maxSpeed,
+      speedMultiplier: config.speed / bot.maxSpeed * (1 + strength * .09),
       kick,
       kickDirection,
       behavior: this.mode,

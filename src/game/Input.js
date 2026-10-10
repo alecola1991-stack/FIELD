@@ -38,7 +38,10 @@ export class Input {
   }
   consume(code) { const hit = this.pressed.has(code); this.pressed.delete(code); return hit; }
   press(code) { if (!this.down.has(code)) this.pressed.add(code); this.down.add(code); }
-  release(code) { this.down.delete(code); this.pressed.delete(code); }
+  // Keep a press queued until the next game frame consumes it. A quick touch
+  // tap can start and finish between two animation frames, so clearing
+  // `pressed` here would make the action (especially a shot) disappear.
+  release(code) { this.down.delete(code); }
   endFrame() { this.pressed.clear(); }
 }
 

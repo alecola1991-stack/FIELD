@@ -11,8 +11,8 @@ import { clearCompetitionSave, loadCompetitionSave, setCompetitionSaveScope, sto
 const ROUND_NAMES = ['OCTAVOS DE FINAL', 'CUARTOS DE FINAL', 'SEMIFINAL', 'FINAL'];
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const STORE_ITEMS = [
-  { id: 'circle-raised', name: 'Relieve del círculo de jugador', slot: 'circleRelief', value: 'raised', price: 80, icon: '◉', preview: 'ring', description: 'Da volumen y luz al círculo de tu jugador.' },
-  { id: 'circle-gold', name: 'Relieve dorado de jugador', slot: 'circleRelief', value: 'gold', price: 170, icon: '✧', preview: 'ring gold', description: 'Un acabado dorado para el círculo de tu jugador.' },
+  { id: 'circle-raised', name: 'Relieve del círculo de jugador', slot: 'circleRelief', value: 'raised', price: 80, icon: '◉', preview: 'player relief', description: 'Da volumen y luz al círculo de tu jugador.' },
+  { id: 'circle-gold', name: 'Relieve dorado de jugador', slot: 'circleRelief', value: 'gold', price: 170, icon: '✧', preview: 'player relief-gold', description: 'Un acabado dorado para el círculo de tu jugador.' },
   { id: 'field-mint', name: 'Campo menta', slot: 'fieldTint', value: 'mint', price: 90, icon: '▦', preview: 'field mint', description: 'Un tono fresco para vestir todo el terreno de juego.' },
   { id: 'field-dusk', name: 'Campo crepúsculo', slot: 'fieldTint', value: 'dusk', price: 110, icon: '▦', preview: 'field dusk', description: 'Colores violeta y azul para jugar al anochecer.' },
   { id: 'field-lagoon', name: 'Campo laguna', slot: 'fieldTint', value: 'lagoon', price: 130, icon: '▦', preview: 'field lagoon', description: 'Un acabado turquesa inspirado en aguas profundas.' },

@@ -7,6 +7,7 @@ import { CUP_COMPETITIONS, createChampionsDraw, createInternationalDraw, createL
 import { MenuBackdrop } from './MenuBackdrop.js';
 import { Confetti } from './Confetti.js';
 import { clearCompetitionSave, loadCompetitionSave, setCompetitionSaveScope, storeCompetitionSave } from '../game/CompetitionSave.js';
+import { MISSION_DEFINITIONS, getLeagueMission } from '../game/Missions.js';
 
 const ROUND_NAMES = ['OCTAVOS DE FINAL', 'CUARTOS DE FINAL', 'SEMIFINAL', 'FINAL'];
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -49,6 +50,7 @@ export class UI {
       home: document.querySelector('#home-screen'), play: document.querySelector('#play-screen'), store: document.querySelector('#store-screen'), customize: document.querySelector('#customize-screen'),
       settings: document.querySelector('#settings-screen'), account: document.querySelector('#account-screen'), online: document.querySelector('#online-screen'), leaderboard: document.querySelector('#leaderboard-screen'), competitions: document.querySelector('#competition-screen'), tournament: document.querySelector('#tournament-screen'),
       league: document.querySelector('#league-screen'), game: document.querySelector('#game-screen'), profile: document.querySelector('#profile-screen'),
+      missions: document.querySelector('#missions-screen'),
     };
     this.cacheElements(); this.menuBackdrop = new MenuBackdrop(this.menu_backdrop); this.populateTeamPicker(); this.populateLeagueCompetitions(); this.fillInputs(); this.bind(); this.updateLeaguePreview(); this.renderProgress(); this.renderStore(); this.show('home'); this.refreshContinueButton();
   }
@@ -58,7 +60,7 @@ export class UI {
       'player-name','player-number','preview-name','preview-number','preview-ball','preview-team','saved-note','save-player',
       'difficulty','settings-difficulty','sound-enabled','volume','volume-value','score','timer','hud-player-name','hud-opponent-name','player-dot','opponent-dot',
       'goal-banner','countdown-banner','pause-overlay','result-overlay','result-eyebrow','result-title','result-copy','result-xp','result-level','result-xp-fill',
-      'result-next','result-finish','result-rematch','result-online-status','connection-banner','leaderboard-message','leaderboard-list','leaderboard-refresh','training-tools','trajectory-toggle','mode-label','game-canvas','level-value','xp-label','wins-label','xp-fill',
+      'result-next','result-finish','result-rematch','result-online-status','result-stats','result-stat-duration','result-stat-goals','result-stat-shots','result-trophy','connection-banner','leaderboard-message','leaderboard-list','leaderboard-refresh','training-tools','trajectory-toggle','mode-label','game-canvas','level-value','xp-label','wins-label','xp-fill','missions-list',
       'team-position','league-competition','league-competition-summary','league-tabs','team-grid','teams-prev','teams-next','chosen-team-label','tournament-roster',
       'competition-trophy','competition-eyebrow','competition-title','competition-description','competition-dots','competition-select','competition-prev','competition-next',
       'competition-picker-card',
@@ -334,7 +336,7 @@ export class UI {
     this.account_auth_panel.classList.toggle('hidden', signedIn); this.account_dashboard.classList.toggle('hidden', !signedIn);
     if (!signedIn) return;
     const { stats } = this.career;
-    this.account_email_label.textContent = this.user.email || 'Cuenta FIELD';
+    this.account_email_label.textContent = this.user.email || 'Cuenta Fútbol arcade';
     this.account_level.textContent = String(this.progression.level); this.account_wins.textContent = String(stats.wins);
     this.account_matches.textContent = String(stats.matches); this.account_goals.textContent = String(stats.goalsFor + stats.trainingGoals);
     this.account_conceded.textContent = String(stats.goalsAgainst); this.account_seasons.textContent = String(stats.leagueSeasons);
@@ -474,7 +476,12 @@ export class UI {
     if (!this.profileComplete() || (required === 'club' && current?.type === 'national') || (required === 'national' && current?.type !== 'national')) {
       this.pendingMode = mode; this.pendingCompetition = competition.id; this.pendingTeamType = required; this.openProfile(); return;
     }
-    if (mode === 'league') { this.updateLeaguePreview(); this.show('league'); }
+    if (mode === 'league') {
+      if (current && current.type !== 'national' && TEAM_LEAGUES.some(league => league.id === current.league)) {
+        this.league_competition.value = current.league; this.settings.leagueCompetition = current.league; this.persist();
+      }
+      this.updateLeaguePreview(); this.show('league');
+    }
     else this.openTournamentSetup(competition.id);
   }
 
@@ -531,14 +538,16 @@ export class UI {
     if (!team) return;
     const card = document.createElement('button'); card.type = 'button'; card.className = 'team-card single-team-card'; card.dataset.teamId = team.id;
     const chosen = team.id === this.selectedTeamId;
-    card.setAttribute('aria-label', `${team.name}. ${chosen ? 'Equipo elegido' : 'Elegir este equipo'}`);
+    card.setAttribute('aria-label', `${team.name}. Valoración ${team.stars || 3} de 5 estrellas. ${chosen ? 'Equipo elegido' : 'Elegir este equipo'}`);
     card.setAttribute('aria-pressed', String(chosen)); card.classList.toggle('selected', chosen);
     const strip = document.createElement('span'); strip.className = 'team-card-colors';
     strip.style.background = `linear-gradient(90deg, ${team.primary} 0 50%, ${team.secondary} 50% 100%)`;
     const details = document.createElement('span'); details.className = 'team-card-details';
     const name = document.createElement('span'); name.className = 'team-card-name'; name.textContent = team.name;
+    const rating = document.createElement('span'); rating.className = 'team-rating';
+    rating.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.6 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5-5.8-3.1-5.8 3.1 1.1-6.5-4.7-4.6 6.5-.9L12 2.6Z"/></svg><b>${team.stars || 3}</b><span>/ 5</span>`;
     const league = document.createElement('small'); league.textContent = chosen ? 'EQUIPO ELEGIDO ✓' : 'PULSA PARA ELEGIR';
-    details.append(name, league); card.append(strip, details); this.team_grid.append(card);
+    details.append(name, rating, league); card.append(strip, details); this.team_grid.append(card);
     this.team_position.textContent = `${index + 1} / ${leagueTeams.length}`;
     this.teams_prev.disabled = this.teams_next.disabled = leagueTeams.length < 2;
   }
@@ -632,6 +641,7 @@ export class UI {
     for (const [key, screen] of Object.entries(this.screens)) screen.classList.toggle('hidden', key !== view);
     this.menuBackdrop?.setActive(view === 'home');
     if (view === 'profile') this.renderProfile();
+    if (view === 'missions') this.renderMissions();
     if (view === 'store') this.renderStore();
     if (view === 'play') this.refreshContinueButton();
     if (view === 'game') requestAnimationFrame(() => this.game?.renderer.resize());
@@ -720,7 +730,30 @@ export class UI {
     const id = this.league_competition.value || TEAM_LEAGUES[0].id;
     const competition = TEAM_LEAGUES.find(item => item.id === id) || TEAM_LEAGUES[0];
     const count = TEAMS.filter(team => team.league === competition.id).length;
-    this.league_competition_summary.textContent = `${competition.label.split(' · ')[0].toUpperCase()} · ${count} CLUBES · 16 JORNADAS`;
+    const rounds = Math.max(0, count - 1);
+    this.league_competition_summary.textContent = `${competition.label.split(' · ')[0].toUpperCase()} · ${count} CLUBES · ${rounds} JORNADAS`;
+    const stat = document.querySelector('.league-stat-rounds b');
+    if (stat) stat.textContent = String(rounds);
+    const subtitle = document.querySelector('#league-screen .editor-copy h2');
+    if (subtitle) subtitle.innerHTML = `${rounds}<br><em>jornadas.</em>`;
+  }
+
+  renderMissions() {
+    const team = getTeamById(this.settings.teamId);
+    const definitions = [...MISSION_DEFINITIONS, ...(team && team.type !== 'national' ? [{ ...getLeagueMission(team.id), description: `Gana la liga con ${team.name}.` }] : [])];
+    this.missions_list.replaceChildren();
+    for (const mission of definitions) {
+      const state = this.career.missions[mission.id] || { progress: 0, completed: false };
+      const card = document.createElement('article'); card.className = `mission-card${state.completed ? ' completed' : ''}`;
+      const heading = document.createElement('div'); heading.className = 'mission-card-heading';
+      const copy = document.createElement('div'); const title = document.createElement('b'); title.textContent = mission.title;
+      const description = document.createElement('p'); description.textContent = mission.description; copy.append(title, description);
+      const status = document.createElement('span'); status.className = 'mission-status'; status.textContent = state.completed ? 'COMPLETADA' : `${Math.min(state.progress, mission.goal)}/${mission.goal}`;
+      heading.append(copy, status);
+      const track = document.createElement('div'); track.className = 'mission-progress'; const fill = document.createElement('i'); fill.style.width = `${Math.min(100, state.progress / mission.goal * 100)}%`; track.append(fill);
+      const reward = document.createElement('small'); reward.textContent = `RECOMPENSA · ${mission.coins} ◈ · ${mission.xp} XP`;
+      card.append(heading, track, reward); this.missions_list.append(card);
+    }
   }
 
   renderTournamentSetup(competition) {
@@ -786,9 +819,10 @@ export class UI {
 
   launchLeagueRound() {
     const round = this.league.jornada, competition = TEAM_LEAGUES.find(item => item.id === this.league.competitionId);
+    const totalRounds = this.league.opponents?.length || 16;
     const opponentTeam = this.league.opponents[round - 1] || null;
     const opponentName = opponentTeam?.name || 'RIVAL FC';
-    this.start('league', { opponentName, opponentTeam, label: `LIGA NACIONAL · ${competition.label.split(' · ')[0].toUpperCase()} · JORNADA ${round}/16 · A ${this.league.goalTarget}`, fieldTheme: `league-${competition.id}`, competitionRound: round, goalTarget: this.league.goalTarget }, true);
+    this.start('league', { opponentName, opponentTeam, label: `LIGA NACIONAL · ${competition.label.split(' · ')[0].toUpperCase()} · JORNADA ${round}/${totalRounds} · A ${this.league.goalTarget}`, fieldTheme: `league-${competition.id}`, competitionRound: round, goalTarget: this.league.goalTarget }, true);
   }
 
   start(mode, options = {}, preserveCompetition = false, snapshot = null) {
@@ -992,7 +1026,8 @@ export class UI {
     const competition = saved.competition || {};
     if (competition.mode === 'league') {
       const league = competition.league || {};
-      this.continue_detail.textContent = league.status === 'next' ? `SIGUIENTE · JORNADA ${Math.min(16, (league.jornada || 1) + 1)}/16` : `LIGA · JORNADA ${league.jornada || 1}/16`;
+      const total = league.opponents?.length || 16;
+      this.continue_detail.textContent = league.status === 'next' ? `SIGUIENTE · JORNADA ${Math.min(total, (league.jornada || 1) + 1)}/${total}` : `LIGA · JORNADA ${league.jornada || 1}/${total}`;
     } else {
       const cup = competition.tournament || {};
       const stage = ROUND_NAMES[Math.max(0, Math.min(3, (cup.round || 1) - 1))];
@@ -1047,11 +1082,14 @@ export class UI {
     this.result_next.classList.add('hidden'); this.result_rematch.classList.add('hidden'); this.result_online_status.classList.add('hidden'); this.result_finish.textContent = 'Volver al menú';
     this.result_eyebrow.textContent = 'FINAL DEL PARTIDO'; this.result_title.textContent = won ? 'Victoria' : 'Derrota';
 
+    let cupFinal = false, cupChampion = false, leagueFinished = false, leagueChampion = false;
     if (result.mode === 'tournament' && this.tournament) {
       const cup = this.tournament;
+      cupFinal = cup.round >= cup.totalRounds;
       if (!won) { cup.status = 'eliminated'; this.result_eyebrow.textContent = 'TORNEO TERMINADO'; this.result_title.textContent = 'Fin del camino'; this.result_copy.textContent = `El torneo acaba en ${ROUND_NAMES[cup.size === 16 ? cup.round - 1 : cup.round]}. ${rewardText}${levelText}`; }
       else if (cup.round >= cup.totalRounds) {
         cup.status = 'champion';
+        cupChampion = true;
         const competition = CUP_COMPETITIONS.find(item => item.id === cup.competitionId) || CUP_COMPETITIONS[0];
         this.unlockTrophy(cup.competitionId, competition.name);
         this.result_eyebrow.textContent = 'CAMPEONES'; this.result_title.textContent = '¡Ganaste la copa!'; this.result_copy.textContent = `Victorias: ${cup.totalRounds}. ${rewardText}${levelText}`;
@@ -1062,19 +1100,43 @@ export class UI {
     if (result.mode === 'league' && this.league) {
       const season = this.league;
       if (won) { season.wins++; season.points += 3; } else season.losses++;
-      if (season.jornada === 16) {
+      const totalRounds = season.opponents?.length || 16;
+      if (season.jornada >= totalRounds) {
+        leagueFinished = true;
         season.status = 'complete'; this.result_eyebrow.textContent = 'TEMPORADA COMPLETADA'; this.result_title.textContent = 'Fin de la liga';
         this.career.recordLeagueSeason();
-        if (season.points >= 30) {
+        leagueChampion = season.points >= Math.ceil(totalRounds * 3 * .6);
+        if (leagueChampion) {
           const competition = TEAM_LEAGUES.find(item => item.id === season.competitionId) || TEAM_LEAGUES[0];
           this.unlockTrophy(`league-${season.competitionId}`, `Campeón · ${competition.label.split(' · ')[0]}`);
         }
-        this.result_copy.textContent = `16 jornadas · ${season.points} puntos · ${season.wins}V ${season.losses}D. ${rewardText}${levelText}`;
+        this.result_copy.textContent = `${totalRounds} jornadas · ${season.points} puntos · ${season.wins}V ${season.losses}D. ${rewardText}${levelText}`;
       } else {
-        season.status = 'next'; this.result_eyebrow.textContent = `JORNADA ${season.jornada}/16`; this.result_next.textContent = `Jugar jornada ${season.jornada + 1} →`; this.result_next.classList.remove('hidden'); this.result_finish.textContent = 'Abandonar liga';
+        season.status = 'next'; this.result_eyebrow.textContent = `JORNADA ${season.jornada}/${totalRounds}`; this.result_next.textContent = `Jugar jornada ${season.jornada + 1} →`; this.result_next.classList.remove('hidden'); this.result_finish.textContent = 'Abandonar liga';
         this.result_copy.textContent = `${season.points} puntos · ${season.wins} victorias · ${season.losses} derrotas. ${rewardText}${levelText}`;
       }
     }
+    const team = getTeamById(this.settings.teamId);
+    const newMissions = this.career.processMissionEvent({
+      competitionMode: result.mode === 'tournament' || result.mode === 'league', won,
+      competitionId: this.tournament?.competitionId || (result.mode === 'league' ? this.league?.competitionId : ''),
+      isFinal: cupFinal, isChampion: cupChampion, playerGoals: result.playerScore,
+      leagueId: leagueFinished ? this.league?.competitionId : '', isLeagueChampion: leagueChampion, teamId: team?.id,
+    });
+    const missionCoins = newMissions.reduce((sum, mission) => sum + mission.coins, 0);
+    const missionXp = newMissions.reduce((sum, mission) => sum + mission.xp, 0);
+    if (missionXp) {
+      const missionReward = this.progression.awardXP(missionXp);
+      this.renderProgress();
+      const totalGained = (reward?.gained || 0) + missionXp;
+      this.result_xp.textContent = totalGained ? `+${totalGained} XP` : 'NIVEL MÁXIMO';
+      this.result_level.textContent = `NIVEL ${this.progression.level}`;
+      this.result_xp_fill.style.width = `${this.progression.progressRatio() * 100}%`;
+      this.result_copy.textContent += ` Misiones: ${newMissions.map(mission => mission.title).join(', ')} (+${missionCoins} ◈, +${missionXp} XP).`;
+      if (missionReward.leveledUp) this.result_copy.textContent += ` ¡Has subido al nivel ${this.progression.level}!`;
+    }
+    if (cupFinal || leagueFinished) this.showCompetitionResultStats(result, cupChampion || leagueChampion);
+    else this.result_stats.classList.add('hidden');
     if (result.mode === 'online') {
       this.result_rematch.classList.remove('hidden');
       this.result_rematch.disabled = false; this.result_rematch.innerHTML = 'Pedir revancha <span>↻</span>';
@@ -1100,6 +1162,16 @@ export class UI {
     if ((this.league?.status === 'next') || (this.tournament?.status === 'next')) this.saveCurrentCompetition();
     else if (result.mode === 'league' || result.mode === 'tournament') { clearCompetitionSave(); this.refreshContinueButton(null); }
     this.syncAccount(true);
+  }
+
+  showCompetitionResultStats(result, champion) {
+    const stats = result.stats || { shotsPlayer: 0, shotsOpponent: 0, goals: [] };
+    const minutes = (stats.goals || []).map(goal => `${goal.minute}' ${goal.side === 'player' ? 'TÚ' : 'RIVAL'}`).join(' · ') || 'Sin goles';
+    this.result_stat_duration.textContent = formatMatchDuration(result.elapsedSeconds);
+    this.result_stat_goals.textContent = minutes;
+    this.result_stat_shots.textContent = `${stats.shotsPlayer || 0} · ${stats.shotsOpponent || 0}`;
+    this.result_trophy.classList.toggle('trophy-won', !!champion);
+    this.result_stats.classList.remove('hidden');
   }
 
   advanceCompetition() {
@@ -1135,4 +1207,9 @@ function readGuestProfile() {
     career,
     competitionSave: competitionSave?.version === 1 ? competitionSave : null,
   };
+}
+
+function formatMatchDuration(seconds) {
+  const value = Math.max(0, Math.floor(Number(seconds) || 0));
+  return `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
 }

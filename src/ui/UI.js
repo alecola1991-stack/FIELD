@@ -11,11 +11,28 @@ import { clearCompetitionSave, loadCompetitionSave, setCompetitionSaveScope, sto
 const ROUND_NAMES = ['OCTAVOS DE FINAL', 'CUARTOS DE FINAL', 'SEMIFINAL', 'FINAL'];
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const STORE_ITEMS = [
-  { id: 'circle-raised', name: 'Círculo en relieve', slot: 'circleRelief', value: 'raised', price: 80, icon: '◉', description: 'Un aro con sombra y luz que destaca el círculo central.' },
-  { id: 'shot-neon', name: 'Disparo neón', slot: 'shotEffect', value: 'neon', price: 100, icon: '〰', description: 'Una estela cian brillante acompaña tus tiros potentes.' },
-  { id: 'shot-fire', name: 'Disparo de fuego', slot: 'shotEffect', value: 'fire', price: 120, icon: '♨', description: 'Una estela cálida de fuego al disparar.' },
-  { id: 'ball-gold', name: 'Balón dorado', slot: 'ballSkin', value: 'gold', price: 150, icon: '⚽', description: 'Un balón dorado con brillo especial durante el partido.' },
+  { id: 'circle-raised', name: 'Círculo en relieve', slot: 'circleRelief', value: 'raised', price: 80, icon: '◉', preview: 'ring', description: 'Un aro con sombra y luz que destaca el círculo central.' },
+  { id: 'circle-gold', name: 'Aro de campeón', slot: 'circleRelief', value: 'gold', price: 170, icon: '✧', preview: 'ring gold', description: 'Dale un acabado dorado y brillante al círculo central.' },
+  { id: 'field-mint', name: 'Campo menta', slot: 'fieldTint', value: 'mint', price: 90, icon: '▦', preview: 'field mint', description: 'Un tono fresco para vestir todo el terreno de juego.' },
+  { id: 'field-dusk', name: 'Campo crepúsculo', slot: 'fieldTint', value: 'dusk', price: 110, icon: '▦', preview: 'field dusk', description: 'Colores violeta y azul para jugar al anochecer.' },
+  { id: 'field-lagoon', name: 'Campo laguna', slot: 'fieldTint', value: 'lagoon', price: 130, icon: '▦', preview: 'field lagoon', description: 'Un acabado turquesa inspirado en aguas profundas.' },
+  { id: 'shot-neon', name: 'Estela neón', slot: 'shotEffect', value: 'neon', price: 100, icon: '〰', preview: 'trail neon', description: 'Una línea cian luminosa acompaña tus tiros potentes.' },
+  { id: 'shot-fire', name: 'Estela de fuego', slot: 'shotEffect', value: 'fire', price: 120, icon: '♨', preview: 'trail fire', description: 'Una estela cálida de fuego al disparar.' },
+  { id: 'shot-lightning', name: 'Estela eléctrica', slot: 'shotEffect', value: 'lightning', price: 160, icon: 'ϟ', preview: 'trail lightning', description: 'Descargas eléctricas zigzaguean tras el balón.' },
+  { id: 'shot-aurora', name: 'Estela aurora', slot: 'shotEffect', value: 'aurora', price: 190, icon: '〰', preview: 'trail aurora', description: 'Ondas de luz multicolor siguen cada disparo.' },
+  { id: 'ball-gold', name: 'Balón dorado', slot: 'ballSkin', value: 'gold', price: 150, icon: '⚽', preview: 'ball gold', description: 'Un balón dorado con brillo especial durante el partido.' },
+  { id: 'ball-lava', name: 'Balón magma', slot: 'ballSkin', value: 'lava', price: 180, icon: '⚽', preview: 'ball lava', description: 'Una cubierta ardiente para tus remates.' },
+  { id: 'ball-ice', name: 'Balón glaciar', slot: 'ballSkin', value: 'ice', price: 180, icon: '⚽', preview: 'ball ice', description: 'Cristal azul helado con destellos fríos.' },
+  { id: 'ball-cosmic', name: 'Balón cósmico', slot: 'ballSkin', value: 'cosmic', price: 220, icon: '⚽', preview: 'ball cosmic', description: 'Un balón de otra galaxia, profundo y brillante.' },
+  { id: 'ball-carbon', name: 'Balón carbono', slot: 'ballSkin', value: 'carbon', price: 200, icon: '⚽', preview: 'ball carbon', description: 'Un diseño oscuro con detalles metálicos.' },
+  { id: 'player-halo', name: 'Aura de energía', slot: 'playerEffect', value: 'halo', price: 140, icon: '✺', preview: 'player halo', description: 'Un halo suave destaca a tu jugador en el campo.' },
+  { id: 'player-speed', name: 'Ráfaga veloz', slot: 'playerEffect', value: 'speed', price: 160, icon: '➤', preview: 'player speed', description: 'Líneas de velocidad aparecen cuando te mueves.' },
+  { id: 'goal-shockwave', name: 'Onda de gol', slot: 'goalEffect', value: 'shockwave', price: 180, icon: '◎', preview: 'goal shockwave', description: 'Una onda expansiva celebra cada gol.' },
+  { id: 'goal-fireworks', name: 'Fuegos de gol', slot: 'goalEffect', value: 'fireworks', price: 240, icon: '✹', preview: 'goal fireworks', description: 'Chispas de colores llenan el campo al marcar.' },
 ];
+const STORE_CATEGORIES = [['all', 'Todo'], ['field', 'Campo'], ['ball', 'Balones'], ['trail', 'Estelas'], ['player', 'Jugador'], ['goal', 'Goles']];
+const SLOT_LABELS = { circleRelief: 'Relieve', fieldTint: 'Campo', ballSkin: 'Balón', shotEffect: 'Estela', playerEffect: 'Jugador', goalEffect: 'Gol' };
+const SLOT_DEFAULTS = { circleRelief: 'off', fieldTint: 'off', ballSkin: 'classic', shotEffect: 'off', playerEffect: 'off', goalEffect: 'off' };
 
 export class UI {
   constructor(initialUser = null) {
@@ -26,7 +43,7 @@ export class UI {
     this.settings.cosmetics = this.career.equipped;
     if (this.career.stats.matches === 0 && this.career.stats.wins === 0 && this.progression.wins > 0) this.career.ensureProgressionWins(this.progression.wins);
     this.tournament = null; this.league = null; this.pendingMode = null; this.pendingCompetition = null; this.pendingTeamType = 'all'; this.selectedCompetition = 'champions'; this.competitionIndex = 0; this.selectedTeamId = ''; this.teamCursor = new Map();
-    this.currentMatchMode = null; this.currentMatchOptions = null; this.confetti = new Confetti();
+    this.currentMatchMode = null; this.currentMatchOptions = null; this.confetti = new Confetti(); this.storeTab = 'shop'; this.storeCategory = 'all';
     this.activeLeague = TEAM_LEAGUES[0].id;
     this.screens = {
       home: document.querySelector('#home-screen'), play: document.querySelector('#play-screen'), store: document.querySelector('#store-screen'), customize: document.querySelector('#customize-screen'),
@@ -47,7 +64,7 @@ export class UI {
       'competition-picker-card',
       'tournament-header-tag','tournament-eyebrow','tournament-title','tournament-description','tournament-emblem','tournament-team-count',
       'account-status','account-status-dot','account-message','account-form','account-name','account-name-wrap','account-email','account-password','account-submit','account-form-title','account-dashboard','account-auth-panel','account-email-label','account-sync-state','account-level','account-wins','account-matches','account-goals','account-conceded','account-seasons','account-trophy-count','account-trophies',
-      'profile-eyebrow','profile-title','profile-copy','home-club-colors','home-club-name','home-coins','store-coins','store-grid','store-message','play-continue-wrap',
+      'profile-eyebrow','profile-title','profile-copy','home-club-colors','home-club-name','home-coins','store-coins','store-grid','store-message','store-categories','store-loadout','inventory-count','play-continue-wrap',
       'menu-backdrop',
       'continue-competition','continue-detail','league-goal-target','trajectory-enabled','shot-power-time',
       'online-room-input','online-room-panel','online-status','online-room-code-wrap','online-room-code',
@@ -127,6 +144,9 @@ export class UI {
     this.store_grid.addEventListener('click', event => {
       const button = event.target.closest('[data-store-item]'); if (button) this.handleStoreItem(button.dataset.storeItem);
     });
+    document.getElementById('store-tabs').addEventListener('click', event => { const button = event.target.closest('[data-store-tab]'); if (!button) return; this.storeTab = button.dataset.storeTab; this.storeCategory = 'all'; this.renderStore(); this.sound?.play('click'); });
+    this.store_categories.addEventListener('click', event => { const button = event.target.closest('[data-store-category]'); if (!button) return; this.storeCategory = button.dataset.storeCategory; this.renderStore(); this.sound?.play('click'); });
+    this.store_loadout.addEventListener('click', event => { const button = event.target.closest('[data-clear-slot]'); if (!button) return; const slot = button.dataset.clearSlot; if (Object.hasOwn(SLOT_DEFAULTS, slot)) { this.career.equipped[slot] = SLOT_DEFAULTS[slot]; this.career.save(); this.settings.cosmetics = { ...this.career.equipped }; this.game?.updateSettings(this.settings); this.syncAccount(false); this.renderStore(); } });
     this.trophy_grid.addEventListener('click', event => { const button = event.target.closest('[data-trophy-id]'); if (button) { this.renderTrophyDetail(button.dataset.trophyId); this.sound?.play('select'); } });
     this.account_form.addEventListener('submit', event => { event.preventDefault(); this.submitAccount(); });
     document.getElementById('online-create-room').addEventListener('click', () => this.createOnlineRoom());
@@ -596,18 +616,15 @@ export class UI {
   renderStore() {
     if (!this.store_grid || !this.career) return;
     const balance = Math.max(0, this.career.stats.coinsEarned - this.career.stats.coinsSpent);
-    this.home_coins.textContent = String(balance); this.store_coins.innerHTML = `${balance} <i>◈</i>`;
-    this.store_grid.replaceChildren(...STORE_ITEMS.map(item => {
-      const owned = this.career.ownedItems.includes(item.id), equipped = owned && this.career.equipped[item.slot] === item.value;
-      const card = document.createElement('article'); card.className = 'store-item';
-      const icon = document.createElement('span'); icon.className = 'store-item-icon'; icon.textContent = item.icon;
-      const tag = document.createElement('small'); tag.className = 'store-item-tag'; tag.textContent = equipped ? 'EQUIPADO' : owned ? 'DESBLOQUEADO' : 'PERSONALIZACIÓN';
-      const title = document.createElement('b'); title.textContent = item.name;
-      const description = document.createElement('p'); description.textContent = item.description;
-      const button = document.createElement('button'); button.type = 'button'; button.dataset.storeItem = item.id; button.className = equipped ? 'store-item-action equipped' : 'store-item-action'; button.disabled = equipped || (!owned && balance < item.price);
-      button.textContent = equipped ? 'Equipado ✓' : owned ? 'Equipar' : `Desbloquear · ${item.price} ◈`;
-      card.append(icon, tag, title, description, button); return card;
-    }));
+    this.home_coins.textContent = String(balance); this.store_coins.innerHTML =  60${balance} <i>◈</i> 60;
+    document.querySelectorAll('[data-store-tab]').forEach(button => { const active = button.dataset.storeTab === this.storeTab; button.classList.toggle('active', active); button.setAttribute('aria-selected', String(active)); });
+    this.inventory_count.textContent = String(this.career.ownedItems.filter(id => STORE_ITEMS.some(item => item.id === id)).length);
+    this.store_categories.classList.toggle('hidden', this.storeTab !== 'shop'); this.store_loadout.classList.toggle('hidden', this.storeTab !== 'inventory');
+    this.store_loadout.replaceChildren(...Object.entries(SLOT_LABELS).map(([slot, label]) => { const value = this.career.equipped[slot], item = STORE_ITEMS.find(entry => entry.slot === slot && entry.value === value); const row = document.createElement('div'); row.className = 'loadout-slot'+(item ? ' filled' : ''); const slotName = document.createElement('small'); slotName.textContent = label.toUpperCase(); const name = document.createElement('b'); name.textContent = item?.name || 'Predeterminado'; const action = document.createElement('button'); action.type = 'button'; action.dataset.clearSlot = slot; action.disabled = !item; action.textContent = item ? 'Quitar' : '—'; row.append(slotName, name, action); return row; }));
+    const categories = STORE_CATEGORIES.map(([id,label]) => { const button = document.createElement('button'); button.type='button'; button.dataset.storeCategory=id; button.className='store-category'+(id===this.storeCategory?' active':''); button.textContent=label; return button; }); this.store_categories.replaceChildren(...categories);
+    const visible = STORE_ITEMS.filter(item => { if (this.storeTab==='inventory' && !this.career.ownedItems.includes(item.id)) return false; if (this.storeTab==='inventory' || this.storeCategory==='all') return true; const category=item.slot==='ballSkin'?'ball':item.slot==='shotEffect'?'trail':item.slot==='playerEffect'?'player':item.slot==='goalEffect'?'goal':'field'; return category===this.storeCategory; });
+    this.store_grid.replaceChildren(...visible.map(item => { const owned=this.career.ownedItems.includes(item.id), equipped=owned&&this.career.equipped[item.slot]===item.value; const card=document.createElement('article'); card.className='store-item'; const preview=document.createElement('div'); preview.className='item-preview preview-'+item.preview; preview.setAttribute('aria-label','Vista previa animada: '+item.name); preview.innerHTML='<span></span><i></i><b></b>'; const icon=document.createElement('span'); icon.className='store-item-icon'; icon.textContent=item.icon; const tag=document.createElement('small'); tag.className='store-item-tag'; tag.textContent=equipped?'EQUIPADO':owned?'EN INVENTARIO':SLOT_LABELS[item.slot].toUpperCase(); const title=document.createElement('b'); title.textContent=item.name; const description=document.createElement('p'); description.textContent=item.description; const button=document.createElement('button'); button.type='button'; button.dataset.storeItem=item.id; button.className=equipped?'store-item-action equipped':'store-item-action'; button.disabled=equipped||(!owned&&balance<item.price); button.textContent=equipped?'Equipado ✓':owned?'Equipar': 60Desbloquear · ${item.price} ◈ 60; card.append(preview,icon,tag,title,description,button); return card; }));
+    this.store_message.textContent = this.storeTab==='inventory' ? (this.career.ownedItems.length ? 'Elige un objeto para equiparlo. Cada ranura admite un objeto activo.' : 'Tu inventario está vacío. Desbloquea artículos en la tienda.') : 'Gana monedas jugando y equipa tus artículos desde el inventario.';
   }
 
   handleStoreItem(id) {
@@ -617,7 +634,7 @@ export class UI {
       this.store_message.textContent = `${item.name} desbloqueado.`;
     } else this.store_message.textContent = `${item.name} equipado. Puedes cambiarlo cuando quieras.`;
     this.career.equipItem(id, item.slot, item.value); this.settings.cosmetics = { ...this.career.equipped };
-    this.game?.updateSettings(this.settings); this.career.save(); this.syncAccount(false); this.renderProgress(); this.sound?.play('select');
+    this.game?.updateSettings(this.settings); this.career.save(); this.syncAccount(false); this.renderProgress(); this.renderStore(); this.sound?.play('select');
   }
 
   updateDifficultyControls() {

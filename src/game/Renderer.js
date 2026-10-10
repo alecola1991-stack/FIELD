@@ -40,16 +40,17 @@ export class Renderer {
   render(game, dt) {
     const c = this.ctx, W = WORLD; c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = '#0b1115'; c.fillRect(0, 0, this.canvas.width, this.canvas.height);
     c.setTransform(this.scale, 0, 0, this.scale, this.ox, this.oy);
-    this.drawField(c, game.fieldTheme, game.competitionRound);
+    this.drawField(c, game.fieldTheme, game.competitionRound, game.cosmetics);
     if (game.trajectory) this.drawTrajectory(c, game.ball);
     if (game.shotRangeTimer > 0) this.drawShotRange(c, game.player, game.ball, game.shotRangeTimer);
     if (game.bot) this.drawPlayer(c, game.bot, game.bot.color);
     this.drawPlayer(c, game.player, game.player.color);
-    this.drawBall(c, game.ball);
+    if (game.cosmetics?.shotEffect !== 'off') this.drawShotEffect(c, game.ball, game.cosmetics.shotEffect);
+    this.drawBall(c, game.ball, game.cosmetics?.ballSkin);
     this.updateParticles(c, dt);
     if (game.goalTimer > 0) { c.fillStyle = `rgba(220,255,235,${Math.min(.075, game.goalTimer * .05)})`; c.fillRect(W.left, W.top, W.right - W.left, W.bottom - W.top); }
   }
-  drawField(c, themeName = 'arcade', round = 0) {
+  drawField(c, themeName = 'arcade', round = 0, cosmetics = {}) {
     const { left, right, top, bottom, goalTop, goalBottom, goalBack } = WORLD;
     const theme = FIELD_THEMES[themeName] || FIELD_THEMES.arcade;
     const cupMatch = ['champions', 'world-cup', 'euro', 'copa-america'].includes(themeName);
@@ -66,6 +67,12 @@ export class Renderer {
     c.strokeRect(left, top, right - left, bottom - top);
     c.beginPath(); c.moveTo(WORLD.width / 2, top); c.lineTo(WORLD.width / 2, bottom); c.stroke();
     c.beginPath(); c.arc(WORLD.width / 2, WORLD.height / 2, WORLD.centerCircleRadius, 0, Math.PI * 2); c.stroke();
+    if (cosmetics.circleRelief === 'raised') {
+      const cx = WORLD.width / 2, cy = WORLD.height / 2, radius = WORLD.centerCircleRadius;
+      c.save(); c.shadowColor = '#08110d'; c.shadowBlur = 8; c.shadowOffsetY = 3;
+      c.strokeStyle = 'rgba(5,15,11,.72)'; c.lineWidth = 5; c.beginPath(); c.arc(cx, cy, radius + 1, 0, Math.PI * 2); c.stroke();
+      c.shadowColor = 'transparent'; c.shadowBlur = 0; c.shadowOffsetY = 0; c.strokeStyle = 'rgba(223,255,236,.62)'; c.lineWidth = 1.5; c.beginPath(); c.arc(cx, cy, radius - 1, Math.PI * 1.05, Math.PI * 1.95); c.stroke(); c.restore();
+    }
     if (cupMatch) {
       const cx = WORLD.width / 2, cy = WORLD.height / 2;
       c.beginPath(); c.arc(cx, cy, WORLD.centerCircleRadius + 7, 0, Math.PI * 2); c.strokeStyle = `${theme.accent}55`; c.lineWidth = importantMatch ? 3 : 1.5; c.stroke();
@@ -112,14 +119,20 @@ export class Renderer {
     c.restore();
     c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.font = '600 10px "DM Mono",monospace'; c.fillStyle = '#eaf4ed'; c.shadowColor = '#07100c'; c.shadowBlur = 5; c.fillText(player.name.toUpperCase(), x, y - r - 12); c.shadowBlur = 0;
   }
-  drawBall(c, ball) {
+  drawBall(c, ball, skin = 'classic') {
     const [x, y] = this.smooth(ball), r = ball.radius;
     c.save(); c.translate(x, y); c.fillStyle = '#0007'; c.beginPath(); c.ellipse(2, 5, r * 1.08, r * .76, 0, 0, Math.PI * 2); c.fill();
     c.rotate(ball.spin); c.scale(1 + ball.kickScale * .16, 1 - ball.kickScale * .12);
-    c.shadowColor = '#e9f4ee70'; c.shadowBlur = 9; c.fillStyle = '#e8eee9'; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill(); c.shadowBlur = 0;
-    c.fillStyle = '#23352d'; c.beginPath(); c.arc(0, 0, 3.3, 0, Math.PI * 2); c.fill();
+    const gold = skin === 'gold'; c.shadowColor = gold ? '#ffd76caa' : '#e9f4ee70'; c.shadowBlur = gold ? 15 : 9; c.fillStyle = gold ? '#f3c85e' : '#e8eee9'; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill(); c.shadowBlur = 0;
+    c.fillStyle = gold ? '#704d14' : '#23352d'; c.beginPath(); c.arc(0, 0, 3.3, 0, Math.PI * 2); c.fill();
     for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5; c.beginPath(); c.arc(Math.cos(a) * 7, Math.sin(a) * 7, 2.1, 0, Math.PI * 2); c.fill(); }
     c.restore();
+  }
+  drawShotEffect(c, ball, effect) {
+    const speed = Math.hypot(ball.vx, ball.vy); if (speed < 105) return;
+    const color = effect === 'fire' ? '#ff9b55' : '#68e8ff';
+    c.save(); c.globalAlpha = Math.min(.78, speed / 650); c.lineWidth = effect === 'fire' ? 8 : 6; c.lineCap = 'round'; c.shadowColor = color; c.shadowBlur = effect === 'fire' ? 15 : 20; c.strokeStyle = color;
+    c.beginPath(); c.moveTo(ball.x, ball.y); c.lineTo(ball.x - ball.vx * .038, ball.y - ball.vy * .038); c.stroke(); c.restore();
   }
   drawTrajectory(c, ball) {
     const speed = Math.hypot(ball.vx, ball.vy); if (speed < 35) return;

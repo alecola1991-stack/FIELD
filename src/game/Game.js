@@ -20,6 +20,7 @@ export class Game {
     this.countdown = 0; this.countdownClock = 0; this.fieldTheme = 'arcade'; this.competitionRound = 0;
     this.goalTarget = 5; this.shotRangeTimer = 0; this.autosaveClock = 0; this.powerHudClock = 0;
     this.onlineSnapshotClock = 0; this.onlineInputClock = 0; this.localSide = 'left'; this.onlineAuthority = true; this.remoteInput = { x: 0, y: 0, kick: false }; this.onlineMatchEnded = false; this.onlinePendingKick = false;
+    this.matchStats = { shotsPlayer: 0, shotsOpponent: 0, goals: [] };
   }
   start(mode = 'bot', difficulty = this.settings.difficulty, options = {}) {
     this.state.start(mode); this.settings.difficulty = difficulty; this.botAI.setDifficulty(difficulty);
@@ -36,6 +37,8 @@ export class Game {
     this.player = new Player({ x: localX, y: WORLD.height / 2, name: this.settings.name, number: this.settings.number, color: team?.primary || '#68746e', secondaryColor: team?.secondary || null });
     if (this.localSide === 'right') this.player.faceX = -1;
     const opponentTeam = options.opponentTeam || null;
+    this.botAI.setTeamStrength(opponentTeam?.stars || 3);
+    this.matchStats = { shotsPlayer: 0, shotsOpponent: 0, goals: [] };
     const opponentX = this.localSide === 'left' ? WORLD.width * .69 : WORLD.width * .31;
     this.bot = mode !== 'training' ? new Player({ x: opponentX, y: WORLD.height / 2, name: options.opponentName || 'BOT', number: options.opponentNumber ?? (opponentTeam ? teamInitials(opponentTeam.name) : 'BOT'), color: opponentTeam?.primary || '#f19676', secondaryColor: opponentTeam?.secondary || null, isBot: mode !== 'online', speed: 280 }) : null;
     if (this.bot && mode === 'online') this.bot.faceX = this.localSide === 'left' ? -1 : 1;
@@ -109,7 +112,7 @@ export class Game {
       if (this.state.goalTimer <= 0) {
         if (this.state.matchOver) {
           this.state.paused = true;
-          this.hooks.onMatchEnd?.({ mode: this.state.mode, elapsedSeconds: this.state.elapsed, playerScore: this.state.scorePlayer, botScore: this.state.scoreBot, winner: this.state.scorePlayer > this.state.scoreBot ? 'player' : 'opponent' });
+          this.hooks.onMatchEnd?.({ mode: this.state.mode, elapsedSeconds: this.state.elapsed, playerScore: this.state.scorePlayer, botScore: this.state.scoreBot, winner: this.state.scorePlayer > this.state.scoreBot ? 'player' : 'opponent', stats: this.matchSummary() });
         } else { this.resetPositions(); this.beginCountdown(); }
       }
       return;
@@ -123,6 +126,7 @@ export class Game {
         if (powered) { this.renderer.fireBurst(this.ball.x, this.ball.y); this.player.powerFlash = .48; }
         else this.renderer.burst(this.ball.x, this.ball.y, '#c5f4d8', 7, 100);
       }, null, powered ? 1.45 : 1);
+      if (kicked) this.matchStats.shotsPlayer++;
       if (kicked && powered) { this.player.powerCooldown = POWER_SHOT_COOLDOWN_SECONDS; this.hooks.onPowerCooldown?.(POWER_SHOT_COOLDOWN_SECONDS); }
     }
     if (this.bot) {
@@ -139,12 +143,13 @@ export class Game {
             if (powered) { this.renderer.fireBurst(this.ball.x, this.ball.y); this.bot.powerFlash = .48; }
             else this.renderer.burst(this.ball.x, this.ball.y, '#c5f4d8', 7, 100);
           }, null, powered ? 1.45 : 1);
+          if (kicked) this.matchStats.shotsOpponent++;
           if (kicked && powered) this.bot.powerCooldown = POWER_SHOT_COOLDOWN_SECONDS;
         }
       } else {
         const decision = this.botAI.update(this.bot, this.ball, this.player, dt); this.bot.move(decision.x, decision.y, dt, decision.speedMultiplier);
         resolvePlayerWalls(this.bot);
-        if (decision.kick) kickBall(this.bot, this.ball, () => { this.sound.play('kick'); this.renderer.burst(this.ball.x, this.ball.y, '#ffd1bf', 5, 78); }, decision.kickDirection);
+        if (decision.kick && kickBall(this.bot, this.ball, () => { this.sound.play('kick'); this.renderer.burst(this.ball.x, this.ball.y, '#ffd1bf', 5, 78); }, decision.kickDirection)) this.matchStats.shotsOpponent++;
       }
     }
     resolvePlayerWalls(this.player);
@@ -179,21 +184,24 @@ export class Game {
         if (powered) { this.renderer.fireBurst(this.ball.x, this.ball.y); this.player.powerFlash = .48; }
         else this.renderer.burst(this.ball.x, this.ball.y, '#c5f4d8', 7, 100);
       }, null, powered ? 1.45 : 1);
+      if (kicked) this.matchStats.shotsPlayer++;
       if (kicked && powered) this.player.powerCooldown = POWER_SHOT_COOLDOWN_SECONDS;
     }
   }
   recordGoal(side) {
-    if (this.state.mode === 'training') this.state.scorePlayer++;
-    else if (this.state.mode === 'online'
+    const playerScored = this.state.mode === 'training' || (this.state.mode === 'online'
       ? (this.localSide === 'left' ? side === 1 : side === -1)
-      : side === 1) this.state.scorePlayer++;
+      : side === 1);
+    if (playerScored) this.state.scorePlayer++;
     else this.state.scoreBot++;
+    this.matchStats.goals.push({ side: playerScored ? 'player' : 'opponent', elapsedSeconds: this.state.elapsed, minute: Math.max(1, Math.floor(this.state.elapsed / 60) + 1) });
     this.state.goalTimer = 1.65; this.ball.vx *= .25; this.ball.vy *= .25;
     const target = this.goalTarget;
     if (this.state.mode !== 'training' && Math.max(this.state.scorePlayer, this.state.scoreBot) >= target) this.state.matchOver = true;
     this.sound.play('goal'); this.renderer.burst(this.ball.x, this.ball.y, '#b8f4ce', 24, 190);
     this.hooks.onScore?.(this.state.scorePlayer, this.state.scoreBot); this.hooks.onGoal?.(side);
   }
+  matchSummary() { return { shotsPlayer: this.matchStats.shotsPlayer, shotsOpponent: this.matchStats.shotsOpponent, goals: this.matchStats.goals.map(goal => ({ ...goal })) }; }
   beginCountdown() { this.countdown = 5; this.countdownClock = 1; this.hooks.onCountdown?.(5); }
   captureSnapshot() {
     const entity = body => body && ({ x: body.x, y: body.y, vx: body.vx, vy: body.vy, faceX: body.faceX, faceY: body.faceY, shotCooldown: body.shotCooldown, powerCooldown: body.powerCooldown, powerFlash: body.powerFlash, kickScale: body.kickScale, boost: body.boost, spin: body.spin });
@@ -202,6 +210,7 @@ export class Game {
       goalTimer: this.state.goalTimer, matchOver: this.state.matchOver, goalTarget: this.goalTarget,
       countdown: this.countdown, countdownClock: this.countdownClock, trajectory: this.trajectory,
       fieldTheme: this.fieldTheme, competitionRound: this.competitionRound,
+      matchStats: this.matchSummary(),
       player: entity(this.player), bot: entity(this.bot), ball: entity(this.ball), difficulty: this.botAI.difficulty,
       ai: { thinkTimer: this.botAI.thinkTimer, targetX: this.botAI.targetX, targetY: this.botAI.targetY, shotsTaken: this.botAI.shotsTaken, mode: this.botAI.mode },
     };
@@ -219,6 +228,8 @@ export class Game {
     this.goalTarget = Number(snapshot.goalTarget) || this.goalTarget; this.countdown = Number(snapshot.countdown) || 0;
     this.countdownClock = Number(snapshot.countdownClock) || 0; this.trajectory = !!this.settings?.trajectory;
     this.fieldTheme = snapshot.fieldTheme || this.fieldTheme; this.competitionRound = Number(snapshot.competitionRound) || this.competitionRound;
+    const savedStats = snapshot.matchStats;
+    this.matchStats = { shotsPlayer: Number(savedStats?.shotsPlayer) || 0, shotsOpponent: Number(savedStats?.shotsOpponent) || 0, goals: Array.isArray(savedStats?.goals) ? savedStats.goals.map(goal => ({ ...goal })) : [] };
     restoreBody(this.player, snapshot.player); restoreBody(this.bot, snapshot.bot); restoreBody(this.ball, snapshot.ball);
     if (snapshot.ai) Object.assign(this.botAI, snapshot.ai);
     if (notify) {

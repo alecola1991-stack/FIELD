@@ -67,6 +67,7 @@ export class UI {
       'profile-eyebrow','profile-title','profile-copy','home-club-colors','home-club-name','home-coins','store-coins','store-grid','store-message','store-categories','store-loadout','inventory-count','play-continue-wrap',
       'menu-backdrop',
       'continue-competition','continue-detail','league-goal-target','trajectory-enabled','shot-power-time',
+      'promo-code-form','promo-code-input','promo-code-status',
       'online-room-input','online-room-panel','online-status','online-room-code-wrap','online-room-code',
       'online-find-match','online-cancel',
       'career-avatar','career-team-label','career-name','career-subtitle','career-level','career-xp','career-xp-fill','career-matches','career-wins','career-winrate','career-goals','career-best','career-time','career-seasons','trophy-summary','trophy-percent','trophy-progress-fill','trophy-grid','trophy-detail','trophy-toast','trophy-toast-name',
@@ -196,6 +197,7 @@ export class UI {
       this.settings.trajectory = this.trajectory_enabled.checked; this.trajectory_toggle.checked = this.settings.trajectory;
       this.persist();
     });
+    this.promo_code_form.addEventListener('submit', event => { event.preventDefault(); this.redeemPromoCode(); });
     this.sound_enabled.addEventListener('change', () => { this.settings.sound = this.sound_enabled.checked; this.persist(); });
     this.volume.addEventListener('input', () => { this.settings.volume = Number(this.volume.value); this.volume_value.textContent = `${this.settings.volume}%`; this.persist(); });
     this.league_competition.addEventListener('change', () => {
@@ -610,6 +612,21 @@ export class UI {
   }
 
   persist() { saveSettings(this.settings); this.game?.updateSettings(this.settings); this.syncAccount(false); }
+
+  redeemPromoCode() {
+    const result = this.career.redeemPromoCode(this.promo_code_input.value);
+    this.promo_code_status.classList.remove('success', 'error');
+    if (!result.ok) {
+      this.promo_code_status.classList.add('error');
+      this.promo_code_status.textContent = result.reason === 'used' ? 'Este código ya se canjeó en este perfil.' : 'El código no es válido.';
+      return;
+    }
+    this.promo_code_input.value = '';
+    this.promo_code_status.classList.add('success');
+    this.promo_code_status.textContent = `Código canjeado: +${result.coins.toLocaleString('es-ES')} monedas. Saldo: ${result.balance.toLocaleString('es-ES')}.`;
+    this.renderProgress();
+    this.syncAccount(true);
+  }
 
   show(view) {
     for (const [key, screen] of Object.entries(this.screens)) screen.classList.toggle('hidden', key !== view);

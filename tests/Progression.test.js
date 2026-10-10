@@ -22,3 +22,13 @@ test('da XP al terminar una partida aunque se pierda y solo suma victorias al ga
   assert.equal(progress.xp, 100);
   assert.equal(progress.wins, 1);
 });
+
+test('awards mission XP and levels up without counting a match or a win', () => {
+  values = new Map();
+  const progress = new Progression('mission-xp-player');
+  const reward = progress.awardXP(300);
+  assert.equal(reward.gained, 300);
+  assert.equal(progress.level, 3);
+  assert.equal(progress.xp, 40);
+  assert.equal(progress.wins, 0);
+});

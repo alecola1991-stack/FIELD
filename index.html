@@ -25,8 +25,9 @@
             <div class="menu-divider"></div>
             <button class="menu-button secondary-action" data-view="store"><span><b class="menu-symbol">✦</b> Tienda</span><span class="coin-pill"><b id="home-coins">0</b> ◈</span></button>
             <button class="menu-button secondary-action" data-view="profile"><span><b class="menu-symbol">◉</b> Mi perfil <small>ESTADÍSTICAS Y TROFEOS</small></span><span class="arrow">↗</span></button>
-            <button class="menu-button secondary-action" data-view="customize"><span><b class="menu-symbol">◉</b> Equipo y jugador</span><span class="arrow">↗</span></button>
+            <button class="menu-button secondary-action" data-view="customize"><span><b class="menu-symbol">♟</b> Equipo y jugador</span><span class="arrow">↗</span></button>
             <button class="menu-button secondary-action" data-view="settings"><span><b class="menu-symbol">⌘</b> Ajustes</span><span class="arrow">↗</span></button>
+            <div class="difficulty-row"><label for="difficulty">DIFICULTAD BOT</label><select id="difficulty"><option value="easy" selected>Fácil</option><option value="normal">Normal</option><option value="hard">Difícil · nivel 5</option></select></div>
             <div class="level-card"><div class="level-badge"><small>NIVEL</small><b id="level-value">1</b></div><div class="xp-info"><div><span id="xp-label">0 / 120 XP</span><span id="wins-label">0 VICTORIAS</span></div><div class="xp-track"><i id="xp-fill"></i></div></div><span class="level-cap">100</span></div>
           </div>
         </div>
@@ -37,7 +38,7 @@
         <header class="sub-header"><button class="back-button" data-view="home">← <span>Inicio</span></button><a class="brand" href="#"><span class="brand-mark">F</span> FIELD</a><span class="version">ELIGE CÓMO JUGAR</span></header>
         <div class="play-layout"><div class="editor-copy"><p class="eyebrow">CADA PARTIDA A TU MANERA</p><h2>Elige tu<br><em>partido.</em></h2><p>Prueba un modo, juega con alguien o compite por un trofeo. Ganas monedas al completar partidos.</p><div id="play-continue-wrap" class="play-continue hidden"><button id="continue-competition" class="menu-button resume-button" type="button"><span><b class="menu-symbol">↻</b> Continuar competición</span><small id="continue-detail">PARTIDA GUARDADA</small></button></div></div>
           <div class="play-mode-grid">
-            <button class="play-mode-card play-mode-featured" data-action="bot"><span class="play-mode-icon">⚽</span><span class="play-mode-tag">RÁPIDO · CONTRA LA IA</span><b>Partido rápido</b><small>Un duelo al mejor de cinco goles contra el BOT. Elige la dificultad en Jugar.</small><i>JUGAR AHORA ↗</i></button>
+            <button class="play-mode-card play-mode-featured" data-action="bot"><span class="play-mode-icon">⚽</span><span class="play-mode-tag">RÁPIDO · CONTRA LA IA</span><b>Partido rápido</b><small>Un duelo al mejor de cinco goles contra el BOT. Elige la dificultad en inicio.</small><i>JUGAR AHORA ↗</i></button>
             <button class="play-mode-card" data-action="online"><span class="play-mode-icon">◎</span><span class="play-mode-tag">1 CONTRA 1 · ONLINE</span><b>Con otra persona</b><small>Crea una sala privada o únete con el código que te han compartido.</small><i>ABRIR SALAS ↗</i></button>
             <button class="play-mode-card" data-action="training"><span class="play-mode-icon">⌖</span><span class="play-mode-tag">SIN PRESIÓN</span><b>Entrenamiento</b><small>Practica controles y tiros a tu ritmo, con herramientas de práctica.</small><i>ENTRENAR ↗</i></button>
             <button class="play-mode-card" data-action="competitions"><span class="play-mode-icon">♜</span><span class="play-mode-tag">COPAS Y LIGAS</span><b>Competiciones</b><small>Elige una copa eliminatoria o disputa una temporada de liga completa.</small><i>VER COMPETICIONES ↗</i></button>
@@ -45,6 +46,7 @@
           <div class="play-tools-row"><div class="difficulty-row"><label for="difficulty">DIFICULTAD DEL BOT</label><select id="difficulty"><option value="easy" selected>Fácil</option><option value="normal">Normal</option><option value="hard">Difícil · nivel 5</option></select></div><button class="leaderboard-link" data-action="leaderboard" type="button">Clasificación online <span>↗</span></button></div>
         </div>
       </section>
+
       <section id="store-screen" class="screen sub-screen hidden">
         <header class="sub-header"><button class="back-button" data-view="home">← <span>Inicio</span></button><a class="brand" href="#"><span class="brand-mark">F</span> FIELD</a><span class="version">PERSONALIZA EL CAMPO</span></header>
         <div class="store-heading"><div><p class="eyebrow">TIENDA FIELD</p><h2>Tu estilo.<br><em>Tu juego.</em></h2><p>Completa partidos para ganar monedas. Todo lo que ves aquí es cosmético.</p></div><div class="store-wallet"><span>TU SALDO</span><b id="store-coins">0 <i>◈</i></b></div></div>
@@ -54,13 +56,17 @@
         <div id="store-grid" class="store-grid" aria-live="polite"></div>
         <p id="store-message" class="store-message" aria-live="polite">Gana monedas jugando y equipa tus artículos desde el inventario.</p>
       </section>
+
       <section id="online-screen" class="screen sub-screen hidden">
         <header class="sub-header"><button class="back-button" data-view="home">← <span>Volver</span></button><a class="brand" href="#"><span class="brand-mark">F</span> FIELD</a><span class="version">PARTIDA 1 CONTRA 1</span></header>
         <div class="online-layout">
           <div class="editor-copy"><p class="eyebrow">JUEGA CON OTRA PERSONA</p><h2>El campo<br><em>se comparte.</em></h2><p>Crea una sala y comparte el código con tu rival, o introduce el código que te han enviado.</p></div>
           <div class="online-card">
+            <button id="online-find-match" class="primary-button online-find-button" type="button">Buscar partida <span>⌕</span></button>
+            <p class="online-match-hint">Te emparejamos automáticamente con otra persona que esté buscando.</p>
+            <div class="online-separator"><span>O CREA UNA SALA PRIVADA</span></div>
             <button id="online-create-room" class="primary-button">Crear sala <span>↗</span></button>
-            <div class="online-separator"><span>O ENTRA EN UNA SALA</span></div>
+            <div class="online-separator"><span>O ENTRA CON UN CÓDIGO</span></div>
             <label class="field-label" for="online-room-input">CÓDIGO DE SALA</label>
             <input id="online-room-input" class="text-input online-code-input" maxlength="8" autocomplete="off" placeholder="ABCD2345" aria-label="Código de sala">
             <button id="online-join-room" class="menu-button online-join-button">Unirme a la sala <span>→</span></button>

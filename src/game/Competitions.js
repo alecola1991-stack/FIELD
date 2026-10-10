@@ -1,7 +1,7 @@
 import { TEAM_LEAGUES, TEAMS, NATIONAL_TEAMS, getTeamById } from '../config/teams.js';
 
 export const CHAMPIONS_CORE = [
-  'laliga-barcelona', 'laliga-real-madrid', 'ligue-1-psg', 'ligue-1-monaco',
+  'laliga-barcelona', 'laliga-real-madrid', 'laliga-atletico', 'ligue-1-psg', 'ligue-1-monaco',
   'bundesliga-dortmund', 'bundesliga-bayern', 'serie-a-inter', 'serie-a-milan',
 ];
 
@@ -16,6 +16,17 @@ export function shuffle(items, random = Math.random) {
 
 function pick(items, random) {
   return items[Math.min(items.length - 1, Math.floor(random() * items.length))];
+}
+
+function seedProgressively(player, rivals, random) {
+  const tiers = new Map();
+  for (const team of rivals) {
+    const tier = tiers.get(team.stars || 3) || [];
+    tier.push(team); tiers.set(team.stars || 3, tier);
+  }
+  const seeded = [];
+  for (const stars of [...tiers.keys()].sort((a, b) => a - b)) seeded.push(...shuffle(tiers.get(stars), random));
+  return [player, ...seeded];
 }
 
 export function createChampionsDraw(playerTeamId, random = Math.random) {
@@ -44,12 +55,12 @@ export function createChampionsDraw(playerTeamId, random = Math.random) {
     remaining.splice(remaining.indexOf(team), 1);
   }
 
-  return [playerTeam, ...shuffle([...fixedRivals, ...randomRivals], random)];
+  return seedProgressively(playerTeam, [...fixedRivals, ...randomRivals], random);
 }
 
 export const CUP_COMPETITIONS = [
   { id: 'champions', name: 'Champions', eyebrow: 'COPA DE CLUBES', description: '16 clubes. Cuatro rondas y un solo campeón.', type: 'club', fieldTheme: 'champions' },
-  { id: 'league', name: 'Liga Nacional', eyebrow: 'TEMPORADA', description: 'Dieciséis jornadas en una de las ligas disponibles.', type: 'club', fieldTheme: 'league' },
+  { id: 'league', name: 'Liga Nacional', eyebrow: 'TEMPORADA', description: 'Una temporada completa en cualquiera de las divisiones disponibles.', type: 'club', fieldTheme: 'league' },
   { id: 'world-cup', name: 'Mundial', eyebrow: 'TORNEO DE SELECCIONES', description: 'Las selecciones de Europa y América se cruzan por el título.', type: 'world', fieldTheme: 'world-cup' },
   { id: 'euro', name: 'Eurocopa', eyebrow: 'TORNEO DE SELECCIONES', description: '16 selecciones europeas. Eliminatorias hasta la final.', type: 'europe', fieldTheme: 'euro' },
   { id: 'copa-america', name: 'Copa América', eyebrow: 'TORNEO DE SELECCIONES', description: '16 selecciones americanas en busca de la copa.', type: 'america', fieldTheme: 'copa-america' },
@@ -72,11 +83,13 @@ export function createInternationalDraw(competitionId, playerTeamId, random = Ma
     const crossRegion = shuffle(pool.filter(team => team.league === otherRegion), random).slice(0, 8);
     selected = [playerTeam, ...sameRegion, ...crossRegion];
   } else throw new Error('Competición internacional no reconocida.');
-  return [selected[0], ...shuffle(selected.slice(1), random)];
+  return seedProgressively(selected[0], selected.slice(1), random);
 }
 
 export function createLeagueOpponents(leagueId, playerTeamId, random = Math.random) {
-  return shuffle(TEAMS.filter(team => team.league === leagueId && team.id !== playerTeamId), random).slice(0, 16);
+  return shuffle(TEAMS.filter(team => team.league === leagueId && team.id !== playerTeamId), random)
+    .map(team => ({ team, seed: (team.stars || 3) + (random() - .5) * .9 }))
+    .sort((a, b) => a.seed - b.seed).map(entry => entry.team);
 }
 
 export function pickChampionsOpponent(draw, round, random = Math.random) {

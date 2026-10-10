@@ -27,6 +27,7 @@
             <button class="menu-button menu-action" data-action="training"><span><b class="menu-symbol">◎</b> Entrenamiento</span><span class="arrow">↗</span></button>
             <button class="menu-button menu-action" data-action="competitions"><span><b class="menu-symbol">♜</b> Competiciones</span><span class="arrow">↗</span></button>
             <div class="menu-divider"></div>
+            <button class="menu-button secondary-action" data-view="profile"><span><b class="menu-symbol">◉</b> Mi perfil <small>ESTADÍSTICAS Y TROFEOS</small></span><span class="arrow">↗</span></button>
             <button class="menu-button secondary-action" data-view="customize"><span><b class="menu-symbol">◉</b> Equipo y jugador</span><span class="arrow">↗</span></button>
             <button class="menu-button secondary-action" data-view="settings"><span><b class="menu-symbol">⌘</b> Ajustes</span><span class="arrow">↗</span></button>
             <div class="difficulty-row"><label for="difficulty">DIFICULTAD BOT</label><select id="difficulty"><option value="easy" selected>Fácil</option><option value="normal">Normal</option><option value="hard">Difícil · nivel 5</option></select></div>
@@ -92,6 +93,19 @@
           <div class="setting-line"><div><b>Trayectoria del balón</b><small>Mostrar hacia dónde continuará la pelota</small></div><label class="toggle"><input id="trajectory-enabled" type="checkbox"><span></span></label></div>
           <p class="settings-note">Los ajustes se guardan automáticamente en este dispositivo.</p>
         </div></div>
+      </section>
+
+      <section id="profile-screen" class="screen sub-screen hidden">
+        <header class="sub-header"><button class="back-button" data-view="home">← <span>Volver</span></button><a class="brand" href="#"><span class="brand-mark">F</span> FIELD</a><span class="version">TU CARRERA</span></header>
+        <div class="player-profile">
+          <section class="profile-hero" aria-labelledby="career-name"><div id="career-avatar" class="career-avatar" aria-hidden="true">?</div><div class="career-identity"><p class="eyebrow">MI PERFIL <span id="career-team-label"></span></p><h2 id="career-name">Jugador</h2><p id="career-subtitle">Tu progreso de FIELD</p></div><div class="career-level"><span>NIVEL</span><b id="career-level">1</b><small id="career-xp">0 XP</small><div class="career-xp-track"><i id="career-xp-fill"></i></div></div></section>
+          <section class="career-stats" aria-label="Estadísticas de carrera">
+            <article class="career-stat"><span>PARTIDOS</span><b id="career-matches">0</b><small>jugados</small></article><article class="career-stat"><span>VICTORIAS</span><b id="career-wins">0</b><small id="career-winrate">0 % de victorias</small></article><article class="career-stat"><span>GOLES</span><b id="career-goals">0</b><small>en partidos</small></article><article class="career-stat"><span>RÉCORD</span><b id="career-best">0</b><small>goles en un partido</small></article><article class="career-stat"><span>TIEMPO</span><b id="career-time">0 min</b><small>en partidos</small></article><article class="career-stat"><span>TEMPORADAS</span><b id="career-seasons">0</b><small>completadas</small></article>
+          </section>
+          <section class="trophy-section" aria-labelledby="trophy-heading"><div class="trophy-heading"><div><p class="card-kicker">COLECCIÓN</p><h3 id="trophy-heading">Vitrina de trofeos</h3><p id="trophy-summary">0 de 0 trofeos desbloqueados</p></div><div class="trophy-progress"><b id="trophy-percent">0%</b><div><i id="trophy-progress-fill"></i></div></div></div><div class="trophy-layout"><div id="trophy-grid" class="trophy-grid" aria-label="Colección de trofeos"></div><aside id="trophy-detail" class="trophy-detail" aria-live="polite"><span class="trophy-detail-icon">🏆</span><b>Elige un trofeo</b><p>Selecciona una pieza de la vitrina para ver cómo conseguirla.</p></aside></div></section>
+          <div class="profile-actions"><button class="menu-button" data-view="settings">⌘ Ajustes <span class="arrow">↗</span></button><button class="menu-button" id="profile-account-open">◎ Cuenta y guardado <span class="arrow">↗</span></button><button class="menu-button" data-view="customize">♟ Cambiar equipo y jugador <span class="arrow">↗</span></button></div>
+        </div>
+        <div id="trophy-toast" class="trophy-toast" role="status" aria-live="polite"><span>🏆</span><div><small>NUEVO TROFEO</small><b id="trophy-toast-name"></b></div></div>
       </section>
 
       <section id="account-screen" class="screen sub-screen hidden">

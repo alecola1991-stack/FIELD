@@ -10,6 +10,12 @@ import { clearCompetitionSave, loadCompetitionSave, setCompetitionSaveScope, sto
 
 const ROUND_NAMES = ['OCTAVOS DE FINAL', 'CUARTOS DE FINAL', 'SEMIFINAL', 'FINAL'];
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const STORE_ITEMS = [
+  { id: 'circle-raised', name: 'Círculo en relieve', slot: 'circleRelief', value: 'raised', price: 80, icon: '◉', description: 'Un aro con sombra y luz que destaca el círculo central.' },
+  { id: 'shot-neon', name: 'Disparo neón', slot: 'shotEffect', value: 'neon', price: 100, icon: '〰', description: 'Una estela cian brillante acompaña tus tiros potentes.' },
+  { id: 'shot-fire', name: 'Disparo de fuego', slot: 'shotEffect', value: 'fire', price: 120, icon: '♨', description: 'Una estela cálida de fuego al disparar.' },
+  { id: 'ball-gold', name: 'Balón dorado', slot: 'ballSkin', value: 'gold', price: 150, icon: '⚽', description: 'Un balón dorado con brillo especial durante el partido.' },
+];
 
 export class UI {
   constructor(initialUser = null) {
@@ -17,16 +23,17 @@ export class UI {
     this.user = initialUser; this.accountService = null; this.accountMode = 'login'; this.accountSyncTimer = 0; this.lastAccountSync = 0; this.accountSyncBusy = false;
     const storageScope = initialUser?.id || 'guest'; setSettingsScope(storageScope); setCompetitionSaveScope(storageScope);
     this.settings = loadSettings(); this.progression = new Progression(storageScope); this.career = new CareerProfile(storageScope); this.game = null; this.sound = null;
+    this.settings.cosmetics = this.career.equipped;
     if (this.career.stats.matches === 0 && this.career.stats.wins === 0 && this.progression.wins > 0) this.career.ensureProgressionWins(this.progression.wins);
     this.tournament = null; this.league = null; this.pendingMode = null; this.pendingCompetition = null; this.pendingTeamType = 'all'; this.selectedCompetition = 'champions'; this.competitionIndex = 0; this.selectedTeamId = ''; this.teamCursor = new Map();
     this.currentMatchMode = null; this.currentMatchOptions = null; this.confetti = new Confetti();
     this.activeLeague = TEAM_LEAGUES[0].id;
     this.screens = {
-      home: document.querySelector('#home-screen'), customize: document.querySelector('#customize-screen'),
+      home: document.querySelector('#home-screen'), play: document.querySelector('#play-screen'), store: document.querySelector('#store-screen'), customize: document.querySelector('#customize-screen'),
       settings: document.querySelector('#settings-screen'), account: document.querySelector('#account-screen'), online: document.querySelector('#online-screen'), leaderboard: document.querySelector('#leaderboard-screen'), competitions: document.querySelector('#competition-screen'), tournament: document.querySelector('#tournament-screen'),
       league: document.querySelector('#league-screen'), game: document.querySelector('#game-screen'), profile: document.querySelector('#profile-screen'),
     };
-    this.cacheElements(); this.menuBackdrop = new MenuBackdrop(this.menu_backdrop); this.populateTeamPicker(); this.populateLeagueCompetitions(); this.fillInputs(); this.bind(); this.updateLeaguePreview(); this.renderProgress(); this.show('home'); this.refreshContinueButton();
+    this.cacheElements(); this.menuBackdrop = new MenuBackdrop(this.menu_backdrop); this.populateTeamPicker(); this.populateLeagueCompetitions(); this.fillInputs(); this.bind(); this.updateLeaguePreview(); this.renderProgress(); this.renderStore(); this.show('home'); this.refreshContinueButton();
   }
 
   cacheElements() {
@@ -40,7 +47,7 @@ export class UI {
       'competition-picker-card',
       'tournament-header-tag','tournament-eyebrow','tournament-title','tournament-description','tournament-emblem','tournament-team-count',
       'account-status','account-status-dot','account-message','account-form','account-name','account-name-wrap','account-email','account-password','account-submit','account-form-title','account-dashboard','account-auth-panel','account-email-label','account-sync-state','account-level','account-wins','account-matches','account-goals','account-conceded','account-seasons','account-trophy-count','account-trophies',
-      'profile-eyebrow','profile-title','profile-copy','home-club-colors','home-club-name',
+      'profile-eyebrow','profile-title','profile-copy','home-club-colors','home-club-name','home-coins','store-coins','store-grid','store-message','play-continue-wrap',
       'menu-backdrop',
       'continue-competition','continue-detail','league-goal-target','trajectory-enabled','shot-power-time',
       'online-room-input','online-room-panel','online-status','online-room-code-wrap','online-room-code',
@@ -117,6 +124,9 @@ export class UI {
     }));
     document.getElementById('account-open').addEventListener('click', () => { this.renderAccount(); this.show('account'); });
     document.getElementById('profile-account-open').addEventListener('click', () => { this.renderAccount(); this.show('account'); });
+    this.store_grid.addEventListener('click', event => {
+      const button = event.target.closest('[data-store-item]'); if (button) this.handleStoreItem(button.dataset.storeItem);
+    });
     this.trophy_grid.addEventListener('click', event => { const button = event.target.closest('[data-trophy-id]'); if (button) { this.renderTrophyDetail(button.dataset.trophyId); this.sound?.play('select'); } });
     this.account_form.addEventListener('submit', event => { event.preventDefault(); this.submitAccount(); });
     document.getElementById('online-create-room').addEventListener('click', () => this.createOnlineRoom());
@@ -245,6 +255,7 @@ export class UI {
       if (!this.settings.profileReady && guestProfile.settings?.profileReady) this.settings = { ...this.settings, ...guestProfile.settings };
       if (!localProfile.competitionSave && guestProfile.competitionSave) storeCompetitionSave(guestProfile.competitionSave);
     }
+    this.settings.cosmetics = { ...this.career.equipped };
     saveSettings(this.settings); this.game?.updateSettings(this.settings);
     this.fillInputs(); this.renderProgress(); this.renderAccount(); this.refreshContinueButton();
     await this.syncAccount(true);
@@ -274,7 +285,7 @@ export class UI {
     try { await this.accountService?.signOut(); } catch { /* Local scope still switches even if the network is unavailable. */ }
     if (this.accountSyncTimer) clearTimeout(this.accountSyncTimer);
     this.user = null; setSettingsScope('guest'); setCompetitionSaveScope('guest');
-    this.progression.setScope('guest'); this.career.setScope('guest'); this.settings = loadSettings();
+    this.progression.setScope('guest'); this.career.setScope('guest'); this.settings = loadSettings(); this.settings.cosmetics = { ...this.career.equipped };
     this.game?.updateSettings(this.settings); this.fillInputs(); this.renderProgress(); this.renderAccount(); this.refreshContinueButton();
     this.setAccountMessage('Has cerrado sesión. Tu guardado local sigue disponible.', false, true);
   }
@@ -564,6 +575,8 @@ export class UI {
     for (const [key, screen] of Object.entries(this.screens)) screen.classList.toggle('hidden', key !== view);
     this.menuBackdrop?.setActive(view === 'home');
     if (view === 'profile') this.renderProfile();
+    if (view === 'store') this.renderStore();
+    if (view === 'play') this.refreshContinueButton();
     if (view === 'game') requestAnimationFrame(() => this.game?.renderer.resize());
   }
 
@@ -573,8 +586,38 @@ export class UI {
     this.xp_label.textContent = maxed ? 'NIVEL MÁXIMO' : `${progress.xp} / ${progress.xpForNextLevel()} XP`;
     this.wins_label.textContent = `${progress.wins} VICTORIAS`;
     this.xp_fill.style.width = `${progress.progressRatio() * 100}%`;
+    this.home_coins.textContent = String(this.career.stats.coinsEarned - this.career.stats.coinsSpent);
+    if (this.store_coins) this.store_coins.innerHTML = `${this.career.stats.coinsEarned - this.career.stats.coinsSpent} <i>◈</i>`;
+    this.renderStore();
     this.updateDifficultyControls();
     this.renderAccount(); this.checkAchievements();
+  }
+
+  renderStore() {
+    if (!this.store_grid || !this.career) return;
+    const balance = Math.max(0, this.career.stats.coinsEarned - this.career.stats.coinsSpent);
+    this.home_coins.textContent = String(balance); this.store_coins.innerHTML = `${balance} <i>◈</i>`;
+    this.store_grid.replaceChildren(...STORE_ITEMS.map(item => {
+      const owned = this.career.ownedItems.includes(item.id), equipped = owned && this.career.equipped[item.slot] === item.value;
+      const card = document.createElement('article'); card.className = 'store-item';
+      const icon = document.createElement('span'); icon.className = 'store-item-icon'; icon.textContent = item.icon;
+      const tag = document.createElement('small'); tag.className = 'store-item-tag'; tag.textContent = equipped ? 'EQUIPADO' : owned ? 'DESBLOQUEADO' : 'PERSONALIZACIÓN';
+      const title = document.createElement('b'); title.textContent = item.name;
+      const description = document.createElement('p'); description.textContent = item.description;
+      const button = document.createElement('button'); button.type = 'button'; button.dataset.storeItem = item.id; button.className = equipped ? 'store-item-action equipped' : 'store-item-action'; button.disabled = equipped || (!owned && balance < item.price);
+      button.textContent = equipped ? 'Equipado ✓' : owned ? 'Equipar' : `Desbloquear · ${item.price} ◈`;
+      card.append(icon, tag, title, description, button); return card;
+    }));
+  }
+
+  handleStoreItem(id) {
+    const item = STORE_ITEMS.find(entry => entry.id === id); if (!item) return;
+    if (!this.career.ownedItems.includes(id)) {
+      if (!this.career.buyItem(id, item.price)) { this.store_message.textContent = 'Te faltan monedas. Completa partidos para ganar más.'; return; }
+      this.store_message.textContent = `${item.name} desbloqueado.`;
+    } else this.store_message.textContent = `${item.name} equipado. Puedes cambiarlo cuando quieras.`;
+    this.career.equipItem(id, item.slot, item.value); this.settings.cosmetics = { ...this.career.equipped };
+    this.game?.updateSettings(this.settings); this.career.save(); this.syncAccount(false); this.renderProgress(); this.sound?.play('select');
   }
 
   updateDifficultyControls() {
@@ -843,7 +886,7 @@ export class UI {
 
   refreshContinueButton(saved = loadCompetitionSave()) {
     if (!this.continue_competition) return;
-    if (!saved) { this.continue_competition.classList.add('hidden'); return; }
+    if (!saved) { this.continue_competition.classList.add('hidden'); this.play_continue_wrap.classList.add('hidden'); return; }
     const competition = saved.competition || {};
     if (competition.mode === 'league') {
       const league = competition.league || {};
@@ -854,7 +897,7 @@ export class UI {
       const cupName = CUP_COMPETITIONS.find(item => item.id === cup.competitionId)?.name || 'Champions';
       this.continue_detail.textContent = cup.status === 'next' ? `${cupName.toUpperCase()} · SIGUIENTE RONDA` : `${cupName.toUpperCase()} · ${stage}`;
     }
-    this.continue_competition.classList.remove('hidden');
+    this.continue_competition.classList.remove('hidden'); this.play_continue_wrap.classList.remove('hidden');
   }
 
   resumeCompetition() {
@@ -886,11 +929,13 @@ export class UI {
   handleMatchEnd(result) {
     const won = result.winner === 'player';
     if (result.mode !== 'training') this.career.recordMatch(won, { playerScore: result.playerScore, elapsedSeconds: result.elapsedSeconds });
+    else this.career.earnCoins(5);
     const reward = result.mode !== 'training' ? this.progression.awardMatch(won) : null;
     if (won) this.confetti.play();
     this.sound?.play(won ? 'win' : 'loss');
     this.renderProgress();
-    const rewardText = !reward ? 'Sin XP en entrenamiento.' : (reward.gained ? `+${reward.gained} XP por jugar.` : 'Nivel máximo alcanzado.');
+    const coinReward = result.mode === 'training' ? 5 : 20 + (won ? 10 : 0);
+    const rewardText = !reward ? `+${coinReward} ◈ por jugar.` : (reward.gained ? `+${reward.gained} XP y +${coinReward} ◈ por jugar.` : `+${coinReward} ◈ · nivel máximo.`);
     const levelText = reward?.leveledUp ? ` ¡Has subido al nivel ${reward.level}!` : '';
     this.result_xp.textContent = reward ? (reward.gained ? `+${reward.gained} XP` : 'NIVEL MÁXIMO') : '0 XP';
     this.result_level.textContent = `NIVEL ${this.progression.level}`;

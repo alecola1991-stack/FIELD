@@ -1,3 +1,5 @@
+import { MISSION_DEFINITIONS, getLeagueMission } from './Missions.js';
+
 const BASE_KEY = 'field-career-profile';
 const statKeys = ['matches', 'wins', 'losses', 'goalsFor', 'goalsAgainst', 'trainingGoals', 'leagueSeasons', 'timePlayedSeconds', 'bestScore', 'coinsEarned', 'coinsSpent'];
 const PROMO_CODES = { adminxela1721: { coins: 90000 } };
@@ -17,6 +19,7 @@ export class CareerProfile {
     this.ownedItems = Array.isArray(saved.ownedItems) ? [...new Set(saved.ownedItems.filter(item => typeof item === 'string'))] : [];
     this.equipped = normalizeEquipped(saved.equipped);
     this.redeemedCodes = normalizeRedeemedCodes(saved.redeemedCodes);
+    this.missions = normalizeMissions(saved.missions);
   }
 
   setScope(scope) { this.scope = normalizeScope(scope); this.load(); }
@@ -35,6 +38,26 @@ export class CareerProfile {
     this.refreshStats(); this.save();
   }
   earnCoins(amount) { this.deviceShard().coinsEarned += safeCount(amount); this.refreshStats(); this.save(); }
+  processMissionEvent(event = {}) {
+    const completed = [];
+    const advance = (definition, amount = 1) => {
+      const state = this.missions[definition.id] || (this.missions[definition.id] = { progress: 0, completed: false });
+      if (state.completed) return;
+      state.progress = Math.min(definition.goal, state.progress + safeCount(amount));
+      if (state.progress >= definition.goal) {
+        state.completed = true;
+        const rewardShard = this.shards[`mission:${definition.id}`] || (this.shards[`mission:${definition.id}`] = normalizeStats({}));
+        rewardShard.coinsEarned = Math.max(rewardShard.coinsEarned, definition.coins);
+        completed.push({ ...definition });
+      }
+    };
+    if (event.competitionMode && event.won) advance(MISSION_DEFINITIONS[0]);
+    if (event.competitionId === 'champions' && event.isFinal && event.playerGoals > 0) advance(MISSION_DEFINITIONS[1]);
+    if (event.competitionId === 'world-cup' && event.isChampion) advance(MISSION_DEFINITIONS[2]);
+    if (event.leagueId && event.isLeagueChampion) advance(getLeagueMission(event.teamId));
+    this.refreshStats(); this.save();
+    return completed;
+  }
   redeemPromoCode(value) {
     const code = String(value || '').trim().toLowerCase();
     const reward = PROMO_CODES[code];
@@ -69,7 +92,7 @@ export class CareerProfile {
   toJSON() {
     const shards = {};
     for (const [device, stats] of Object.entries(this.shards)) shards[device] = { ...stats };
-    return { stats: { ...this.stats }, shards, trophies: this.trophies.map(item => ({ ...item })), ownedItems: [...this.ownedItems], equipped: { ...this.equipped }, redeemedCodes: [...this.redeemedCodes] };
+    return { stats: { ...this.stats }, shards, trophies: this.trophies.map(item => ({ ...item })), ownedItems: [...this.ownedItems], equipped: { ...this.equipped }, redeemedCodes: [...this.redeemedCodes], missions: structuredClone(this.missions) };
   }
   apply(value = {}) {
     this.shards = normalizeShards(value.shards);
@@ -79,6 +102,7 @@ export class CareerProfile {
     this.ownedItems = Array.isArray(value.ownedItems) ? [...new Set(value.ownedItems.filter(item => typeof item === 'string'))] : [];
     this.equipped = normalizeEquipped(value.equipped);
     this.redeemedCodes = normalizeRedeemedCodes(value.redeemedCodes);
+    this.missions = normalizeMissions(value.missions);
     this.save();
   }
   merge(value = {}) {
@@ -96,6 +120,11 @@ export class CareerProfile {
     this.ownedItems = [...new Set([...this.ownedItems, ...(Array.isArray(value.ownedItems) ? value.ownedItems.filter(item => typeof item === 'string') : [])])];
     this.equipped = { ...normalizeEquipped(value.equipped), ...this.equipped };
     this.redeemedCodes = [...new Set([...this.redeemedCodes, ...normalizeRedeemedCodes(value.redeemedCodes)])];
+    const incomingMissions = normalizeMissions(value.missions);
+    for (const [id, incoming] of Object.entries(incomingMissions)) {
+      const current = this.missions[id] || { progress: 0, completed: false };
+      this.missions[id] = { progress: Math.max(current.progress, incoming.progress), completed: current.completed || incoming.completed };
+    }
     this.refreshStats(); this.save();
   }
   deviceShard() { return this.shards[getDeviceId()] || (this.shards[getDeviceId()] = normalizeStats({})); }
@@ -120,6 +149,10 @@ function normalizeEquipped(value = {}) {
 function normalizeShards(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   return Object.fromEntries(Object.entries(value).slice(0, 100).filter(([id, stats]) => typeof id === 'string').map(([id, stats]) => [id.slice(0, 100), normalizeStats(stats)]));
+}
+function normalizeMissions(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value).slice(0, 500).filter(([id, state]) => typeof id === 'string' && state && typeof state === 'object').map(([id, state]) => [id.slice(0, 120), { progress: safeCount(state.progress), completed: state.completed === true }]));
 }
 function sumShards(shards) { const total = normalizeStats({}); for (const shard of Object.values(shards)) for (const key of statKeys) total[key] = key === 'bestScore' ? Math.max(total[key], safeCount(shard[key])) : Math.min(1_000_000_000, total[key] + safeCount(shard[key])); return total; }
 function getDeviceId() {

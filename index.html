@@ -19,24 +19,38 @@
         <div class="home-content">
           <div class="hero-copy"><p class="eyebrow">FÚTBOL. SIN COMPLICACIONES.</p><h1>El campo<br>es <em>tuyo.</em></h1><p class="hero-sub">Un balón. Dos porterías. Y el espacio justo para hacer magia.</p></div>
           <div class="menu-card">
-            <p class="card-kicker">ELIGE TU PARTIDO</p>
+            <p class="card-kicker">FIELD · TU CLUB</p>
             <button type="button" class="home-club-chip" data-view="customize" aria-label="Elegir o cambiar equipo"><span id="home-club-colors"></span><span id="home-club-name">SELECCIONA TU EQUIPO AL JUGAR</span><b>CAMBIAR ↗</b></button>
-            <button class="primary-button menu-action" data-action="bot"><span><b class="play-icon">▶</b> Jugar contra BOT</span><kbd>↵</kbd></button>
-            <button class="menu-button menu-action online-menu-action" data-action="online"><span><b class="menu-symbol">◎</b> Juego online</span><span class="arrow">↗</span></button>
-            <button id="continue-competition" class="menu-button resume-button hidden" type="button"><span><b class="menu-symbol">↻</b> Continuar competición</span><small id="continue-detail">PARTIDA GUARDADA</small></button>
-            <button class="menu-button menu-action" data-action="training"><span><b class="menu-symbol">◎</b> Entrenamiento</span><span class="arrow">↗</span></button>
-            <button class="menu-button menu-action" data-action="competitions"><span><b class="menu-symbol">♜</b> Competiciones</span><span class="arrow">↗</span></button>
+            <button class="primary-button menu-action" data-view="play"><span><b class="play-icon">▶</b> Jugar</span><kbd>↵</kbd></button>
             <div class="menu-divider"></div>
+            <button class="menu-button secondary-action" data-view="store"><span><b class="menu-symbol">✦</b> Tienda</span><span class="coin-pill"><b id="home-coins">0</b> ◈</span></button>
             <button class="menu-button secondary-action" data-view="profile"><span><b class="menu-symbol">◉</b> Mi perfil <small>ESTADÍSTICAS Y TROFEOS</small></span><span class="arrow">↗</span></button>
             <button class="menu-button secondary-action" data-view="customize"><span><b class="menu-symbol">◉</b> Equipo y jugador</span><span class="arrow">↗</span></button>
             <button class="menu-button secondary-action" data-view="settings"><span><b class="menu-symbol">⌘</b> Ajustes</span><span class="arrow">↗</span></button>
-            <div class="difficulty-row"><label for="difficulty">DIFICULTAD BOT</label><select id="difficulty"><option value="easy" selected>Fácil</option><option value="normal">Normal</option><option value="hard">Difícil · nivel 5</option></select></div>
             <div class="level-card"><div class="level-badge"><small>NIVEL</small><b id="level-value">1</b></div><div class="xp-info"><div><span id="xp-label">0 / 120 XP</span><span id="wins-label">0 VICTORIAS</span></div><div class="xp-track"><i id="xp-fill"></i></div></div><span class="level-cap">100</span></div>
           </div>
         </div>
         <footer class="home-footer"><span>WASD / FLECHAS <i>·</i> ESPACIO PARA DISPARAR</span><span>HECHO PARA DISFRUTAR EL JUEGO <b>↗</b></span></footer>
       </section>
 
+      <section id="play-screen" class="screen sub-screen hidden">
+        <header class="sub-header"><button class="back-button" data-view="home">← <span>Inicio</span></button><a class="brand" href="#"><span class="brand-mark">F</span> FIELD</a><span class="version">ELIGE CÓMO JUGAR</span></header>
+        <div class="play-layout"><div class="editor-copy"><p class="eyebrow">CADA PARTIDA A TU MANERA</p><h2>Elige tu<br><em>partido.</em></h2><p>Prueba un modo, juega con alguien o compite por un trofeo. Ganas monedas al completar partidos.</p><div id="play-continue-wrap" class="play-continue hidden"><button id="continue-competition" class="menu-button resume-button" type="button"><span><b class="menu-symbol">↻</b> Continuar competición</span><small id="continue-detail">PARTIDA GUARDADA</small></button></div></div>
+          <div class="play-mode-grid">
+            <button class="play-mode-card play-mode-featured" data-action="bot"><span class="play-mode-icon">⚽</span><span class="play-mode-tag">RÁPIDO · CONTRA LA IA</span><b>Partido rápido</b><small>Un duelo al mejor de cinco goles contra el BOT. Elige la dificultad en Jugar.</small><i>JUGAR AHORA ↗</i></button>
+            <button class="play-mode-card" data-action="online"><span class="play-mode-icon">◎</span><span class="play-mode-tag">1 CONTRA 1 · ONLINE</span><b>Con otra persona</b><small>Crea una sala privada o únete con el código que te han compartido.</small><i>ABRIR SALAS ↗</i></button>
+            <button class="play-mode-card" data-action="training"><span class="play-mode-icon">⌖</span><span class="play-mode-tag">SIN PRESIÓN</span><b>Entrenamiento</b><small>Practica controles y tiros a tu ritmo, con herramientas de práctica.</small><i>ENTRENAR ↗</i></button>
+            <button class="play-mode-card" data-action="competitions"><span class="play-mode-icon">♜</span><span class="play-mode-tag">COPAS Y LIGAS</span><b>Competiciones</b><small>Elige una copa eliminatoria o disputa una temporada de liga completa.</small><i>VER COMPETICIONES ↗</i></button>
+          </div>
+          <div class="play-tools-row"><div class="difficulty-row"><label for="difficulty">DIFICULTAD DEL BOT</label><select id="difficulty"><option value="easy" selected>Fácil</option><option value="normal">Normal</option><option value="hard">Difícil · nivel 5</option></select></div><button class="leaderboard-link" data-action="leaderboard" type="button">Clasificación online <span>↗</span></button></div>
+        </div>
+      </section>
+      <section id="store-screen" class="screen sub-screen hidden">
+        <header class="sub-header"><button class="back-button" data-view="home">← <span>Inicio</span></button><a class="brand" href="#"><span class="brand-mark">F</span> FIELD</a><span class="version">PERSONALIZA EL CAMPO</span></header>
+        <div class="store-heading"><div><p class="eyebrow">TIENDA FIELD</p><h2>Tu estilo.<br><em>Tu juego.</em></h2><p>Completa partidos para ganar monedas. Todo lo que ves aquí es cosmético.</p></div><div class="store-wallet"><span>TU SALDO</span><b id="store-coins">0 <i>◈</i></b></div></div>
+        <div id="store-grid" class="store-grid" aria-live="polite"></div>
+        <p id="store-message" class="store-message" aria-live="polite">Gana 20 ◈ por jugar un partido y 10 ◈ extra si ganas.</p>
+      </section>
       <section id="online-screen" class="screen sub-screen hidden">
         <header class="sub-header"><button class="back-button" data-view="home">← <span>Volver</span></button><a class="brand" href="#"><span class="brand-mark">F</span> FIELD</a><span class="version">PARTIDA 1 CONTRA 1</span></header>
         <div class="online-layout">
@@ -53,7 +67,6 @@
               <button id="online-cancel" class="plain-button online-cancel" type="button">Cancelar sala</button>
             </div>
             <p class="online-footnote">El código permite entrar a la sala: compártelo solo con tu rival.</p>
-            <button class="leaderboard-link" data-action="leaderboard" type="button">Ver clasificación amistosa <span>↗</span></button>
           </div>
         </div>
       </section>

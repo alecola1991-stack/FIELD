@@ -9,6 +9,7 @@ import { getTeamById } from '../config/teams.js';
 import { kickBall, resolveBallWalls, resolvePlayerBall, resolvePlayerPlayers, resolvePlayerWalls, isGoal } from './Physics.js';
 
 const POWER_SHOT_COOLDOWN_SECONDS = 20;
+const ONLINE_PACKET_INTERVAL = 1 / 30;
 
 export class Game {
   constructor(canvas, settings, sound, hooks = {}) {
@@ -64,8 +65,8 @@ export class Game {
       if (this.state.mode === 'online' && !this.onlineAuthority) {
         this.predictOnlineGuest(dt);
         this.onlineInputClock += dt;
-        if (this.onlineInputClock >= 1 / 30) {
-          this.onlineInputClock %= 1 / 30;
+        if (this.onlineInputClock >= ONLINE_PACKET_INTERVAL) {
+          this.onlineInputClock %= ONLINE_PACKET_INTERVAL;
           const axes = this.input.axes();
           this.hooks.onOnlineInput?.({ x: axes.x, y: axes.y, kick: this.onlinePendingKick });
           this.onlinePendingKick = false;
@@ -73,8 +74,8 @@ export class Game {
       } else this.update(dt);
       if (this.state.mode === 'online' && this.onlineAuthority && !this.state.paused) {
         this.onlineSnapshotClock += dt;
-        if (this.onlineSnapshotClock >= 1 / 20) {
-          this.onlineSnapshotClock %= 1 / 20;
+        if (this.onlineSnapshotClock >= ONLINE_PACKET_INTERVAL) {
+          this.onlineSnapshotClock %= ONLINE_PACKET_INTERVAL;
           this.hooks.onOnlineSnapshot?.(this.captureSnapshot());
         }
       }

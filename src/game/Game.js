@@ -83,7 +83,7 @@ export class Game {
         if (this.autosaveClock >= 2) { this.autosaveClock %= 2; this.hooks.onAutosave?.(); }
       }
     }
-    this.renderer.render({ player: this.player, bot: this.bot, ball: this.ball, trajectory: this.trajectory, goalTimer: this.state.goalTimer, fieldTheme: this.fieldTheme, competitionRound: this.competitionRound, shotRangeTimer: this.shotRangeTimer }, dt);
+    this.renderer.render({ player: this.player, bot: this.bot, ball: this.ball, trajectory: this.trajectory, goalTimer: this.state.goalTimer, fieldTheme: this.fieldTheme, competitionRound: this.competitionRound, shotRangeTimer: this.shotRangeTimer, cosmetics: this.settings.cosmetics || {} }, dt);
     this.input.endFrame();
   }
   update(dt) {

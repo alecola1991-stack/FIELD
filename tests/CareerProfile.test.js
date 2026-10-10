@@ -79,3 +79,22 @@ test('promo code grants its coins once and merges idempotently across devices', 
   assert.equal(secondDevice.redeemPromoCode('ADMINxela1721').reason, 'used');
   assert.equal(new CareerProfile('player').stats.coinsEarned, 90000);
 });
+
+test('competition missions give coins and XP progress once and survive profile merge', () => {
+  memoryStorage();
+  const profile = new CareerProfile('missions-player');
+  assert.deepEqual(profile.processMissionEvent({ competitionMode: true, won: true }), []);
+  assert.deepEqual(profile.processMissionEvent({ competitionMode: true, won: true }), []);
+  const earned = profile.processMissionEvent({ competitionMode: true, won: true });
+  assert.equal(earned[0].id, 'competition-wins');
+  assert.equal(profile.stats.coinsEarned, 100);
+  assert.deepEqual(profile.processMissionEvent({ competitionMode: true, won: true }), []);
+  profile.processMissionEvent({ competitionId: 'champions', isFinal: true, playerGoals: 1 });
+  profile.processMissionEvent({ competitionId: 'world-cup', isChampion: true });
+  profile.processMissionEvent({ leagueId: 'laliga', isLeagueChampion: true, teamId: 'laliga-barcelona' });
+  const snapshot = profile.toJSON();
+  const merged = new CareerProfile('missions-remote'); merged.merge(snapshot);
+  assert.equal(merged.missions['competition-wins'].completed, true);
+  assert.equal(merged.missions['league-champion:laliga-barcelona'].completed, true);
+  assert.equal(merged.stats.coinsEarned, 770);
+});

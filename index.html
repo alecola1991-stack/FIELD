@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0b1115" />
     <meta name="description" content="Un juego arcade de fútbol 2D rápido y minimalista." />
-    <title>FIELD — fútbol arcade</title>
+    <title>Fútbol arcade | Juego arcade de fútbol</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -15,15 +15,16 @@
     <main class="app-shell">
       <section id="home-screen" class="screen home-screen">
         <canvas id="menu-backdrop" class="menu-backdrop" aria-hidden="true"></canvas>
-        <header class="brand-row"><a class="brand" href="#" aria-label="FIELD inicio"><span class="brand-mark">F</span> FIELD</a><div class="home-header-actions"><span class="version">ARCADE FOOTBALL <i></i> 01</span><button id="account-open" class="account-shortcut" type="button"><i id="account-status-dot"></i><span id="account-status">Guardado local</span><b>CUENTA ↗</b></button></div></header>
+        <header class="brand-row"><a class="brand" href="#" aria-label="Fútbol arcade inicio"><span class="brand-mark">FA</span> Fútbol arcade</a><div class="home-header-actions"><span class="version">FÚTBOL ARCADE <i></i> 01</span><button id="account-open" class="account-shortcut" type="button"><i id="account-status-dot"></i><span id="account-status">Guardado local</span><b>CUENTA ↗</b></button></div></header>
         <div class="home-content">
-          <div class="hero-copy"><p class="eyebrow">FÚTBOL. SIN COMPLICACIONES.</p><h1>El campo<br>es <em>tuyo.</em></h1><p class="hero-sub">Un balón. Dos porterías. Y el espacio justo para hacer magia.</p></div>
+          <div class="hero-copy"><p class="eyebrow">FÚTBOL. SIN COMPLICACIONES.</p><h1>Fútbol<br><em>arcade.</em></h1><p class="hero-sub">Un balón. Dos porterías. Y el espacio justo para hacer magia.</p></div>
           <div class="menu-card">
-            <p class="card-kicker">FIELD · TU CLUB</p>
+            <p class="card-kicker">Fútbol arcade · TU CLUB</p>
             <button type="button" class="home-club-chip" data-view="customize" aria-label="Elegir o cambiar equipo"><span id="home-club-colors"></span><span id="home-club-name">SELECCIONA TU EQUIPO AL JUGAR</span><b>CAMBIAR ↗</b></button>
             <button class="primary-button menu-action" data-view="play"><span><b class="play-icon">▶</b> Jugar</span><kbd>↵</kbd></button>
             <div class="menu-divider"></div>
             <button class="menu-button secondary-action" data-view="store"><span><b class="menu-symbol">✦</b> Tienda</span><span class="coin-pill"><b id="home-coins">0</b> ◈</span></button>
+            <button class="menu-button secondary-action" data-view="missions"><span><b class="menu-symbol">✦</b> Misiones <small>MONEDAS Y EXPERIENCIA</small></span><span class="arrow">↗</span></button>
             <button class="menu-button secondary-action" data-view="profile"><span><b class="menu-symbol">◉</b> Mi perfil <small>ESTADÍSTICAS Y TROFEOS</small></span><span class="arrow">↗</span></button>
             <button class="menu-button secondary-action" data-view="customize"><span><b class="menu-symbol">♟</b> Equipo y jugador</span><span class="arrow">↗</span></button>
             <button class="menu-button secondary-action" data-view="settings"><span><b class="menu-symbol">⌘</b> Ajustes</span><span class="arrow">↗</span></button>
@@ -35,7 +36,7 @@
       </section>
 
       <section id="play-screen" class="screen sub-screen hidden">
-        <header class="sub-header"><button class="back-button" data-view="home">← <span>Inicio</span></button><a class="brand" href="#"><span class="brand-mark">F</span> FIELD</a><span class="version">ELIGE CÓMO JUGAR</span></header>
+        <header class="sub-header"><button class="back-button" data-view="home">← <span>Inicio</span></button><a class="brand" href="#"><span class="brand-mark">FA</span> Fútbol arcade</a><span class="version">ELIGE CÓMO JUGAR</span></header>
         <div class="play-layout"><div class="editor-copy"><p class="eyebrow">CADA PARTIDA A TU MANERA</p><h2>Elige tu<br><em>partido.</em></h2><p>Prueba un modo, juega con alguien o compite por un trofeo. Ganas monedas al completar partidos.</p><div id="play-continue-wrap" class="play-continue hidden"><button id="continue-competition" class="menu-button resume-button" type="button"><span><b class="menu-symbol">↻</b> Continuar competición</span><small id="continue-detail">PARTIDA GUARDADA</small></button></div></div>
           <div class="play-mode-grid">
             <button class="play-mode-card play-mode-featured" data-action="bot"><span class="play-mode-icon">⚽</span><span class="play-mode-tag">RÁPIDO · CONTRA LA IA</span><b>Partido rápido</b><small>Un duelo al mejor de cinco goles contra el BOT. Elige la dificultad en inicio.</small><i>JUGAR AHORA ↗</i></button>
@@ -48,8 +49,8 @@
       </section>
 
       <section id="store-screen" class="screen sub-screen hidden">
-        <header class="sub-header"><button class="back-button" data-view="home">← <span>Inicio</span></button><a class="brand" href="#"><span class="brand-mark">F</span> FIELD</a><span class="version">PERSONALIZA EL CAMPO</span></header>
-        <div class="store-heading"><div><p class="eyebrow">TIENDA FIELD</p><h2>Tu estilo.<br><em>Tu juego.</em></h2><p>Completa partidos para ganar monedas. Todo lo que ves aquí es cosmético.</p></div><div class="store-wallet"><span>TU SALDO</span><b id="store-coins">0 <i>◈</i></b></div></div>
+        <header class="sub-header"><button class="back-button" data-view="home">← <span>Inicio</span></button><a class="brand" href="#"><span class="brand-mark">FA</span> Fútbol arcade</a><span class="version">PERSONALIZA EL CAMPO</span></header>
+        <div class="store-heading"><div><p class="eyebrow">TIENDA Fútbol arcade</p><h2>Tu estilo.<br><em>Tu juego.</em></h2><p>Completa partidos para ganar monedas. Todo lo que ves aquí es cosmético.</p></div><div class="store-wallet"><span>TU SALDO</span><b id="store-coins">0 <i>◈</i></b></div></div>
         <nav id="store-tabs" class="store-tabs" role="tablist" aria-label="Tienda e inventario"><button type="button" class="store-tab active" role="tab" aria-selected="true" data-store-tab="shop">Tienda</button><button type="button" class="store-tab" role="tab" aria-selected="false" data-store-tab="inventory">Inventario <span id="inventory-count">0</span></button></nav>
         <div id="store-loadout" class="store-loadout hidden" aria-label="Objetos equipados"></div>
         <nav id="store-categories" class="store-categories" aria-label="Categorías de personalización"></nav>
@@ -58,7 +59,7 @@
       </section>
 
       <section id="online-screen" class="screen sub-screen hidden">
-        <header class="sub-header"><button class="back-button" data-view="home">← <span>Volver</span></button><a class="brand" href="#"><span class="brand-mark">F</span> FIELD</a><span class="version">PARTIDA 1 CONTRA 1</span></header>
+        <header class="sub-header"><button class="back-button" data-view="home">← <span>Volver</span></button><a class="brand" href="#"><span class="brand-mark">FA</span> Fútbol arcade</a><span class="version">PARTIDA 1 CONTRA 1</span></header>
         <div class="online-layout">
           <div class="editor-copy"><p class="eyebrow">JUEGA CON OTRA PERSONA</p><h2>El campo<br><em>se comparte.</em></h2><p>Busca rival automáticamente, crea una sala privada o entra con el código que te han enviado.</p></div>
           <div class="online-card">
@@ -81,21 +82,21 @@
       </section>
 
       <section id="leaderboard-screen" class="screen sub-screen hidden">
-        <header class="sub-header"><button class="back-button" data-view="home">← <span>Volver</span></button><a class="brand" href="#"><span class="brand-mark">F</span> FIELD</a><span class="version">RESULTADOS ONLINE</span></header>
+        <header class="sub-header"><button class="back-button" data-view="home">← <span>Volver</span></button><a class="brand" href="#"><span class="brand-mark">FA</span> Fútbol arcade</a><span class="version">RESULTADOS ONLINE</span></header>
         <div class="leaderboard-layout">
-          <div class="editor-copy"><p class="eyebrow">PARTIDOS ENTRE JUGADORES</p><h2>El marcador<br><em>se comparte.</em></h2><p>Una clasificación amistosa basada en partidos online jugados con cuenta FIELD.</p><small class="leaderboard-casual-note">Tu nombre de jugador y tus marcadores se muestran públicamente. Los resultados son declarados por los jugadores; todavía no cuentan con verificación antitrampas.</small></div>
+          <div class="editor-copy"><p class="eyebrow">PARTIDOS ENTRE JUGADORES</p><h2>El marcador<br><em>se comparte.</em></h2><p>Una clasificación amistosa basada en partidos online jugados con cuenta Fútbol arcade.</p><small class="leaderboard-casual-note">Tu nombre de jugador y tus marcadores se muestran públicamente. Los resultados son declarados por los jugadores; todavía no cuentan con verificación antitrampas.</small></div>
           <div class="leaderboard-card"><div class="leaderboard-heading"><div><p class="card-kicker">CLASIFICACIÓN · TOP 50</p><span>Ordenada por victorias y porcentaje</span></div><button id="leaderboard-refresh" type="button" aria-label="Actualizar clasificación">↻</button></div><p id="leaderboard-message" class="leaderboard-message" aria-live="polite">Cargando resultados…</p><ol id="leaderboard-list" class="leaderboard-list"></ol></div>
         </div>
       </section>
 
       <section id="customize-screen" class="screen sub-screen hidden">
-        <header class="sub-header"><button id="profile-back" class="back-button">← <span>Volver</span></button><a class="brand" href="#"><span class="brand-mark">F</span> FIELD</a><span class="version">TU IDENTIDAD EN EL CAMPO</span></header>
+        <header class="sub-header"><button id="profile-back" class="back-button">← <span>Volver</span></button><a class="brand" href="#"><span class="brand-mark">FA</span> Fútbol arcade</a><span class="version">TU IDENTIDAD EN EL CAMPO</span></header>
         <div class="club-config-layout">
           <div class="club-config-intro"><p id="profile-eyebrow" class="eyebrow">IDENTIDAD DE JUGADOR</p><h2 id="profile-title">Elige tu<br><em>club.</em></h2><p id="profile-copy">Selecciona un equipo y después define el nombre y dorsal con los que entrarás al campo.</p>
             <div class="profile-preview-card"><span class="preview-caption">VISTA PREVIA EN EL CAMPO</span><div class="preview-player"><span id="preview-name">TU NOMBRE</span><div id="preview-ball" class="preview-ball"><b id="preview-number">—</b></div><small id="preview-team">ELIGE UN CLUB</small></div></div>
           </div>
           <div class="club-config-panel">
-            <div class="selector-topline"><div><p class="card-kicker">01 · EQUIPO O SELECCIÓN</p><span>Elige una competición de clubes o una selección nacional</span></div><span class="selector-count">96 CLUBES · 42 SELECCIONES</span></div>
+            <div class="selector-topline"><div><p class="card-kicker">01 · EQUIPO O SELECCIÓN</p><span>Elige una competición de clubes o una selección nacional</span></div><span class="selector-count">5 LIGAS · 5 SEGUNDAS DIVISIONES</span></div>
             <div id="league-tabs" class="league-tabs" role="tablist" aria-label="Ligas"></div>
             <div class="team-carousel-wrap"><button id="teams-prev" class="carousel-arrow" aria-label="Equipo anterior">‹</button><div class="team-carousel-center"><div id="team-grid" class="team-carousel" aria-label="Equipo visible"></div><span id="team-position">1 / 20</span></div><button id="teams-next" class="carousel-arrow" aria-label="Equipo siguiente">›</button></div>
             <div class="identity-step"><div class="identity-heading"><p class="card-kicker">02 · IDENTIDAD DE JUGADOR</p><span id="chosen-team-label">SELECCIONA UN EQUIPO PRIMERO</span></div>
@@ -107,7 +108,7 @@
       </section>
 
       <section id="settings-screen" class="screen sub-screen hidden">
-        <header class="sub-header"><button class="back-button" data-view="home">← <span>Volver</span></button><a class="brand" href="#"><span class="brand-mark">F</span> FIELD</a><span class="version">AJUSTA A TU MANERA</span></header>
+        <header class="sub-header"><button class="back-button" data-view="home">← <span>Volver</span></button><a class="brand" href="#"><span class="brand-mark">FA</span> Fútbol arcade</a><span class="version">AJUSTA A TU MANERA</span></header>
         <div class="settings-wrap"><div class="editor-copy"><p class="eyebrow">PREFERENCIAS</p><h2>Todo<br><em>a punto.</em></h2><p>Una experiencia a tu ritmo.</p></div><div class="settings-card">
           <div class="setting-line"><div><b>Sonido</b><small>Efectos de juego y menú</small></div><label class="toggle"><input id="sound-enabled" type="checkbox" checked><span></span></label></div>
           <div class="setting-line volume-line"><div><b>Volumen</b><small>Ajusta el nivel de los efectos</small></div><input id="volume" type="range" min="0" max="100" value="45"><span id="volume-value">45%</span></div>
@@ -119,9 +120,9 @@
       </section>
 
       <section id="profile-screen" class="screen sub-screen hidden">
-        <header class="sub-header"><button class="back-button" data-view="home">← <span>Volver</span></button><a class="brand" href="#"><span class="brand-mark">F</span> FIELD</a><span class="version">TU CARRERA</span></header>
+        <header class="sub-header"><button class="back-button" data-view="home">← <span>Volver</span></button><a class="brand" href="#"><span class="brand-mark">FA</span> Fútbol arcade</a><span class="version">TU CARRERA</span></header>
         <div class="player-profile">
-          <section class="profile-hero" aria-labelledby="career-name"><div id="career-avatar" class="career-avatar" aria-hidden="true">?</div><div class="career-identity"><p class="eyebrow">MI PERFIL <span id="career-team-label"></span></p><h2 id="career-name">Jugador</h2><p id="career-subtitle">Tu progreso de FIELD</p></div><div class="career-level"><span>NIVEL</span><b id="career-level">1</b><small id="career-xp">0 XP</small><div class="career-xp-track"><i id="career-xp-fill"></i></div></div></section>
+          <section class="profile-hero" aria-labelledby="career-name"><div id="career-avatar" class="career-avatar" aria-hidden="true">?</div><div class="career-identity"><p class="eyebrow">MI PERFIL <span id="career-team-label"></span></p><h2 id="career-name">Jugador</h2><p id="career-subtitle">Tu progreso de Fútbol arcade</p></div><div class="career-level"><span>NIVEL</span><b id="career-level">1</b><small id="career-xp">0 XP</small><div class="career-xp-track"><i id="career-xp-fill"></i></div></div></section>
           <section class="career-stats" aria-label="Estadísticas de carrera">
             <article class="career-stat"><span>PARTIDOS</span><b id="career-matches">0</b><small>jugados</small></article><article class="career-stat"><span>VICTORIAS</span><b id="career-wins">0</b><small id="career-winrate">0 % de victorias</small></article><article class="career-stat"><span>GOLES</span><b id="career-goals">0</b><small>en partidos</small></article><article class="career-stat"><span>RÉCORD</span><b id="career-best">0</b><small>goles en un partido</small></article><article class="career-stat"><span>TIEMPO</span><b id="career-time">0 min</b><small>en partidos</small></article><article class="career-stat"><span>TEMPORADAS</span><b id="career-seasons">0</b><small>completadas</small></article>
           </section>
@@ -132,9 +133,9 @@
       </section>
 
       <section id="account-screen" class="screen sub-screen hidden">
-        <header class="sub-header"><button class="back-button" data-view="home">← <span>Volver</span></button><a class="brand" href="#"><span class="brand-mark">F</span> FIELD</a><span class="version">TU CARRERA, EN CUALQUIER DISPOSITIVO</span></header>
+        <header class="sub-header"><button class="back-button" data-view="home">← <span>Volver</span></button><a class="brand" href="#"><span class="brand-mark">FA</span> Fútbol arcade</a><span class="version">TU CARRERA, EN CUALQUIER DISPOSITIVO</span></header>
         <div class="account-layout">
-          <div class="editor-copy"><p class="eyebrow">CUENTA FIELD</p><h2>Tu juego.<br><em>Tu progreso.</em></h2><p>Inicia sesión para guardar nivel, estadísticas, trofeos y tu competición en la nube.</p><div class="account-feature-list"><span>✓ Progreso hasta nivel 100</span><span>✓ Goles, victorias y temporadas</span><span>✓ Copas y partidas pendientes</span></div></div>
+          <div class="editor-copy"><p class="eyebrow">CUENTA Fútbol arcade</p><h2>Tu juego.<br><em>Tu progreso.</em></h2><p>Inicia sesión para guardar nivel, estadísticas, trofeos y tu competición en la nube.</p><div class="account-feature-list"><span>✓ Progreso hasta nivel 100</span><span>✓ Goles, victorias y temporadas</span><span>✓ Copas y partidas pendientes</span></div></div>
           <div class="account-card">
             <div id="account-auth-panel">
               <p class="card-kicker">PERFIL EN LA NUBE</p><h3 id="account-form-title">Inicia sesión</h3>
@@ -159,7 +160,7 @@
       </section>
 
       <section id="competition-screen" class="screen sub-screen hidden">
-        <header class="sub-header"><button class="back-button" data-view="home">← <span>Volver</span></button><a class="brand" href="#"><span class="brand-mark">F</span> FIELD</a><span class="version">ELIGE TU COMPETICIÓN</span></header>
+        <header class="sub-header"><button class="back-button" data-view="home">← <span>Volver</span></button><a class="brand" href="#"><span class="brand-mark">FA</span> Fútbol arcade</a><span class="version">ELIGE TU COMPETICIÓN</span></header>
         <div class="competition-select-layout">
           <div class="editor-copy"><p class="eyebrow">FÚTBOL INTERNACIONAL Y DE CLUBES</p><h2>Una copa.<br><em>Tu historia.</em></h2><p>Desliza entre torneos y temporadas. Cada competición tiene su propio camino.</p></div>
           <div class="competition-picker-card" id="competition-picker-card">
@@ -178,18 +179,24 @@
       </section>
 
       <section id="tournament-screen" class="screen sub-screen hidden">
-        <header class="sub-header"><button class="back-button" data-view="competitions">← <span>Competiciones</span></button><a class="brand" href="#"><span class="brand-mark">F</span> FIELD</a><span id="tournament-header-tag" class="version">COPA CONTINENTAL</span></header>
+        <header class="sub-header"><button class="back-button" data-view="competitions">← <span>Competiciones</span></button><a class="brand" href="#"><span class="brand-mark">FA</span> Fútbol arcade</a><span id="tournament-header-tag" class="version">COPA CONTINENTAL</span></header>
         <div class="competition-layout champions-layout"><div class="editor-copy"><p id="tournament-eyebrow" class="eyebrow">TORNEO</p><h2 id="tournament-title">Camino a<br><em>Champions.</em></h2><p id="tournament-description">16 equipos, eliminatorias directas y cuatro rondas hasta la final.</p></div><div class="competition-card champions-card"><div id="tournament-emblem" class="competition-emblem">✦</div><div class="champions-card-heading"><div><p class="card-kicker">SORTEO ALEATORIO</p><span>OCTAVOS · CUARTOS · SEMIS · FINAL</span></div><b id="tournament-team-count">16 CLUBES</b></div><div id="tournament-roster" class="tournament-roster" aria-label="Equipos del torneo"></div><button id="tournament-start" class="primary-button">Empezar Champions <span>↗</span></button></div></div>
       </section>
 
       <section id="league-screen" class="screen sub-screen hidden">
-        <header class="sub-header"><button class="back-button" data-view="home">← <span>Volver</span></button><a class="brand" href="#"><span class="brand-mark">F</span> FIELD</a><span class="version">TEMPORADA COMPLETA</span></header>
-        <div class="competition-layout"><div class="editor-copy"><p class="eyebrow">LIGA NACIONAL</p><h2>Dieciséis<br><em>jornadas.</em></h2><p>Elige el campeonato y los goles necesarios para ganar cada partido.</p></div><div class="competition-card league-card"><div class="league-icon">▤</div><p class="card-kicker">CONFIGURA LA COMPETICIÓN</p><label class="field-label" for="league-competition">LIGA NACIONAL</label><select id="league-competition" class="wide-select"></select><p id="league-competition-summary" class="league-summary"></p><label class="field-label" for="league-goal-target">GANAR EL PARTIDO A</label><select id="league-goal-target" class="wide-select"><option value="2" selected>2 goles</option><option value="3">3 goles</option><option value="5">5 goles</option></select><div class="league-stat"><b>16</b><span>JORNADAS</span></div><div class="league-stat"><b>3</b><span>PUNTOS POR VICTORIA</span></div><div class="league-stat"><b>100 XP</b><span>POR PARTIDO GANADO</span></div><button id="league-start" class="primary-button">Empezar temporada <span>↗</span></button></div></div>
+        <header class="sub-header"><button class="back-button" data-view="home">← <span>Volver</span></button><a class="brand" href="#"><span class="brand-mark">FA</span> Fútbol arcade</a><span class="version">TEMPORADA COMPLETA</span></header>
+        <div class="competition-layout"><div class="editor-copy"><p class="eyebrow">LIGA NACIONAL</p><h2>Diecinueve<br><em>jornadas.</em></h2><p>Elige el campeonato y los goles necesarios para ganar cada partido.</p></div><div class="competition-card league-card"><div class="league-icon">▤</div><p class="card-kicker">CONFIGURA LA COMPETICIÓN</p><label class="field-label" for="league-competition">LIGA NACIONAL</label><select id="league-competition" class="wide-select"></select><p id="league-competition-summary" class="league-summary"></p><label class="field-label" for="league-goal-target">GANAR EL PARTIDO A</label><select id="league-goal-target" class="wide-select"><option value="2" selected>2 goles</option><option value="3">3 goles</option><option value="5">5 goles</option></select><div class="league-stat league-stat-rounds"><b>19</b><span>JORNADAS</span></div><div class="league-stat"><b>3</b><span>PUNTOS POR VICTORIA</span></div><div class="league-stat"><b>50 XP</b><span>POR PARTIDO</span></div><button id="league-start" class="primary-button">Empezar temporada <span>↗</span></button></div></div>
+      </section>
+
+
+      <section id="missions-screen" class="screen sub-screen hidden">
+        <header class="sub-header"><button class="back-button" data-view="home">← <span>Inicio</span></button><a class="brand" href="#"><span class="brand-mark">FA</span> Fútbol arcade</a><span class="version">DESAFÍOS Y RECOMPENSAS</span></header>
+        <div class="missions-layout"><div class="editor-copy"><p class="eyebrow">JUEGA Y GANA</p><h2>Misiones<br><em>de carrera.</em></h2><p>Completa objetivos durante tus partidos para conseguir monedas y experiencia. Las recompensas se añaden automáticamente.</p></div><div id="missions-list" class="missions-list" aria-live="polite"></div></div>
       </section>
 
       <section id="game-screen" class="screen game-screen hidden">
-        <header class="game-header"><a class="brand" href="#"><span class="brand-mark">F</span> FIELD</a><div class="scoreboard"><div class="score-team"><i id="player-dot"></i><span id="hud-player-name">JUGADOR</span></div><b id="score">0 <small>:</small> 0</b><div class="score-team bot-team"><span id="hud-opponent-name">BOT</span><i id="opponent-dot"></i></div></div><div class="game-tools"><span id="timer">00:00</span><button id="pause-button" class="pause-button" aria-label="Pausar">Ⅱ</button></div></header>
-        <div class="field-wrap"><canvas id="game-canvas" aria-label="Campo de fútbol. Usa WASD o flechas para moverte y espacio para disparar."></canvas><div id="connection-banner" class="connection-banner hidden" aria-live="assertive"></div><div id="goal-banner" class="goal-banner hidden"><span>¡GOOOL!</span><small>QUÉ GOLAZO</small></div><div id="countdown-banner" class="countdown-banner hidden" aria-live="assertive" aria-label="Cuenta atrás"></div><div class="touch-controls" aria-label="Controles táctiles"><div class="touch-pad"><button type="button" data-touch-code="KeyW" aria-label="Arriba">▲</button><button type="button" data-touch-code="KeyA" aria-label="Izquierda">◀</button><button type="button" data-touch-code="KeyS" aria-label="Abajo">▼</button><button type="button" data-touch-code="KeyD" aria-label="Derecha">▶</button></div><button type="button" data-touch-code="Space" class="touch-kick" aria-label="Disparar"><span>✹</span><b>TIRAR</b></button></div><div id="pause-overlay" class="pause-overlay hidden"><div class="pause-panel"><p class="eyebrow">PARTIDO EN PAUSA</p><h2>Toma aire.</h2><button id="resume-button" class="primary-button">Seguir jugando <span>▶</span></button><button id="quit-button" class="plain-button">Guardar y salir al menú</button></div></div><div id="result-overlay" class="pause-overlay result-overlay hidden"><div class="pause-panel result-panel"><p class="eyebrow" id="result-eyebrow">FINAL DEL PARTIDO</p><h2 id="result-title">Victoria</h2><p id="result-copy" class="result-copy"></p><div class="result-reward"><b id="result-xp">+100 XP</b><span id="result-level">NIVEL 1</span></div><div class="result-xp-track"><i id="result-xp-fill"></i></div><p id="result-online-status" class="result-online-status hidden" aria-live="polite"></p><button id="result-rematch" class="primary-button hidden" type="button">Pedir revancha <span>↻</span></button><button id="result-next" class="primary-button hidden">Siguiente partido <span>↗</span></button><button id="result-finish" class="plain-button">Volver al menú</button></div></div></div>
+        <header class="game-header"><a class="brand" href="#"><span class="brand-mark">FA</span> Fútbol arcade</a><div class="scoreboard"><div class="score-team"><i id="player-dot"></i><span id="hud-player-name">JUGADOR</span></div><b id="score">0 <small>:</small> 0</b><div class="score-team bot-team"><span id="hud-opponent-name">BOT</span><i id="opponent-dot"></i></div></div><div class="game-tools"><span id="timer">00:00</span><button id="pause-button" class="pause-button" aria-label="Pausar">Ⅱ</button></div></header>
+        <div class="field-wrap"><canvas id="game-canvas" aria-label="Campo de fútbol. Usa WASD o flechas para moverte y espacio para disparar."></canvas><div id="connection-banner" class="connection-banner hidden" aria-live="assertive"></div><div id="goal-banner" class="goal-banner hidden"><span>¡GOOOL!</span><small>QUÉ GOLAZO</small></div><div id="countdown-banner" class="countdown-banner hidden" aria-live="assertive" aria-label="Cuenta atrás"></div><div class="touch-controls" aria-label="Controles táctiles"><div class="touch-pad"><button type="button" data-touch-code="KeyW" aria-label="Arriba">▲</button><button type="button" data-touch-code="KeyA" aria-label="Izquierda">◀</button><button type="button" data-touch-code="KeyS" aria-label="Abajo">▼</button><button type="button" data-touch-code="KeyD" aria-label="Derecha">▶</button></div><button type="button" data-touch-code="Space" class="touch-kick" aria-label="Disparar"><span>✹</span><b>TIRAR</b></button></div><div id="pause-overlay" class="pause-overlay hidden"><div class="pause-panel"><p class="eyebrow">PARTIDO EN PAUSA</p><h2>Toma aire.</h2><button id="resume-button" class="primary-button">Seguir jugando <span>▶</span></button><button id="quit-button" class="plain-button">Guardar y salir al menú</button></div></div><div id="result-overlay" class="pause-overlay result-overlay hidden"><div class="pause-panel result-panel"><p class="eyebrow" id="result-eyebrow">FINAL DEL PARTIDO</p><h2 id="result-title">Victoria</h2><p id="result-copy" class="result-copy"></p><div id="result-stats" class="result-stats hidden"><div id="result-trophy" class="result-trophy" aria-hidden="true"><svg viewBox="0 0 100 100"><path d="M31 13h38v14c0 19-7 29-19 33-12-4-19-14-19-33V13Z" fill="currentColor"/><path d="M31 20H15v9c0 12 7 19 21 19M69 20h16v9c0 12-7 19-21 19" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round"/><path d="M50 60v20M35 86h30M40 80h20" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round"/><path d="m50 22 3.5 7 7.7 1.1-5.6 5.4 1.3 7.6-6.9-3.6-6.9 3.6 1.3-7.6-5.6-5.4 7.7-1.1L50 22Z" fill="#122017"/></svg></div><div class="result-stat-grid"><div><span>DURACIÓN</span><b id="result-stat-duration">00:00</b></div><div><span>MINUTOS DE GOL</span><b id="result-stat-goals">—</b></div><div><span>TIROS · TÚ / RIVAL</span><b id="result-stat-shots">0 · 0</b></div></div></div><div class="result-reward"><b id="result-xp">+100 XP</b><span id="result-level">NIVEL 1</span></div><div class="result-xp-track"><i id="result-xp-fill"></i></div><p id="result-online-status" class="result-online-status hidden" aria-live="polite"></p><button id="result-rematch" class="primary-button hidden" type="button">Pedir revancha <span>↻</span></button><button id="result-next" class="primary-button hidden">Siguiente partido <span>↗</span></button><button id="result-finish" class="plain-button">Volver al menú</button></div></div></div>
         <footer class="game-footer"><div class="controls-hint"><span class="keycap">W</span><span class="keycap">A</span><span class="keycap">S</span><span class="keycap">D</span><span>moverse</span><span class="keycap space-key">ESPACIO</span><span>disparar</span></div><div id="shot-power-status" class="shot-power-status" role="status" aria-label="Tiro de fuego disponible"><span>✹</span><b>TIRO FUEGO</b><small id="shot-power-time">LISTO</small></div><div class="training-tools hidden" id="training-tools"><label class="trajectory-toggle"><input id="trajectory-toggle" type="checkbox"><span></span> Trayectoria de la pelota</label><button id="reset-ball" class="tiny-button">↻ Pelota</button><button id="reset-player" class="tiny-button">↻ Jugador</button></div><span class="mode-label" id="mode-label">PARTIDO CONTRA BOT</span></footer>
       </section>
     </main>

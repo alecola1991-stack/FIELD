@@ -1,5 +1,5 @@
 const BASE_KEY = 'field-career-profile';
-const statKeys = ['matches', 'wins', 'losses', 'goalsFor', 'goalsAgainst', 'trainingGoals', 'leagueSeasons', 'timePlayedSeconds', 'bestScore'];
+const statKeys = ['matches', 'wins', 'losses', 'goalsFor', 'goalsAgainst', 'trainingGoals', 'leagueSeasons', 'timePlayedSeconds', 'bestScore', 'coinsEarned', 'coinsSpent'];
 
 export class CareerProfile {
   constructor(scope = 'guest') { this.scope = normalizeScope(scope); this.load(); }
@@ -13,6 +13,8 @@ export class CareerProfile {
     if (!Object.keys(this.shards).length) this.shards.legacy = normalizeStats(saved.stats);
     this.stats = sumShards(this.shards);
     this.trophies = Array.isArray(saved.trophies) ? saved.trophies.filter(item => item && typeof item.id === 'string').slice(0, 200) : [];
+    this.ownedItems = Array.isArray(saved.ownedItems) ? [...new Set(saved.ownedItems.filter(item => typeof item === 'string'))] : [];
+    this.equipped = normalizeEquipped(saved.equipped);
   }
 
   setScope(scope) { this.scope = normalizeScope(scope); this.load(); }
@@ -27,7 +29,17 @@ export class CareerProfile {
   recordMatch(won, { playerScore = 0, elapsedSeconds = 0 } = {}) {
     const shard = this.deviceShard(); shard.matches++; shard[won ? 'wins' : 'losses']++;
     shard.timePlayedSeconds += safeCount(elapsedSeconds); shard.bestScore = Math.max(shard.bestScore, safeCount(playerScore));
+    this.earnCoins(20 + (won ? 10 : 0));
     this.refreshStats(); this.save();
+  }
+  earnCoins(amount) { this.deviceShard().coinsEarned += safeCount(amount); this.refreshStats(); this.save(); }
+  buyItem(id, cost) {
+    if (this.ownedItems.includes(id) || this.stats.coinsEarned - this.stats.coinsSpent < safeCount(cost)) return false;
+    this.deviceShard().coinsSpent += safeCount(cost); this.ownedItems.push(id); this.refreshStats(); this.save(); return true;
+  }
+  equipItem(id, slot, value) {
+    if (!this.ownedItems.includes(id)) return false;
+    this.equipped = { ...this.equipped, [slot]: value }; this.save(); return true;
   }
   recordLeagueSeason() { this.deviceShard().leagueSeasons++; this.refreshStats(); this.save(); }
   ensureProgressionWins(wins) {
@@ -42,13 +54,15 @@ export class CareerProfile {
   toJSON() {
     const shards = {};
     for (const [device, stats] of Object.entries(this.shards)) shards[device] = { ...stats };
-    return { stats: { ...this.stats }, shards, trophies: this.trophies.map(item => ({ ...item })) };
+    return { stats: { ...this.stats }, shards, trophies: this.trophies.map(item => ({ ...item })), ownedItems: [...this.ownedItems], equipped: { ...this.equipped } };
   }
   apply(value = {}) {
     this.shards = normalizeShards(value.shards);
     if (!Object.keys(this.shards).length) this.shards.legacy = normalizeStats(value.stats);
     this.refreshStats();
     this.trophies = Array.isArray(value.trophies) ? value.trophies.filter(item => item && typeof item.id === 'string').slice(0, 200) : [];
+    this.ownedItems = Array.isArray(value.ownedItems) ? [...new Set(value.ownedItems.filter(item => typeof item === 'string'))] : [];
+    this.equipped = normalizeEquipped(value.equipped);
     this.save();
   }
   merge(value = {}) {
@@ -63,6 +77,9 @@ export class CareerProfile {
     for (const trophy of value.trophies || []) if (trophy && typeof trophy.id === 'string' && !known.has(trophy.id)) { this.trophies.push(trophy); known.add(trophy.id); }
     this.trophies.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
     this.trophies = this.trophies.slice(0, 200); this.save();
+    this.ownedItems = [...new Set([...this.ownedItems, ...(Array.isArray(value.ownedItems) ? value.ownedItems.filter(item => typeof item === 'string') : [])])];
+    this.equipped = { ...normalizeEquipped(value.equipped), ...this.equipped };
+    this.refreshStats(); this.save();
   }
   deviceShard() { return this.shards[getDeviceId()] || (this.shards[getDeviceId()] = normalizeStats({})); }
   refreshStats() { this.stats = sumShards(this.shards); }
@@ -72,6 +89,9 @@ export class CareerProfile {
 function safeCount(value) { return Number.isFinite(Number(value)) ? Math.max(0, Math.min(1_000_000_000, Math.floor(Number(value)))) : 0; }
 function normalizeScope(scope) { return scope && scope !== 'guest' ? String(scope).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 100) || 'guest' : 'guest'; }
 function normalizeStats(value = {}) { return Object.fromEntries(statKeys.map(key => [key, safeCount(value?.[key])])); }
+function normalizeEquipped(value = {}) {
+  return { circleRelief: ['off', 'raised'].includes(value?.circleRelief) ? value.circleRelief : 'off', shotEffect: ['off', 'neon', 'fire'].includes(value?.shotEffect) ? value.shotEffect : 'off', ballSkin: ['classic', 'gold'].includes(value?.ballSkin) ? value.ballSkin : 'classic' };
+}
 function normalizeShards(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   return Object.fromEntries(Object.entries(value).slice(0, 100).filter(([id, stats]) => typeof id === 'string').map(([id, stats]) => [id.slice(0, 100), normalizeStats(stats)]));

@@ -44,7 +44,7 @@ export class Renderer {
     if (game.trajectory) this.drawTrajectory(c, game.ball);
     if (game.shotRangeTimer > 0) this.drawShotRange(c, game.player, game.ball, game.shotRangeTimer);
     if (game.bot) this.drawPlayer(c, game.bot, game.bot.color);
-    this.drawPlayer(c, game.player, game.player.color, game.cosmetics?.playerEffect);
+    this.drawPlayer(c, game.player, game.player.color, game.cosmetics?.playerEffect, game.cosmetics?.circleRelief);
     if (game.cosmetics?.shotEffect !== 'off') this.drawShotEffect(c, game.ball, game.cosmetics.shotEffect);
     this.drawBall(c, game.ball, game.cosmetics?.ballSkin);
     this.updateParticles(c, dt);
@@ -68,12 +68,6 @@ export class Renderer {
     c.strokeRect(left, top, right - left, bottom - top);
     c.beginPath(); c.moveTo(WORLD.width / 2, top); c.lineTo(WORLD.width / 2, bottom); c.stroke();
     c.beginPath(); c.arc(WORLD.width / 2, WORLD.height / 2, WORLD.centerCircleRadius, 0, Math.PI * 2); c.stroke();
-    if (['raised', 'gold'].includes(cosmetics.circleRelief)) {
-      const cx = WORLD.width / 2, cy = WORLD.height / 2, radius = WORLD.centerCircleRadius, gold = cosmetics.circleRelief === 'gold';
-      c.save(); c.shadowColor = gold ? '#f4cd62' : '#08110d'; c.shadowBlur = gold ? 12 : 8; c.shadowOffsetY = 3;
-      c.strokeStyle = gold ? 'rgba(104,72,15,.9)' : 'rgba(5,15,11,.72)'; c.lineWidth = 5; c.beginPath(); c.arc(cx, cy, radius + 1, 0, Math.PI * 2); c.stroke();
-      c.shadowColor = 'transparent'; c.shadowBlur = 0; c.shadowOffsetY = 0; c.strokeStyle = gold ? 'rgba(255,229,145,.92)' : 'rgba(223,255,236,.62)'; c.lineWidth = 1.5; c.beginPath(); c.arc(cx, cy, radius - 1, Math.PI * 1.05, Math.PI * 1.95); c.stroke(); c.restore();
-    }
     if (cupMatch) {
       const cx = WORLD.width / 2, cy = WORLD.height / 2;
       c.beginPath(); c.arc(cx, cy, WORLD.centerCircleRadius + 7, 0, Math.PI * 2); c.strokeStyle = `${theme.accent}55`; c.lineWidth = importantMatch ? 3 : 1.5; c.stroke();
@@ -99,7 +93,7 @@ export class Renderer {
     const blend = .33; entity._rx += (entity.x - entity._rx) * blend; entity._ry += (entity.y - entity._ry) * blend;
     return [entity._rx, entity._ry];
   }
-  drawPlayer(c, player, color, effect = 'off') {
+  drawPlayer(c, player, color, effect = 'off', relief = 'off') {
     const [x, y] = this.smooth(player), r = player.radius, kick = player.kickScale || 0;
     c.save(); c.translate(x, y);
     if (effect === 'speed' && Math.hypot(player.vx || 0, player.vy || 0) > 35) { c.save(); c.rotate(Math.atan2(player.vy, player.vx)); c.globalAlpha = .58; c.strokeStyle = color; c.lineCap = 'round'; for (let i=0;i<3;i++) { c.lineWidth=2-i*.35; c.beginPath(); c.moveTo(-r-3,(i-1)*5); c.lineTo(-r-13-i*5,(i-1)*7); c.stroke(); } c.restore(); }
@@ -116,6 +110,13 @@ export class Renderer {
       c.arc(0, 0, r, -Math.PI / 2, Math.PI / 2); c.lineTo(0, r); c.closePath(); c.fill();
     }
     c.strokeStyle = '#ffffff70'; c.lineWidth = 1.5; c.stroke();
+    if (relief === 'raised' || relief === 'gold') {
+      const gold = relief === 'gold';
+      c.save(); c.lineWidth = 2.8; c.shadowColor = gold ? '#f4cd62' : '#07110d'; c.shadowBlur = gold ? 10 : 6; c.shadowOffsetY = 2;
+      c.strokeStyle = gold ? 'rgba(116,78,14,.95)' : 'rgba(4,13,10,.86)'; c.beginPath(); c.arc(0, 0, r - 1, 0, Math.PI * 2); c.stroke();
+      c.shadowColor = 'transparent'; c.shadowBlur = 0; c.shadowOffsetY = 0; c.lineWidth = 1.2;
+      c.strokeStyle = gold ? 'rgba(255,232,157,.95)' : 'rgba(238,255,245,.72)'; c.beginPath(); c.arc(0, 0, r - 2, Math.PI * 1.08, Math.PI * 1.92); c.stroke(); c.restore();
+    }
     c.font = '700 15px "DM Mono",monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
     c.lineWidth = 2.5; c.lineJoin = 'round'; c.strokeStyle = 'rgba(5,12,10,.8)'; c.strokeText(String(player.number), 0, 1);
     c.fillStyle = readable(color); c.fillText(String(player.number), 0, 1);

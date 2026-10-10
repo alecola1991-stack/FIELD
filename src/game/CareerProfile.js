@@ -1,5 +1,5 @@
 const BASE_KEY = 'field-career-profile';
-const statKeys = ['matches', 'wins', 'losses', 'goalsFor', 'goalsAgainst', 'trainingGoals', 'leagueSeasons'];
+const statKeys = ['matches', 'wins', 'losses', 'goalsFor', 'goalsAgainst', 'trainingGoals', 'leagueSeasons', 'timePlayedSeconds', 'bestScore'];
 
 export class CareerProfile {
   constructor(scope = 'guest') { this.scope = normalizeScope(scope); this.load(); }
@@ -24,7 +24,11 @@ export class CareerProfile {
     this.refreshStats();
     this.save();
   }
-  recordMatch(won) { const shard = this.deviceShard(); shard.matches++; shard[won ? 'wins' : 'losses']++; this.refreshStats(); this.save(); }
+  recordMatch(won, { playerScore = 0, elapsedSeconds = 0 } = {}) {
+    const shard = this.deviceShard(); shard.matches++; shard[won ? 'wins' : 'losses']++;
+    shard.timePlayedSeconds += safeCount(elapsedSeconds); shard.bestScore = Math.max(shard.bestScore, safeCount(playerScore));
+    this.refreshStats(); this.save();
+  }
   recordLeagueSeason() { this.deviceShard().leagueSeasons++; this.refreshStats(); this.save(); }
   ensureProgressionWins(wins) {
     const shard = this.deviceShard(); shard.wins = Math.max(shard.wins, safeCount(wins));
@@ -72,7 +76,7 @@ function normalizeShards(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   return Object.fromEntries(Object.entries(value).slice(0, 100).filter(([id, stats]) => typeof id === 'string').map(([id, stats]) => [id.slice(0, 100), normalizeStats(stats)]));
 }
-function sumShards(shards) { const total = normalizeStats({}); for (const shard of Object.values(shards)) for (const key of statKeys) total[key] = Math.min(1_000_000_000, total[key] + safeCount(shard[key])); return total; }
+function sumShards(shards) { const total = normalizeStats({}); for (const shard of Object.values(shards)) for (const key of statKeys) total[key] = key === 'bestScore' ? Math.max(total[key], safeCount(shard[key])) : Math.min(1_000_000_000, total[key] + safeCount(shard[key])); return total; }
 function getDeviceId() {
   const key = 'field-device-id';
   try {

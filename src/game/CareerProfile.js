@@ -1,5 +1,6 @@
 const BASE_KEY = 'field-career-profile';
 const statKeys = ['matches', 'wins', 'losses', 'goalsFor', 'goalsAgainst', 'trainingGoals', 'leagueSeasons', 'timePlayedSeconds', 'bestScore', 'coinsEarned', 'coinsSpent'];
+const PROMO_CODES = { adminxela1721: { coins: 90000 } };
 
 export class CareerProfile {
   constructor(scope = 'guest') { this.scope = normalizeScope(scope); this.load(); }
@@ -15,6 +16,7 @@ export class CareerProfile {
     this.trophies = Array.isArray(saved.trophies) ? saved.trophies.filter(item => item && typeof item.id === 'string').slice(0, 200) : [];
     this.ownedItems = Array.isArray(saved.ownedItems) ? [...new Set(saved.ownedItems.filter(item => typeof item === 'string'))] : [];
     this.equipped = normalizeEquipped(saved.equipped);
+    this.redeemedCodes = normalizeRedeemedCodes(saved.redeemedCodes);
   }
 
   setScope(scope) { this.scope = normalizeScope(scope); this.load(); }
@@ -33,9 +35,22 @@ export class CareerProfile {
     this.refreshStats(); this.save();
   }
   earnCoins(amount) { this.deviceShard().coinsEarned += safeCount(amount); this.refreshStats(); this.save(); }
+  redeemPromoCode(value) {
+    const code = String(value || '').trim().toLowerCase();
+    const reward = PROMO_CODES[code];
+    if (!reward) return { ok: false, reason: 'invalid' };
+    if (this.redeemedCodes.includes(code)) return { ok: false, reason: 'used' };
+    const shardId = `promo:${code}`;
+    const shard = this.shards[shardId] || (this.shards[shardId] = normalizeStats({}));
+    shard.coinsEarned = Math.max(shard.coinsEarned, reward.coins);
+    this.redeemedCodes.push(code);
+    this.refreshStats(); this.save();
+    return { ok: true, coins: reward.coins, balance: this.stats.coinsEarned - this.stats.coinsSpent };
+  }
   buyItem(id, cost) {
-    if (this.ownedItems.includes(id) || this.stats.coinsEarned - this.stats.coinsSpent < safeCount(cost)) return false;
-    this.deviceShard().coinsSpent += safeCount(cost); this.ownedItems.push(id); this.refreshStats(); this.save(); return true;
+    const price = safeCount(cost);
+    if (this.ownedItems.includes(id) || this.stats.coinsEarned - this.stats.coinsSpent < price) return false;
+    this.deviceShard().coinsSpent += price; this.ownedItems.push(id); this.refreshStats(); this.save(); return true;
   }
   equipItem(id, slot, value) {
     if (!this.ownedItems.includes(id)) return false;
@@ -54,7 +69,7 @@ export class CareerProfile {
   toJSON() {
     const shards = {};
     for (const [device, stats] of Object.entries(this.shards)) shards[device] = { ...stats };
-    return { stats: { ...this.stats }, shards, trophies: this.trophies.map(item => ({ ...item })), ownedItems: [...this.ownedItems], equipped: { ...this.equipped } };
+    return { stats: { ...this.stats }, shards, trophies: this.trophies.map(item => ({ ...item })), ownedItems: [...this.ownedItems], equipped: { ...this.equipped }, redeemedCodes: [...this.redeemedCodes] };
   }
   apply(value = {}) {
     this.shards = normalizeShards(value.shards);
@@ -63,6 +78,7 @@ export class CareerProfile {
     this.trophies = Array.isArray(value.trophies) ? value.trophies.filter(item => item && typeof item.id === 'string').slice(0, 200) : [];
     this.ownedItems = Array.isArray(value.ownedItems) ? [...new Set(value.ownedItems.filter(item => typeof item === 'string'))] : [];
     this.equipped = normalizeEquipped(value.equipped);
+    this.redeemedCodes = normalizeRedeemedCodes(value.redeemedCodes);
     this.save();
   }
   merge(value = {}) {
@@ -79,6 +95,7 @@ export class CareerProfile {
     this.trophies = this.trophies.slice(0, 200); this.save();
     this.ownedItems = [...new Set([...this.ownedItems, ...(Array.isArray(value.ownedItems) ? value.ownedItems.filter(item => typeof item === 'string') : [])])];
     this.equipped = { ...normalizeEquipped(value.equipped), ...this.equipped };
+    this.redeemedCodes = [...new Set([...this.redeemedCodes, ...normalizeRedeemedCodes(value.redeemedCodes)])];
     this.refreshStats(); this.save();
   }
   deviceShard() { return this.shards[getDeviceId()] || (this.shards[getDeviceId()] = normalizeStats({})); }
@@ -89,6 +106,7 @@ export class CareerProfile {
 function safeCount(value) { return Number.isFinite(Number(value)) ? Math.max(0, Math.min(1_000_000_000, Math.floor(Number(value)))) : 0; }
 function normalizeScope(scope) { return scope && scope !== 'guest' ? String(scope).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 100) || 'guest' : 'guest'; }
 function normalizeStats(value = {}) { return Object.fromEntries(statKeys.map(key => [key, safeCount(value?.[key])])); }
+function normalizeRedeemedCodes(value) { return Array.isArray(value) ? [...new Set(value.filter(code => typeof code === 'string').map(code => code.trim().toLowerCase()).filter(code => Object.hasOwn(PROMO_CODES, code)))].slice(0, 100) : []; }
 function normalizeEquipped(value = {}) {
   return {
     circleRelief: ['off', 'raised', 'gold'].includes(value?.circleRelief) ? value.circleRelief : 'off',

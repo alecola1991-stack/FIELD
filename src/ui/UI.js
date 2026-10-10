@@ -43,7 +43,7 @@ export class UI {
     this.settings.cosmetics = this.career.equipped;
     if (this.career.stats.matches === 0 && this.career.stats.wins === 0 && this.progression.wins > 0) this.career.ensureProgressionWins(this.progression.wins);
     this.tournament = null; this.league = null; this.pendingMode = null; this.pendingCompetition = null; this.pendingTeamType = 'all'; this.selectedCompetition = 'champions'; this.competitionIndex = 0; this.selectedTeamId = ''; this.teamCursor = new Map(); this.storeTab = 'shop'; this.storeCategory = 'all';
-    this.currentMatchMode = null; this.currentMatchOptions = null; this.confetti = new Confetti();
+    this.currentMatchMode = null; this.currentMatchOptions = null; this.autoMatchmaking = false; this.confetti = new Confetti();
     this.activeLeague = TEAM_LEAGUES[0].id;
     this.screens = {
       home: document.querySelector('#home-screen'), play: document.querySelector('#play-screen'), store: document.querySelector('#store-screen'), customize: document.querySelector('#customize-screen'),
@@ -68,7 +68,7 @@ export class UI {
       'menu-backdrop',
       'continue-competition','continue-detail','league-goal-target','trajectory-enabled','shot-power-time',
       'online-room-input','online-room-panel','online-status','online-room-code-wrap','online-room-code',
-      'online-find-match',
+      'online-find-match','online-cancel',
       'career-avatar','career-team-label','career-name','career-subtitle','career-level','career-xp','career-xp-fill','career-matches','career-wins','career-winrate','career-goals','career-best','career-time','career-seasons','trophy-summary','trophy-percent','trophy-progress-fill','trophy-grid','trophy-detail','trophy-toast','trophy-toast-name',
     ];
     for (const id of ids) this[id.replaceAll('-', '_')] = document.getElementById(id);
@@ -806,6 +806,7 @@ export class UI {
   }
 
   openOnline() {
+    this.autoMatchmaking = false;
     this.online_room_panel.classList.add('hidden');
     this.online_room_code_wrap.classList.add('hidden');
     this.online_room_input.value = '';
@@ -815,6 +816,7 @@ export class UI {
 
   async createOnlineRoom() {
     if (!this.profileComplete()) { this.pendingMode = 'online'; this.openProfile(); return; }
+    this.autoMatchmaking = false;
     try {
       this.online_room_panel.classList.remove('hidden');
       this.updateOnlineStatus('connecting');
@@ -826,6 +828,7 @@ export class UI {
 
   async findOnlineMatch() {
     if (!this.profileComplete()) { this.pendingMode = 'online'; this.openProfile(); return; }
+    this.autoMatchmaking = true;
     try {
       this.online_room_panel.classList.remove('hidden');
       this.online_room_code_wrap.classList.add('hidden');
@@ -836,6 +839,7 @@ export class UI {
 
   async joinOnlineRoom() {
     if (!this.profileComplete()) { this.pendingMode = 'online'; this.openProfile(); return; }
+    this.autoMatchmaking = false;
     try {
       this.online_room_panel.classList.remove('hidden');
       this.online_room_code_wrap.classList.add('hidden');
@@ -850,12 +854,13 @@ export class UI {
     if (!this.online_status) return;
     this.online_room_panel.classList.toggle('hidden', status === 'idle');
     const messages = {
-      idle: '', connecting: 'Conectando con Supabase Realtime…',
-      ready: this.onlineMatch?.role === 'host' ? 'Sala creada. Comparte el código y espera a tu rival.' : 'Conectado. Buscando la sala…',
+      idle: '', connecting: this.autoMatchmaking ? 'Conectando con tu rival…' : 'Conectando con Supabase Realtime…',
+      ready: this.autoMatchmaking ? 'Conexión lista. Esperando a tu rival…' : this.onlineMatch?.role === 'host' ? 'Sala creada. Comparte el código y espera a tu rival.' : 'Conectado. Buscando la sala…',
       searching: 'Buscando rival… Te emparejaremos en cuanto haya alguien disponible.',
       matching: 'Rival encontrado. Preparando el partido…',
       waiting: 'Sala encontrada. Preparando el partido…', 'peer-left': 'Tu rival se ha desconectado.',
     };
+    this.online_cancel.textContent = ['searching', 'matching'].includes(status) || (this.autoMatchmaking && ['connecting', 'ready'].includes(status)) ? 'Cancelar búsqueda' : 'Cancelar sala';
     this.online_status.textContent = status === 'error' ? (detail || 'No se pudo conectar. Comprueba el código e inténtalo de nuevo.') : (messages[status] || 'Conectando…');
     this.online_status.classList.toggle('error', status === 'error' || status === 'peer-left');
   }
@@ -869,6 +874,7 @@ export class UI {
   }
 
   startOnlineMatch(info) {
+    this.autoMatchmaking = false;
     const other = info.opponent || {};
     const opponentTeam = getTeamById(other.teamId);
     const team = opponentTeam ? { name: opponentTeam.name, primary: opponentTeam.primary, secondary: opponentTeam.secondary } : null;
@@ -937,6 +943,7 @@ export class UI {
   }
 
   async cancelOnlineRoom() {
+    this.autoMatchmaking = false;
     await this.onlineMatch?.leave();
     this.game?.stop(); this.currentMatchMode = null; this.currentMatchOptions = null;
     this.openOnline();

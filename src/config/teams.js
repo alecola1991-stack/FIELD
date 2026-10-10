@@ -2,10 +2,15 @@
 // there are no crests, kit images, or copied league graphics.
 export const TEAM_LEAGUES = [
   { id: 'laliga', label: 'LaLiga · España 26/27' },
+  { id: 'laliga2', label: 'LaLiga Hypermotion · España 26/27' },
   { id: 'premier', label: 'Premier League · Inglaterra 26/27' },
+  { id: 'championship', label: 'Championship · Inglaterra 26/27' },
   { id: 'serie-a', label: 'Serie A · Italia 26/27' },
+  { id: 'serie-b', label: 'Serie B · Italia 26/27' },
   { id: 'ligue-1', label: 'Ligue 1 · Francia 26/27' },
+  { id: 'ligue-2', label: 'Ligue 2 · Francia 26/27' },
   { id: 'bundesliga', label: 'Bundesliga · Alemania 26/27' },
+  { id: 'bundesliga-2', label: '2. Bundesliga · Alemania 26/27' },
 ];
 
 export const NATIONAL_GROUPS = [
@@ -28,6 +33,19 @@ export const TEAMS = [
     ['sociedad', 'Real Sociedad', '#1766AA', '#FFFFFF'], ['sevilla', 'Sevilla', '#D71920', '#FFFFFF'],
     ['valencia', 'Valencia', '#171717', '#FFFFFF'], ['villarreal', 'Villarreal', '#FFE500', '#0755A4'],
   ]),
+  ...define('laliga2', [
+    ['almeria', 'Almería', '#D71920', '#FFFFFF'], ['andorra', 'FC Andorra', '#E32636', '#171717'],
+    ['burgos', 'Burgos CF', '#171717', '#FFFFFF'], ['cadiz', 'Cádiz', '#F3D21A', '#1766AA'],
+    ['castellon', 'Castellón', '#171717', '#FFFFFF'], ['cordoba', 'Córdoba', '#16834A', '#FFFFFF'],
+    ['ceuta', 'AD Ceuta', '#171717', '#D71920'], ['eldense', 'CD Eldense', '#D71920', '#171717'],
+    ['eibar', 'Eibar', '#D71920', '#1766AA'], ['granada', 'Granada', '#D71920', '#FFFFFF'],
+    ['girona', 'Girona', '#D71920', '#FFFFFF'], ['las-palmas', 'Las Palmas', '#F5D61D', '#1766AA'],
+    ['leganes', 'Leganés', '#16834A', '#FFFFFF'], ['mallorca', 'Mallorca', '#D71920', '#171717'],
+    ['oviedo', 'Real Oviedo', '#1766AA', '#F5D61D'], ['sabadell', 'CE Sabadell', '#1766AA', '#FFFFFF'],
+    ['real-sociedad-b', 'Real Sociedad B', '#1766AA', '#FFFFFF'], ['sporting', 'Sporting de Gijón', '#D71920', '#1766AA'],
+    ['tenerife', 'Tenerife', '#FFFFFF', '#1766AA'], ['valladolid', 'Real Valladolid', '#6B3FA0', '#FFFFFF'],
+    ['celta-fortuna', 'Celta Fortuna', '#8CC7E8', '#FFFFFF'], ['albacete', 'Albacete', '#FFFFFF', '#D71920'],
+  ]),
   ...define('premier', [
     ['arsenal', 'Arsenal', '#EF0107', '#FFFFFF'], ['aston-villa', 'Aston Villa', '#670E36', '#95BFE5'],
     ['bournemouth', 'Bournemouth', '#DA291C', '#171717'], ['brentford', 'Brentford', '#D71920', '#FFFFFF'],
@@ -39,6 +57,20 @@ export const TEAMS = [
     ['man-city', 'Manchester City', '#6CABDD', '#FFFFFF'], ['man-united', 'Manchester United', '#DA291C', '#FBE122'],
     ['newcastle', 'Newcastle United', '#171717', '#FFFFFF'], ['nottingham', 'Nottingham Forest', '#DD0000', '#FFFFFF'],
     ['sunderland', 'Sunderland', '#EB172B', '#FFFFFF'], ['tottenham', 'Tottenham Hotspur', '#FFFFFF', '#132257'],
+  ]),
+  ...define('championship', [
+    ['birmingham', 'Birmingham City', '#1766AA', '#FFFFFF'], ['blackburn', 'Blackburn Rovers', '#1766AA', '#FFFFFF'],
+    ['bristol-city', 'Bristol City', '#D71920', '#FFFFFF'], ['charlton', 'Charlton Athletic', '#D71920', '#FFFFFF'],
+    ['derby', 'Derby County', '#171717', '#FFFFFF'], ['hull', 'Hull City', '#F5A623', '#171717'],
+    ['ipswich', 'Ipswich Town', '#0054A6', '#FFFFFF'], ['leicester', 'Leicester City', '#1766AA', '#F5D61D'],
+    ['middlesbrough', 'Middlesbrough', '#D71920', '#FFFFFF'], ['millwall', 'Millwall', '#1766AA', '#FFFFFF'],
+    ['norwich', 'Norwich City', '#F5D61D', '#16834A'], ['oxford', 'Oxford United', '#F5D61D', '#1766AA'],
+    ['portsmouth', 'Portsmouth', '#1766AA', '#FFFFFF'], ['preston', 'Preston North End', '#FFFFFF', '#1766AA'],
+    ['qpr', 'Queens Park Rangers', '#1766AA', '#FFFFFF'], ['sheffield-united', 'Sheffield United', '#D71920', '#171717'],
+    ['sheffield-wednesday', 'Sheffield Wednesday', '#1766AA', '#FFFFFF'], ['southampton', 'Southampton', '#D71920', '#FFFFFF'],
+    ['stoke', 'Stoke City', '#D71920', '#FFFFFF'], ['swansea', 'Swansea City', '#FFFFFF', '#171717'],
+    ['watford', 'Watford', '#F5D61D', '#D71920'], ['west-brom', 'West Bromwich Albion', '#FFFFFF', '#6B3FA0'],
+    ['wrexham', 'Wrexham', '#D71920', '#FFFFFF'], ['brentford', 'Brentford', '#D71920', '#FFFFFF'],
   ]),
   ...define('serie-a', [
     ['atalanta', 'Atalanta', '#142D4E', '#171717'], ['bologna', 'Bologna', '#D71920', '#142D4E'],
@@ -52,6 +84,18 @@ export const TEAMS = [
     ['sassuolo', 'Sassuolo', '#167A48', '#171717'], ['torino', 'Torino', '#7C263A', '#FFFFFF'],
     ['udinese', 'Udinese', '#171717', '#FFFFFF'], ['venezia', 'Venezia', '#171717', '#D99A3D'],
   ]),
+  ...define('serie-b', [
+    ['arezzo', 'Arezzo', '#D71920', '#171717'], ['ascoli', 'Ascoli', '#171717', '#FFFFFF'],
+    ['avellino', 'Avellino', '#16834A', '#FFFFFF'], ['benevento', 'Benevento', '#F5D61D', '#D71920'],
+    ['carrarese', 'Carrarese', '#1766AA', '#FFFFFF'], ['catanzaro', 'Catanzaro', '#F5D61D', '#D71920'],
+    ['cesena', 'Cesena', '#171717', '#FFFFFF'], ['cremonese', 'Cremonese', '#D71920', '#FFFFFF'],
+    ['empoli', 'Empoli', '#1766AA', '#FFFFFF'], ['hellas-verona', 'Hellas Verona', '#F5D61D', '#1766AA'],
+    ['juve-stabia', 'Juve Stabia', '#F5D61D', '#171717'], ['vicenza', 'L.R. Vicenza', '#D71920', '#FFFFFF'],
+    ['mantova', 'Mantova', '#D71920', '#FFFFFF'], ['modena', 'Modena', '#F5D61D', '#1766AA'],
+    ['padova', 'Padova', '#D71920', '#FFFFFF'], ['palermo', 'Palermo', '#6B3FA0', '#F5D61D'],
+    ['pisa', 'Pisa', '#171717', '#FFFFFF'], ['sampdoria', 'Sampdoria', '#1766AA', '#D71920'],
+    ['sudtirol', 'Südtirol', '#D71920', '#FFFFFF'], ['virtus-entella', 'Virtus Entella', '#1766AA', '#FFFFFF'],
+  ]),
   ...define('ligue-1', [
     ['angers', 'Angers', '#171717', '#FFFFFF'], ['auxerre', 'Auxerre', '#1766AA', '#FFFFFF'],
     ['brest', 'Brest', '#D71920', '#FFFFFF'], ['le-havre', 'Le Havre', '#7CCBEF', '#142D4E'],
@@ -63,6 +107,17 @@ export const TEAMS = [
     ['rennes', 'Rennes', '#D71920', '#171717'], ['strasbourg', 'Strasbourg', '#1766AA', '#FFFFFF'],
     ['toulouse', 'Toulouse', '#6B3FA0', '#FFFFFF'], ['troyes', 'Troyes', '#1766AA', '#FFFFFF'],
   ]),
+  ...define('ligue-2', [
+    ['amiens', 'Amiens SC', '#171717', '#FFFFFF'], ['annecy', 'FC Annecy', '#D71920', '#1766AA'],
+    ['bastia', 'Bastia', '#1766AA', '#FFFFFF'], ['boulogne', 'Boulogne', '#D71920', '#171717'],
+    ['clermont', 'Clermont Foot', '#D71920', '#1766AA'], ['dunkerque', 'Dunkerque', '#F5D61D', '#D71920'],
+    ['grenoble', 'Grenoble Foot 38', '#1766AA', '#D71920'], ['guingamp', 'Guingamp', '#D71920', '#171717'],
+    ['laval', 'Laval', '#D71920', '#F5D61D'], ['le-mans', 'Le Mans', '#D71920', '#F2C230'],
+    ['montpellier', 'Montpellier', '#F07825', '#1766AA'], ['nancy', 'Nancy', '#D71920', '#FFFFFF'],
+    ['pau', 'Pau FC', '#F5D61D', '#1766AA'], ['red-star', 'Red Star FC', '#16834A', '#FFFFFF'],
+    ['rodez', 'Rodez AF', '#D71920', '#F5D61D'], ['saint-etienne', 'Saint-Étienne', '#16834A', '#FFFFFF'],
+    ['troyes', 'Troyes', '#1766AA', '#FFFFFF'], ['valenciennes', 'Valenciennes', '#D71920', '#FFFFFF'],
+  ]),
   ...define('bundesliga', [
     ['augsburg', 'Augsburg', '#167A48', '#FFFFFF'], ['union-berlin', 'Union Berlin', '#D71920', '#FFFFFF'],
     ['werder', 'Werder Bremen', '#167A48', '#FFFFFF'], ['dortmund', 'Borussia Dortmund', '#FDE100', '#171717'],
@@ -73,6 +128,17 @@ export const TEAMS = [
     ['mainz', 'Mainz 05', '#D71920', '#FFFFFF'], ['gladbach', 'Borussia Mönchengladbach', '#171717', '#FFFFFF'],
     ['bayern', 'Bayern München', '#D71920', '#1766AA'], ['paderborn', 'SC Paderborn 07', '#1766AA', '#171717'],
     ['schalke', 'Schalke 04', '#1766AA', '#FFFFFF'], ['stuttgart', 'VfB Stuttgart', '#FFFFFF', '#D71920'],
+  ]),
+  ...define('bundesliga-2', [
+    ['bochum', 'VfL Bochum', '#1766AA', '#FFFFFF'], ['braunschweig', 'Eintracht Braunschweig', '#F5D61D', '#1766AA'],
+    ['darmstadt', 'SV Darmstadt 98', '#1766AA', '#FFFFFF'], ['dusseldorf', 'Fortuna Düsseldorf', '#D71920', '#FFFFFF'],
+    ['dresden', 'Dynamo Dresden', '#F5D61D', '#171717'], ['elversberg', 'SV Elversberg', '#171717', '#FFFFFF'],
+    ['furth', 'Greuther Fürth', '#16834A', '#FFFFFF'], ['hannover', 'Hannover 96', '#16834A', '#171717'],
+    ['hertha', 'Hertha BSC', '#1766AA', '#FFFFFF'], ['kaiserslautern', 'Kaiserslautern', '#D71920', '#FFFFFF'],
+    ['karlsruhe', 'Karlsruher SC', '#1766AA', '#FFFFFF'], ['magdeburg', '1. FC Magdeburg', '#1766AA', '#FFFFFF'],
+    ['munster', 'Preußen Münster', '#16834A', '#FFFFFF'], ['nurnberg', '1. FC Nürnberg', '#D71920', '#FFFFFF'],
+    ['paderborn', 'SC Paderborn 07', '#1766AA', '#171717'], ['schalke', 'Schalke 04', '#1766AA', '#FFFFFF'],
+    ['bielefeld', 'Arminia Bielefeld', '#171717', '#FFFFFF'], ['kiel', 'Holstein Kiel', '#16834A', '#FFFFFF'],
   ]),
 ];
 
@@ -107,6 +173,29 @@ export const NATIONAL_TEAMS = [
     ['honduras', 'Honduras', '#1765A8', '#F4F2E9'], ['guatemala', 'Guatemala', '#79BCE8', '#F4F2E9'],
   ]),
 ];
+
+// Strength influences both the selector and the opponent AI. Ratings are a
+// gameplay estimate rather than an official ranking.
+const FIVE_STAR = new Set([
+  'laliga-barcelona', 'laliga-real-madrid', 'laliga-atletico', 'premier-man-city',
+  'premier-liverpool', 'premier-arsenal', 'serie-a-inter', 'serie-a-juventus', 'serie-a-milan',
+  'ligue-1-psg', 'bundesliga-bayern', 'bundesliga-dortmund', 'europe-spain', 'europe-france',
+  'europe-england', 'europe-germany', 'america-argentina', 'america-brazil',
+]);
+const FOUR_STAR = new Set([
+  'laliga-athletic', 'laliga-betis', 'laliga-sociedad', 'laliga-sevilla', 'laliga-villarreal',
+  'premier-aston-villa', 'premier-chelsea', 'premier-newcastle', 'premier-tottenham',
+  'serie-a-atalanta', 'serie-a-napoli', 'serie-a-roma', 'ligue-1-monaco', 'ligue-1-marseille',
+  'ligue-1-lyon', 'bundesliga-leipzig', 'bundesliga-leverkusen', 'bundesliga-stuttgart',
+  'europe-portugal', 'europe-netherlands', 'europe-belgium', 'america-uruguay', 'america-colombia',
+]);
+const ONE_STAR = new Set([
+  'laliga2-ceuta', 'laliga2-real-sociedad-b', 'championship-oxford', 'serie-b-virtus-entella',
+  'ligue-2-boulogne', 'bundesliga-2-munster', 'europe-hungary', 'america-bolivia',
+]);
+for (const team of [...TEAMS, ...NATIONAL_TEAMS]) {
+  team.stars = FIVE_STAR.has(team.id) ? 5 : FOUR_STAR.has(team.id) ? 4 : ONE_STAR.has(team.id) ? 1 : team.league.endsWith('2') || team.league === 'championship' || team.league === 'serie-b' || team.league === 'ligue-2' ? 2 : 3;
+}
 
 export const TEAM_GROUPS = [...TEAM_LEAGUES, ...NATIONAL_GROUPS];
 export const PROFILE_TEAMS = [...TEAMS, ...NATIONAL_TEAMS];

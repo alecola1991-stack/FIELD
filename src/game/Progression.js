@@ -47,7 +47,12 @@ export class Progression {
 
   awardMatch(won = false) {
     if (won) this.wins++;
-    let gained = this.level === MAX_LEVEL ? 0 : MATCH_XP;
+    const reward = this.awardXP(MATCH_XP);
+    return { ...reward, wins: this.wins };
+  }
+
+  awardXP(amount = 0) {
+    const gained = this.level === MAX_LEVEL ? 0 : Math.max(0, Math.floor(Number(amount) || 0));
     const oldLevel = this.level;
     this.xp += gained;
     while (this.level < MAX_LEVEL && this.xp >= this.xpForNextLevel()) {

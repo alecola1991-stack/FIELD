@@ -108,7 +108,7 @@ export class Game {
       if (this.state.goalTimer <= 0) {
         if (this.state.matchOver) {
           this.state.paused = true;
-          this.hooks.onMatchEnd?.({ mode: this.state.mode, playerScore: this.state.scorePlayer, botScore: this.state.scoreBot, winner: this.state.scorePlayer > this.state.scoreBot ? 'player' : 'opponent' });
+          this.hooks.onMatchEnd?.({ mode: this.state.mode, elapsedSeconds: this.state.elapsed, playerScore: this.state.scorePlayer, botScore: this.state.scoreBot, winner: this.state.scorePlayer > this.state.scoreBot ? 'player' : 'opponent' });
         } else { this.resetPositions(); this.beginCountdown(); }
       }
       return;
@@ -267,7 +267,7 @@ export class Game {
     if (this.state.matchOver && this.state.goalTimer <= 0 && !this.onlineMatchEnded) {
       this.onlineMatchEnded = true;
       this.state.paused = true;
-      this.hooks.onMatchEnd?.({ mode: 'online', playerScore: this.state.scorePlayer, botScore: this.state.scoreBot, winner: this.state.scorePlayer > this.state.scoreBot ? 'player' : 'opponent' });
+      this.hooks.onMatchEnd?.({ mode: 'online', elapsedSeconds: this.state.elapsed, playerScore: this.state.scorePlayer, botScore: this.state.scoreBot, winner: this.state.scorePlayer > this.state.scoreBot ? 'player' : 'opponent' });
     }
     return true;
   }

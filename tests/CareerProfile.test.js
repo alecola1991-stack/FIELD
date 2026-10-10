@@ -44,15 +44,38 @@ test('play coins, purchases, and unlocked cosmetics persist and merge idempotent
 });
 
 test('cosmetics cannot be bought without enough earned coins', () => {
-  memoryStorage(); const profile = new CareerProfile(); profile.earnCoins(79);
-  assert.equal(profile.buyItem('circle-raised',80),false); assert.deepEqual(profile.ownedItems,[]);
-  profile.earnCoins(1); assert.equal(profile.buyItem('circle-raised',80),true);
-  assert.equal(profile.stats.coinsEarned-profile.stats.coinsSpent,0); assert.equal(profile.buyItem('circle-raised',80),false);
+  memoryStorage();
+  const profile = new CareerProfile();
+  profile.earnCoins(79);
+  assert.equal(profile.buyItem('circle-raised', 80), false);
+  assert.deepEqual(profile.ownedItems, []);
+  profile.earnCoins(1);
+  assert.equal(profile.buyItem('circle-raised', 80), true);
+  assert.equal(profile.stats.coinsEarned - profile.stats.coinsSpent, 0);
+  assert.equal(profile.buyItem('circle-raised', 80), false);
 });
 
 test('new cosmetic equipment slots persist with safe defaults', () => {
-  memoryStorage(); const profile = new CareerProfile();
-  profile.equipped={...profile.equipped,fieldTint:'lagoon',shotEffect:'aurora',ballSkin:'cosmic',playerEffect:'halo',goalEffect:'fireworks',circleRelief:'gold'}; profile.save();
-  const restored=new CareerProfile();
-  assert.deepEqual(restored.equipped,{circleRelief:'gold',fieldTint:'lagoon',shotEffect:'aurora',ballSkin:'cosmic',playerEffect:'halo',goalEffect:'fireworks'});
+  memoryStorage();
+  const profile = new CareerProfile();
+  profile.equipped = { ...profile.equipped, fieldTint: 'lagoon', shotEffect: 'aurora', ballSkin: 'cosmic', playerEffect: 'halo', goalEffect: 'fireworks', circleRelief: 'gold' };
+  profile.save();
+  const restored = new CareerProfile();
+  assert.deepEqual(restored.equipped, { circleRelief: 'gold', fieldTint: 'lagoon', shotEffect: 'aurora', ballSkin: 'cosmic', playerEffect: 'halo', goalEffect: 'fireworks' });
+});
+
+test('promo code grants its coins once and merges idempotently across devices', () => {
+  memoryStorage();
+  const firstDevice = new CareerProfile('player');
+  assert.deepEqual(firstDevice.redeemPromoCode('ADMINxela1721'), { ok: true, coins: 90000, balance: 90000 });
+  assert.equal(firstDevice.redeemPromoCode('adminxela1721').reason, 'used');
+
+  const savedFirstDevice = firstDevice.toJSON();
+  memoryStorage();
+  const secondDevice = new CareerProfile('player');
+  assert.equal(secondDevice.redeemPromoCode('ADMINxela1721').ok, true);
+  secondDevice.merge(savedFirstDevice);
+  assert.equal(secondDevice.stats.coinsEarned - secondDevice.stats.coinsSpent, 90000);
+  assert.equal(secondDevice.redeemPromoCode('ADMINxela1721').reason, 'used');
+  assert.equal(new CareerProfile('player').stats.coinsEarned, 90000);
 });

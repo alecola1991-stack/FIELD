@@ -42,3 +42,17 @@ test('play coins, purchases, and unlocked cosmetics persist and merge idempotent
   assert.deepEqual(restored.ownedItems, ['circle-raised']);
   assert.equal(restored.equipped.circleRelief, 'raised');
 });
+
+test('cosmetics cannot be bought without enough earned coins', () => {
+  memoryStorage(); const profile = new CareerProfile(); profile.earnCoins(79);
+  assert.equal(profile.buyItem('circle-raised',80),false); assert.deepEqual(profile.ownedItems,[]);
+  profile.earnCoins(1); assert.equal(profile.buyItem('circle-raised',80),true);
+  assert.equal(profile.stats.coinsEarned-profile.stats.coinsSpent,0); assert.equal(profile.buyItem('circle-raised',80),false);
+});
+
+test('new cosmetic equipment slots persist with safe defaults', () => {
+  memoryStorage(); const profile = new CareerProfile();
+  profile.equipped={...profile.equipped,fieldTint:'lagoon',shotEffect:'aurora',ballSkin:'cosmic',playerEffect:'halo',goalEffect:'fireworks',circleRelief:'gold'}; profile.save();
+  const restored=new CareerProfile();
+  assert.deepEqual(restored.equipped,{circleRelief:'gold',fieldTint:'lagoon',shotEffect:'aurora',ballSkin:'cosmic',playerEffect:'halo',goalEffect:'fireworks'});
+});

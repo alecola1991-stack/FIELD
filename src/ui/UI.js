@@ -1,6 +1,7 @@
 import { loadSettings, saveSettings, setSettingsScope } from '../config/settings.js';
 import { Progression } from '../game/Progression.js';
 import { CareerProfile } from '../game/CareerProfile.js';
+import { TROPHY_CATALOG, formatPlayTime } from '../game/Achievements.js';
 import { TEAM_LEAGUES, NATIONAL_GROUPS, TEAM_GROUPS, PROFILE_TEAMS, TEAMS, getTeamById } from '../config/teams.js';
 import { CUP_COMPETITIONS, createChampionsDraw, createInternationalDraw, createLeagueOpponents, pickChampionsOpponent } from '../game/Competitions.js';
 import { MenuBackdrop } from './MenuBackdrop.js';
@@ -23,7 +24,7 @@ export class UI {
     this.screens = {
       home: document.querySelector('#home-screen'), customize: document.querySelector('#customize-screen'),
       settings: document.querySelector('#settings-screen'), account: document.querySelector('#account-screen'), online: document.querySelector('#online-screen'), leaderboard: document.querySelector('#leaderboard-screen'), competitions: document.querySelector('#competition-screen'), tournament: document.querySelector('#tournament-screen'),
-      league: document.querySelector('#league-screen'), game: document.querySelector('#game-screen'),
+      league: document.querySelector('#league-screen'), game: document.querySelector('#game-screen'), profile: document.querySelector('#profile-screen'),
     };
     this.cacheElements(); this.menuBackdrop = new MenuBackdrop(this.menu_backdrop); this.populateTeamPicker(); this.populateLeagueCompetitions(); this.fillInputs(); this.bind(); this.updateLeaguePreview(); this.renderProgress(); this.show('home'); this.refreshContinueButton();
   }
@@ -43,6 +44,7 @@ export class UI {
       'menu-backdrop',
       'continue-competition','continue-detail','league-goal-target','trajectory-enabled','shot-power-time',
       'online-room-input','online-room-panel','online-status','online-room-code-wrap','online-room-code',
+      'career-avatar','career-team-label','career-name','career-subtitle','career-level','career-xp','career-xp-fill','career-matches','career-wins','career-winrate','career-goals','career-best','career-time','career-seasons','trophy-summary','trophy-percent','trophy-progress-fill','trophy-grid','trophy-detail','trophy-toast','trophy-toast-name',
     ];
     for (const id of ids) this[id.replaceAll('-', '_')] = document.getElementById(id);
   }
@@ -114,6 +116,8 @@ export class UI {
       else this.show(button.dataset.view);
     }));
     document.getElementById('account-open').addEventListener('click', () => { this.renderAccount(); this.show('account'); });
+    document.getElementById('profile-account-open').addEventListener('click', () => { this.renderAccount(); this.show('account'); });
+    this.trophy_grid.addEventListener('click', event => { const button = event.target.closest('[data-trophy-id]'); if (button) { this.renderTrophyDetail(button.dataset.trophyId); this.sound?.play('select'); } });
     this.account_form.addEventListener('submit', event => { event.preventDefault(); this.submitAccount(); });
     document.getElementById('online-create-room').addEventListener('click', () => this.createOnlineRoom());
     document.getElementById('online-join-room').addEventListener('click', () => this.joinOnlineRoom());
@@ -291,13 +295,81 @@ export class UI {
     else for (const trophy of this.career.trophies) { const chip = document.createElement('span'); chip.className = 'trophy-chip'; const cup = document.createElement('i'); const title = document.createElement('span'); title.textContent = trophy.name; chip.append(cup, title); this.account_trophies.append(chip); }
   }
 
+  renderProfile() {
+    const stats = this.career.stats, team = getTeamById(this.settings.teamId);
+    const name = this.settings.profileReady && this.settings.name ? this.settings.name.trim() : (this.user?.email?.split('@')[0] || 'Jugador');
+    this.career_name.textContent = name; this.career_avatar.textContent = [...name][0]?.toUpperCase() || 'F';
+    this.career_avatar.style.setProperty('--avatar-color', team?.primary || '#65e6a5'); this.career_team_label.textContent = team ? '· ' + team.name : '';
+    this.career_subtitle.textContent = this.user ? 'Cuenta conectada · progreso sincronizado' : 'Progreso guardado en este dispositivo';
+    this.career_level.textContent = String(this.progression.level);
+    this.career_xp.textContent = this.progression.level >= Progression.maxLevel ? 'NIVEL MÁXIMO' : this.progression.xp + ' / ' + this.progression.xpForNextLevel() + ' XP';
+    this.career_xp_fill.style.width = (this.progression.progressRatio() * 100) + '%';
+    this.career_matches.textContent = String(stats.matches); this.career_wins.textContent = String(stats.wins);
+    this.career_winrate.textContent = (stats.matches ? Math.round(stats.wins / stats.matches * 100) : 0) + ' % de victorias';
+    this.career_goals.textContent = String(stats.goalsFor); this.career_best.textContent = String(stats.bestScore);
+    this.career_time.textContent = formatPlayTime(stats.timePlayedSeconds); this.career_seasons.textContent = String(stats.leagueSeasons);
+    this.renderTrophyGrid();
+  }
+
+  renderTrophyGrid() {
+    const trophies = new Map(this.career.trophies.map(item => [item.id, item]));
+    const context = { stats: this.career.stats, progression: this.progression, trophies: new Set(trophies.keys()) };
+    const unlockedCount = TROPHY_CATALOG.filter(item => item.test(context)).length;
+    const percent = Math.round(unlockedCount / TROPHY_CATALOG.length * 100);
+    this.trophy_summary.textContent = unlockedCount + ' de ' + TROPHY_CATALOG.length + ' trofeos desbloqueados';
+    this.trophy_percent.textContent = percent + '%'; this.trophy_progress_fill.style.width = percent + '%'; this.trophy_grid.replaceChildren();
+    for (const item of TROPHY_CATALOG) {
+      const earned = item.test(context), button = document.createElement('button');
+      button.type = 'button'; button.className = 'trophy-card' + (earned ? ' earned' : ' locked'); button.dataset.trophyId = item.id;
+      button.setAttribute('aria-label', item.name + ', ' + (earned ? 'desbloqueado' : 'bloqueado'));
+      button.setAttribute('aria-pressed', this.trophy_detail.dataset.selected === item.id ? 'true' : 'false');
+      const icon = document.createElement('span'); icon.className = 'trophy-icon'; icon.setAttribute('aria-hidden', 'true'); icon.textContent = earned ? item.icon : '· · ·';
+      const title = document.createElement('b'); title.textContent = item.name;
+      const state = document.createElement('small'); state.textContent = earned ? 'DESBLOQUEADO' : 'BLOQUEADO';
+      button.append(icon, title, state); this.trophy_grid.append(button);
+    }
+    if (this.trophy_detail.dataset.selected) this.renderTrophyDetail(this.trophy_detail.dataset.selected);
+  }
+
+  renderTrophyDetail(id) {
+    const item = TROPHY_CATALOG.find(trophy => trophy.id === id); if (!item) return;
+    const saved = this.career.trophies.find(trophy => trophy.id === id);
+    const earned = item.test({ stats: this.career.stats, progression: this.progression, trophies: new Set(this.career.trophies.map(trophy => trophy.id)) });
+    this.trophy_detail.dataset.selected = id;
+    this.trophy_grid.querySelectorAll('[data-trophy-id]').forEach(button => button.setAttribute('aria-pressed', button.dataset.trophyId === id ? 'true' : 'false'));
+    const icon = document.createElement('span'); icon.className = 'trophy-detail-icon'; icon.textContent = earned ? item.icon : '◇';
+    const state = document.createElement('small'); state.className = 'trophy-detail-state'; state.textContent = earned ? 'TROFEO DESBLOQUEADO' : 'TROFEO BLOQUEADO';
+    const title = document.createElement('b'); title.textContent = item.name;
+    const description = document.createElement('p'); description.textContent = item.description;
+    const condition = document.createElement('p'); condition.className = 'trophy-condition'; condition.textContent = 'Condición: ' + item.requirement;
+    const date = document.createElement('small'); date.className = 'trophy-earned-date';
+    date.textContent = earned && saved?.date ? 'Conseguido el ' + new Date(saved.date).toLocaleDateString('es-ES') : (earned ? 'Requisito cumplido' : 'Aún no conseguido');
+    this.trophy_detail.replaceChildren(icon, state, title, description, condition, date);
+  }
+
+  checkAchievements() {
+    const context = { stats: this.career.stats, progression: this.progression, trophies: new Set(this.career.trophies.map(item => item.id)) };
+    for (const item of TROPHY_CATALOG) if (item.test(context) && !context.trophies.has(item.id)) {
+      if (this.unlockTrophy(item.id, item.name)) context.trophies.add(item.id);
+    }
+  }
+
+  unlockTrophy(id, name) {
+    if (!this.career.awardTrophy(id, name)) return false;
+    this.sound?.play('trophy'); this.trophy_toast_name.textContent = name;
+    this.trophy_toast.classList.remove('show'); void this.trophy_toast.offsetWidth; this.trophy_toast.classList.add('show');
+    clearTimeout(this.trophyToastTimer); this.trophyToastTimer = setTimeout(() => this.trophy_toast.classList.remove('show'), 3800);
+    this.renderAccount(); if (this.screens.profile && !this.screens.profile.classList.contains('hidden')) this.renderProfile();
+    return true;
+  }
+
   setAccountMessage(message, error = false, success = false) {
     this.account_message.textContent = message; this.account_message.classList.toggle('error', error); this.account_message.classList.toggle('success', success);
   }
 
   recordGoal(side) {
     this.career.recordGoal(side, this.currentMatchMode === 'training'); this.renderAccount();
-    this.syncAccount(false);
+    this.checkAchievements(); this.syncAccount(false);
   }
 
   profileComplete() {
@@ -491,6 +563,7 @@ export class UI {
   show(view) {
     for (const [key, screen] of Object.entries(this.screens)) screen.classList.toggle('hidden', key !== view);
     this.menuBackdrop?.setActive(view === 'home');
+    if (view === 'profile') this.renderProfile();
     if (view === 'game') requestAnimationFrame(() => this.game?.renderer.resize());
   }
 
@@ -501,7 +574,7 @@ export class UI {
     this.wins_label.textContent = `${progress.wins} VICTORIAS`;
     this.xp_fill.style.width = `${progress.progressRatio() * 100}%`;
     this.updateDifficultyControls();
-    this.renderAccount();
+    this.renderAccount(); this.checkAchievements();
   }
 
   updateDifficultyControls() {
@@ -812,9 +885,10 @@ export class UI {
 
   handleMatchEnd(result) {
     const won = result.winner === 'player';
-    if (result.mode !== 'training') this.career.recordMatch(won);
+    if (result.mode !== 'training') this.career.recordMatch(won, { playerScore: result.playerScore, elapsedSeconds: result.elapsedSeconds });
     const reward = result.mode !== 'training' ? this.progression.awardMatch(won) : null;
     if (won) this.confetti.play();
+    this.sound?.play(won ? 'win' : 'loss');
     this.renderProgress();
     const rewardText = !reward ? 'Sin XP en entrenamiento.' : (reward.gained ? `+${reward.gained} XP por jugar.` : 'Nivel máximo alcanzado.');
     const levelText = reward?.leveledUp ? ` ¡Has subido al nivel ${reward.level}!` : '';
@@ -831,7 +905,7 @@ export class UI {
       else if (cup.round >= cup.totalRounds) {
         cup.status = 'champion';
         const competition = CUP_COMPETITIONS.find(item => item.id === cup.competitionId) || CUP_COMPETITIONS[0];
-        this.career.awardTrophy(cup.competitionId, competition.name);
+        this.unlockTrophy(cup.competitionId, competition.name);
         this.result_eyebrow.textContent = 'CAMPEONES'; this.result_title.textContent = '¡Ganaste la copa!'; this.result_copy.textContent = `Victorias: ${cup.totalRounds}. ${rewardText}${levelText}`;
       }
       else { cup.status = 'next'; this.result_eyebrow.textContent = `RONDA ${cup.round}/${cup.totalRounds} SUPERADA`; this.result_next.textContent = `Jugar ${ROUND_NAMES[cup.size === 16 ? cup.round : cup.round + 1].toLowerCase()} →`; this.result_next.classList.remove('hidden'); this.result_finish.textContent = 'Abandonar torneo'; }
@@ -845,7 +919,7 @@ export class UI {
         this.career.recordLeagueSeason();
         if (season.points >= 30) {
           const competition = TEAM_LEAGUES.find(item => item.id === season.competitionId) || TEAM_LEAGUES[0];
-          this.career.awardTrophy(`league-${season.competitionId}`, `Campeón · ${competition.label.split(' · ')[0]}`);
+          this.unlockTrophy(`league-${season.competitionId}`, `Campeón · ${competition.label.split(' · ')[0]}`);
         }
         this.result_copy.textContent = `16 jornadas · ${season.points} puntos · ${season.wins}V ${season.losses}D. ${rewardText}${levelText}`;
       } else {

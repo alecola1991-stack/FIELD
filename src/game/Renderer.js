@@ -44,11 +44,11 @@ export class Renderer {
     if (game.trajectory) this.drawTrajectory(c, game.ball);
     if (game.shotRangeTimer > 0) this.drawShotRange(c, game.player, game.ball, game.shotRangeTimer);
     if (game.bot) this.drawPlayer(c, game.bot, game.bot.color);
-    this.drawPlayer(c, game.player, game.player.color);
+    this.drawPlayer(c, game.player, game.player.color, game.cosmetics?.playerEffect);
     if (game.cosmetics?.shotEffect !== 'off') this.drawShotEffect(c, game.ball, game.cosmetics.shotEffect);
     this.drawBall(c, game.ball, game.cosmetics?.ballSkin);
     this.updateParticles(c, dt);
-    if (game.goalTimer > 0) { c.fillStyle = `rgba(220,255,235,${Math.min(.075, game.goalTimer * .05)})`; c.fillRect(W.left, W.top, W.right - W.left, W.bottom - W.top); }
+    if (game.goalTimer > 0) { c.fillStyle = `rgba(220,255,235,${Math.min(.075, game.goalTimer * .05)})`; c.fillRect(W.left, W.top, W.right - W.left, W.bottom - W.top); this.drawGoalEffect(c, game.goalTimer, game.cosmetics?.goalEffect); }
   }
   drawField(c, themeName = 'arcade', round = 0, cosmetics = {}) {
     const { left, right, top, bottom, goalTop, goalBottom, goalBack } = WORLD;
@@ -60,6 +60,7 @@ export class Renderer {
     c.fillStyle = theme.net; c.fillRect(goalBack, goalTop, left - goalBack, goalBottom - goalTop); c.fillRect(right, goalTop, WORLD.width - goalBack - right, goalBottom - goalTop);
     c.save(); c.beginPath(); c.rect(left, top, right - left, bottom - top); c.clip();
     c.fillStyle = theme.grass; c.fillRect(left, top, right - left, bottom - top);
+    const tint = { mint: 'rgba(40,210,133,.15)', dusk: 'rgba(105,86,210,.19)', lagoon: 'rgba(20,166,195,.17)' }[cosmetics.fieldTint]; if (tint) { c.fillStyle = tint; c.fillRect(left, top, right - left, bottom - top); }
     const stripe = (right - left) / 10;
     for (let i = 0; i < 10; i += 2) { c.fillStyle = theme.stripe; c.fillRect(left + i * stripe, top, stripe, bottom - top); }
     c.restore();
@@ -67,11 +68,11 @@ export class Renderer {
     c.strokeRect(left, top, right - left, bottom - top);
     c.beginPath(); c.moveTo(WORLD.width / 2, top); c.lineTo(WORLD.width / 2, bottom); c.stroke();
     c.beginPath(); c.arc(WORLD.width / 2, WORLD.height / 2, WORLD.centerCircleRadius, 0, Math.PI * 2); c.stroke();
-    if (cosmetics.circleRelief === 'raised') {
-      const cx = WORLD.width / 2, cy = WORLD.height / 2, radius = WORLD.centerCircleRadius;
-      c.save(); c.shadowColor = '#08110d'; c.shadowBlur = 8; c.shadowOffsetY = 3;
-      c.strokeStyle = 'rgba(5,15,11,.72)'; c.lineWidth = 5; c.beginPath(); c.arc(cx, cy, radius + 1, 0, Math.PI * 2); c.stroke();
-      c.shadowColor = 'transparent'; c.shadowBlur = 0; c.shadowOffsetY = 0; c.strokeStyle = 'rgba(223,255,236,.62)'; c.lineWidth = 1.5; c.beginPath(); c.arc(cx, cy, radius - 1, Math.PI * 1.05, Math.PI * 1.95); c.stroke(); c.restore();
+    if (['raised', 'gold'].includes(cosmetics.circleRelief)) {
+      const cx = WORLD.width / 2, cy = WORLD.height / 2, radius = WORLD.centerCircleRadius, gold = cosmetics.circleRelief === 'gold';
+      c.save(); c.shadowColor = gold ? '#f4cd62' : '#08110d'; c.shadowBlur = gold ? 12 : 8; c.shadowOffsetY = 3;
+      c.strokeStyle = gold ? 'rgba(104,72,15,.9)' : 'rgba(5,15,11,.72)'; c.lineWidth = 5; c.beginPath(); c.arc(cx, cy, radius + 1, 0, Math.PI * 2); c.stroke();
+      c.shadowColor = 'transparent'; c.shadowBlur = 0; c.shadowOffsetY = 0; c.strokeStyle = gold ? 'rgba(255,229,145,.92)' : 'rgba(223,255,236,.62)'; c.lineWidth = 1.5; c.beginPath(); c.arc(cx, cy, radius - 1, Math.PI * 1.05, Math.PI * 1.95); c.stroke(); c.restore();
     }
     if (cupMatch) {
       const cx = WORLD.width / 2, cy = WORLD.height / 2;
@@ -98,9 +99,11 @@ export class Renderer {
     const blend = .33; entity._rx += (entity.x - entity._rx) * blend; entity._ry += (entity.y - entity._ry) * blend;
     return [entity._rx, entity._ry];
   }
-  drawPlayer(c, player, color) {
+  drawPlayer(c, player, color, effect = 'off') {
     const [x, y] = this.smooth(player), r = player.radius, kick = player.kickScale || 0;
     c.save(); c.translate(x, y);
+    if (effect === 'speed' && Math.hypot(player.vx || 0, player.vy || 0) > 35) { c.save(); c.rotate(Math.atan2(player.vy, player.vx)); c.globalAlpha = .58; c.strokeStyle = color; c.lineCap = 'round'; for (let i=0;i<3;i++) { c.lineWidth=2-i*.35; c.beginPath(); c.moveTo(-r-3,(i-1)*5); c.lineTo(-r-13-i*5,(i-1)*7); c.stroke(); } c.restore(); }
+    if (effect === 'halo') { c.save(); c.globalAlpha=.72; c.strokeStyle='#8effc3'; c.shadowColor='#54f2a2'; c.shadowBlur=12; c.lineWidth=2; c.beginPath(); c.arc(0,0,r+5,0,Math.PI*2); c.stroke(); c.restore(); }
     c.fillStyle = '#0005'; c.beginPath(); c.ellipse(2, 8, r * 1.05, r * .82, 0, 0, Math.PI * 2); c.fill();
     c.scale(1 + kick * .18, 1 - kick * .1);
     c.shadowColor = color + '55'; c.shadowBlur = 15;
@@ -123,16 +126,18 @@ export class Renderer {
     const [x, y] = this.smooth(ball), r = ball.radius;
     c.save(); c.translate(x, y); c.fillStyle = '#0007'; c.beginPath(); c.ellipse(2, 5, r * 1.08, r * .76, 0, 0, Math.PI * 2); c.fill();
     c.rotate(ball.spin); c.scale(1 + ball.kickScale * .16, 1 - ball.kickScale * .12);
-    const gold = skin === 'gold'; c.shadowColor = gold ? '#ffd76caa' : '#e9f4ee70'; c.shadowBlur = gold ? 15 : 9; c.fillStyle = gold ? '#f3c85e' : '#e8eee9'; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill(); c.shadowBlur = 0;
-    c.fillStyle = gold ? '#704d14' : '#23352d'; c.beginPath(); c.arc(0, 0, 3.3, 0, Math.PI * 2); c.fill();
+    const styles = { gold:['#f3c85e','#704d14','#ffd76caa'], lava:['#f4773f','#512019','#ff653dcc'], ice:['#b9edf1','#176276','#7feeffcc'], cosmic:['#ab78ed','#241451','#c38effcc'], carbon:['#69757a','#172024','#b5d1d566'] }; const [ballColor,patchColor,glow]=styles[skin]||['#e8eee9','#23352d','#e9f4ee70']; c.shadowColor=glow; c.shadowBlur=skin==='classic'?9:16; c.fillStyle=ballColor; c.beginPath(); c.arc(0,0,r,0,Math.PI*2); c.fill(); c.shadowBlur=0;
+    c.fillStyle = patchColor; c.beginPath(); c.arc(0, 0, 3.3, 0, Math.PI * 2); c.fill();
     for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5; c.beginPath(); c.arc(Math.cos(a) * 7, Math.sin(a) * 7, 2.1, 0, Math.PI * 2); c.fill(); }
     c.restore();
   }
   drawShotEffect(c, ball, effect) {
-    const speed = Math.hypot(ball.vx, ball.vy); if (speed < 105) return;
-    const color = effect === 'fire' ? '#ff9b55' : '#68e8ff';
-    c.save(); c.globalAlpha = Math.min(.78, speed / 650); c.lineWidth = effect === 'fire' ? 8 : 6; c.lineCap = 'round'; c.shadowColor = color; c.shadowBlur = effect === 'fire' ? 15 : 20; c.strokeStyle = color;
-    c.beginPath(); c.moveTo(ball.x, ball.y); c.lineTo(ball.x - ball.vx * .038, ball.y - ball.vy * .038); c.stroke(); c.restore();
+    const speed=Math.hypot(ball.vx,ball.vy); if(speed<105)return; const color={fire:'#ff9b55',neon:'#68e8ff',lightning:'#f4ef75',aurora:'#8c90ff'}[effect]||'#68e8ff'; c.save(); c.globalAlpha=Math.min(.78,speed/650); c.lineWidth=effect==='fire'?8:6; c.lineCap='round'; c.shadowColor=color; c.shadowBlur=effect==='fire'?15:20; c.strokeStyle=color; const x2=ball.x-ball.vx*.038,y2=ball.y-ball.vy*.038;
+    if(effect==='lightning'){const dx=x2-ball.x,dy=y2-ball.y,len=Math.hypot(dx,dy)||1,nx=-dy/len,ny=dx/len;c.lineWidth=3;c.beginPath();c.moveTo(ball.x,ball.y);c.lineTo(ball.x+dx*.36+nx*5,ball.y+dy*.36+ny*5);c.lineTo(ball.x+dx*.62-nx*5,ball.y+dy*.62-ny*5);c.lineTo(x2,y2);c.stroke();}
+    else if(effect==='aurora'){for(const [i,tint] of ['#8c90ff','#67efcf','#ed8bee'].entries()){c.strokeStyle=tint;c.lineWidth=3-i*.4;c.beginPath();c.moveTo(ball.x+i*2,ball.y+i*2);c.quadraticCurveTo((ball.x+x2)/2,(ball.y+y2)/2+(i-1)*7,x2,y2);c.stroke();}}
+    else{c.beginPath();c.moveTo(ball.x,ball.y);c.lineTo(x2,y2);c.stroke();} c.restore();
+  }
+  drawGoalEffect(c,timer,effect){if(!effect||effect==='off')return;const progress=Math.max(0,Math.min(1,1-timer/1.65)),alpha=1-progress;c.save();c.globalAlpha=alpha*.82;c.lineWidth=3;for(const x of [WORLD.left+24,WORLD.right-24]){const radius=18+progress*118;c.strokeStyle=effect==='fireworks'?'#ffb76f':'#8effc1';c.beginPath();c.arc(x,WORLD.height/2,radius,0,Math.PI*2);c.stroke();if(effect==='fireworks')for(let i=0;i<8;i++){const a=i*Math.PI/4+progress*.5,inner=radius+5,outer=radius+13+progress*16;c.strokeStyle=['#ffbd63','#ff73ad','#7ce8ff','#b89cff'][i%4];c.beginPath();c.moveTo(x+Math.cos(a)*inner,WORLD.height/2+Math.sin(a)*inner);c.lineTo(x+Math.cos(a)*outer,WORLD.height/2+Math.sin(a)*outer);c.stroke();}}c.restore();
   }
   drawTrajectory(c, ball) {
     const speed = Math.hypot(ball.vx, ball.vy); if (speed < 35) return;

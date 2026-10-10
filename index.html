@@ -48,8 +48,11 @@
       <section id="store-screen" class="screen sub-screen hidden">
         <header class="sub-header"><button class="back-button" data-view="home">← <span>Inicio</span></button><a class="brand" href="#"><span class="brand-mark">F</span> FIELD</a><span class="version">PERSONALIZA EL CAMPO</span></header>
         <div class="store-heading"><div><p class="eyebrow">TIENDA FIELD</p><h2>Tu estilo.<br><em>Tu juego.</em></h2><p>Completa partidos para ganar monedas. Todo lo que ves aquí es cosmético.</p></div><div class="store-wallet"><span>TU SALDO</span><b id="store-coins">0 <i>◈</i></b></div></div>
+        <nav id="store-tabs" class="store-tabs" role="tablist" aria-label="Tienda e inventario"><button type="button" class="store-tab active" role="tab" aria-selected="true" data-store-tab="shop">Tienda</button><button type="button" class="store-tab" role="tab" aria-selected="false" data-store-tab="inventory">Inventario <span id="inventory-count">0</span></button></nav>
+        <div id="store-loadout" class="store-loadout hidden" aria-label="Objetos equipados"></div>
+        <nav id="store-categories" class="store-categories" aria-label="Categorías de personalización"></nav>
         <div id="store-grid" class="store-grid" aria-live="polite"></div>
-        <p id="store-message" class="store-message" aria-live="polite">Gana 20 ◈ por jugar un partido y 10 ◈ extra si ganas.</p>
+        <p id="store-message" class="store-message" aria-live="polite">Gana monedas jugando y equipa tus artículos desde el inventario.</p>
       </section>
       <section id="online-screen" class="screen sub-screen hidden">
         <header class="sub-header"><button class="back-button" data-view="home">← <span>Volver</span></button><a class="brand" href="#"><span class="brand-mark">F</span> FIELD</a><span class="version">PARTIDA 1 CONTRA 1</span></header>

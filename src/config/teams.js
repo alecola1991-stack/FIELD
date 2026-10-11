@@ -18,6 +18,20 @@ export const NATIONAL_GROUPS = [
   { id: 'america', label: 'América · Selecciones', type: 'national' },
 ];
 
+export const HONORARY_GROUPS = [
+  { id: 'honorificos', label: 'Equipos honoríficos', type: 'honorary' },
+];
+
+export const TEAM_COUNTRIES = [
+  { id: 'spain', label: 'España', groups: ['laliga', 'laliga2'] },
+  { id: 'england', label: 'Inglaterra', groups: ['premier', 'championship'] },
+  { id: 'italy', label: 'Italia', groups: ['serie-a', 'serie-b'] },
+  { id: 'france', label: 'Francia', groups: ['ligue-1', 'ligue-2'] },
+  { id: 'germany', label: 'Alemania', groups: ['bundesliga', 'bundesliga-2'] },
+  { id: 'national', label: 'Selecciones', groups: ['europe', 'america'] },
+  { id: 'honorary', label: 'Honoríficos', groups: ['honorificos'] },
+];
+
 const define = (league, rows) => rows.map(([id, name, primary, secondary]) => ({ league, id: `${league}-${id}`, name: `${name} CF`, primary, secondary }));
 
 export const TEAMS = [
@@ -174,6 +188,11 @@ export const NATIONAL_TEAMS = [
   ]),
 ];
 
+export const HONORARY_TEAMS = [
+  { id: 'honor-cd-san-fernando-1940', name: 'CD San Fernando 1940', league: 'honorificos', type: 'honorary', primary: '#1769AA', secondary: '#FFFFFF', stars: 3 },
+  { id: 'honor-ge-bazan', name: 'GE Bazan', league: 'honorificos', type: 'honorary', primary: '#F3D21B', secondary: '#111111', stars: 3 },
+];
+
 // Strength influences both the selector and the opponent AI. Ratings are a
 // gameplay estimate rather than an official ranking.
 const FIVE_STAR = new Set([
@@ -201,7 +220,8 @@ for (const team of [...TEAMS, ...NATIONAL_TEAMS]) {
   team.stars = FIVE_STAR.has(team.id) ? 5 : FOUR_STAR.has(team.id) ? 4 : ONE_STAR.has(team.id) ? 1 : team.league.endsWith('2') || team.league === 'championship' || team.league === 'serie-b' || team.league === 'ligue-2' ? 2 : 3;
 }
 
-export const TEAM_GROUPS = [...TEAM_LEAGUES, ...NATIONAL_GROUPS];
-export const PROFILE_TEAMS = [...TEAMS, ...NATIONAL_TEAMS];
+export const TEAM_GROUPS = [...TEAM_LEAGUES, ...NATIONAL_GROUPS, ...HONORARY_GROUPS];
+export const TEAM_CLUB_GROUPS = [...TEAM_LEAGUES, ...HONORARY_GROUPS];
+export const PROFILE_TEAMS = [...TEAMS, ...NATIONAL_TEAMS, ...HONORARY_TEAMS];
 const TEAM_MAP = new Map(PROFILE_TEAMS.map(team => [team.id, team]));
 export function getTeamById(id) { return TEAM_MAP.get(id) || null; }

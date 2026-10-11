@@ -170,3 +170,29 @@ button,a,select,input{font:inherit}button{ -webkit-tap-highlight-color:transpare
   .touch-pad{transform:scale(.82);transform-origin:bottom left}
   .touch-kick{width:76px;height:76px}
 }
+
+.league-standings-panel{margin:0 0 14px;padding:11px 12px;border:1px solid #ffffff16;border-radius:12px;background:linear-gradient(145deg,#17231f,#0e1516)}
+.league-standings-panel h3{margin:0 0 8px;color:#b8edcf;font:9px var(--mono);letter-spacing:.08em}
+.league-table-wrap{max-height:220px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#43564b transparent}
+.league-table-wrap table{width:100%;border-collapse:collapse;table-layout:fixed;font:8px var(--mono);color:#bdc9c1}
+.league-table-wrap thead{position:sticky;top:0;background:#17231f;color:#74867b}
+.league-table-wrap th,.league-table-wrap td{padding:6px 4px;border-bottom:1px solid #ffffff0b;text-align:right}
+.league-table-wrap th:nth-child(1),.league-table-wrap td:nth-child(1){width:32px;text-align:center}
+.league-table-wrap th:nth-child(2),.league-table-wrap td:nth-child(2){width:auto;text-align:left}
+.league-table-wrap th:nth-child(3),.league-table-wrap td:nth-child(3){width:28px}
+.league-table-wrap th:nth-child(4),.league-table-wrap td:nth-child(4){width:32px}
+.league-table-wrap th:nth-child(5),.league-table-wrap td:nth-child(5){width:34px}
+.league-table-wrap tbody th{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:inherit}
+.league-table-wrap tr.your-league-team{background:#65e6a516;color:#b8edcf}
+.league-table-wrap tr.your-league-team th,.league-table-wrap tr.your-league-team td:last-child{color:#79e9aa;font-weight:700}
+@media(max-width:600px){.league-standings-panel{padding:9px}.league-table-wrap{max-height:190px}.league-table-wrap table{font-size:7px}.league-table-wrap th,.league-table-wrap td{padding:5px 3px}}
+
+.country-tabs{display:flex;gap:6px;margin:17px 0 7px;overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain}
+.country-tabs::-webkit-scrollbar{display:none}
+.country-tab{flex:none;min-height:35px;padding:8px 12px;border:1px solid #ffffff13;border-radius:8px;background:#0c1518;color:#9ba9a1;font:9px var(--mono);white-space:nowrap;cursor:pointer;transition:background .18s,border-color .18s,color .18s}
+.country-tab:hover{color:#e6f2ea;border-color:#ffffff30}
+.country-tab.active{border-color:#65e6a55c;background:#65e6a513;color:#8cedb2;box-shadow:inset 0 -2px #65e6a5}
+.country-tab[hidden]{display:none}
+.league-tabs{margin:0 0 11px;padding:0 0 3px}
+.league-tab{min-height:33px;padding:8px 11px;background:#111b1d}
+@media(max-width:600px){.country-tabs{margin:12px 0 7px;gap:5px}.country-tab{min-height:34px;padding:8px 10px;font-size:8px}.league-tabs{margin:0 0 9px;gap:4px}.league-tab{min-height:32px;padding:7px 9px;font-size:8px}}

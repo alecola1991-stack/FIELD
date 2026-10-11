@@ -31,7 +31,7 @@ function seedProgressively(player, rivals, random) {
 
 export function createChampionsDraw(playerTeamId, random = Math.random) {
   const playerTeam = getTeamById(playerTeamId);
-  if (!playerTeam) throw new Error('Selecciona un equipo para iniciar la copa.');
+  if (!playerTeam || playerTeam.type === 'national') throw new Error('Selecciona un club para iniciar la copa.');
 
   const required = CHAMPIONS_CORE.map(getTeamById);
   const fixedRivals = required.filter(team => team.id !== playerTeam.id);
@@ -90,6 +90,83 @@ export function createLeagueOpponents(leagueId, playerTeamId, random = Math.rand
   return shuffle(TEAMS.filter(team => team.league === leagueId && team.id !== playerTeamId), random)
     .map(team => ({ team, seed: (team.stars || 3) + (random() - .5) * .9 }))
     .sort((a, b) => a.seed - b.seed).map(entry => entry.team);
+}
+
+export function createLeagueSchedule(leagueId, playerTeamId, random = Math.random, opponentOrder = null) {
+  const playerTeam = getTeamById(playerTeamId);
+  if (!playerTeam || playerTeam.league !== leagueId || playerTeam.type === 'national') {
+    throw new Error('Elige un club que pertenezca a esta liga.');
+  }
+  const roster = TEAMS.filter(team => team.league === leagueId);
+  const suppliedOrder = Array.isArray(opponentOrder)
+    ? opponentOrder.map(team => roster.find(club => club.id === team?.id)).filter(Boolean)
+    : [];
+  const opponents = suppliedOrder.length === roster.length - 1
+    ? suppliedOrder
+    : createLeagueOpponents(leagueId, playerTeamId, random);
+  let rotation = [playerTeam, ...opponents];
+  if (rotation.length % 2) rotation.push(null);
+  const rawRounds = [];
+  const rounds = rotation.length - 1;
+  for (let round = 0; round < rounds; round++) {
+    const fixtures = [];
+    for (let index = 0; index < rotation.length / 2; index++) {
+      let home = rotation[index], away = rotation[rotation.length - 1 - index];
+      if (!home || !away) continue;
+      if ((round + index) % 2) [home, away] = [away, home];
+      fixtures.push({ homeId: home.id, awayId: away.id });
+    }
+    rawRounds.push(fixtures);
+    rotation = [rotation[0], rotation.at(-1), ...rotation.slice(1, -1)];
+  }
+  const playerRound = new Map(rawRounds.map((fixtures, index) => {
+    const opponent = fixtures.find(fixture => fixture.homeId === playerTeamId || fixture.awayId === playerTeamId);
+    return [opponent?.homeId === playerTeamId ? opponent.awayId : opponent?.homeId, index];
+  }));
+  return opponents.map(team => rawRounds[playerRound.get(team.id)]);
+}
+
+export function createLeagueStandings(leagueId) {
+  return TEAMS.filter(team => team.league === leagueId).map(team => ({
+    teamId: team.id, played: 0, wins: 0, draws: 0, losses: 0,
+    goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0,
+  }));
+}
+
+export function updateLeagueStandings(standings, fixtures, playerTeamId, playerGoals, opponentGoals, random = Math.random) {
+  const updated = standings.map(row => ({ ...row }));
+  const rows = new Map(updated.map(row => [row.teamId, row]));
+  for (const fixture of fixtures) {
+    const home = getTeamById(fixture.homeId), away = getTeamById(fixture.awayId);
+    if (!home || !away) continue;
+    let homeGoals, awayGoals;
+    if (home.id === playerTeamId) { homeGoals = playerGoals; awayGoals = opponentGoals; }
+    else if (away.id === playerTeamId) { homeGoals = opponentGoals; awayGoals = playerGoals; }
+    else {
+      const homeStrength = ((home.stars || 3) - 3) * .24 + .12;
+      const awayStrength = ((away.stars || 3) - 3) * .24;
+      homeGoals = Math.max(0, Math.min(5, Math.round(1.1 + homeStrength + (random() - .5) * 2.8)));
+      awayGoals = Math.max(0, Math.min(5, Math.round(1.1 + awayStrength + (random() - .5) * 2.8)));
+    }
+    const homeRow = rows.get(home.id), awayRow = rows.get(away.id);
+    if (!homeRow || !awayRow) continue;
+    homeRow.played++; awayRow.played++;
+    homeRow.goalsFor += homeGoals; homeRow.goalsAgainst += awayGoals;
+    awayRow.goalsFor += awayGoals; awayRow.goalsAgainst += homeGoals;
+    if (homeGoals > awayGoals) { homeRow.wins++; homeRow.points += 3; awayRow.losses++; }
+    else if (awayGoals > homeGoals) { awayRow.wins++; awayRow.points += 3; homeRow.losses++; }
+    else { homeRow.draws++; awayRow.draws++; homeRow.points++; awayRow.points++; }
+    homeRow.goalDifference = homeRow.goalsFor - homeRow.goalsAgainst;
+    awayRow.goalDifference = awayRow.goalsFor - awayRow.goalsAgainst;
+  }
+  return updated;
+}
+
+export function sortLeagueStandings(standings, playerTeamId) {
+  return [...standings].sort((a, b) => b.points - a.points
+    || b.goalDifference - a.goalDifference
+    || b.goalsFor - a.goalsFor
+    || (a.teamId === playerTeamId ? -1 : b.teamId === playerTeamId ? 1 : a.teamId.localeCompare(b.teamId)));
 }
 
 export function pickChampionsOpponent(draw, round, random = Math.random) {

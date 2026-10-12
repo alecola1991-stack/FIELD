@@ -193,6 +193,60 @@ export const HONORARY_TEAMS = [
   { id: 'honor-ge-bazan', name: 'GE Bazan', league: 'honorificos', type: 'honorary', primary: '#F3D21B', secondary: '#111111', stars: 3 },
 ];
 
+const KIT_PATTERN_GROUPS = {
+  'horizontal-stripes': [
+    'laliga-betis', 'premier-man-united', 'europe-argentina', 'europe-usa',
+  ],
+  'vertical-stripes': [
+    'laliga-athletic', 'laliga-atletico', 'laliga-barcelona', 'laliga-celta', 'laliga-alaves', 'laliga-espanyol', 'laliga-sociedad', 'laliga-racing',
+    'premier-newcastle', 'premier-sunderland', 'premier-crystal-palace', 'premier-brentford',
+    'serie-a-inter', 'serie-a-milan', 'serie-a-juventus', 'serie-a-bologna', 'serie-a-genoa', 'serie-a-atalanta', 'serie-a-sassuolo',
+    'ligue-1-psg', 'ligue-1-nice', 'ligue-1-lille', 'bundesliga-dortmund', 'bundesliga-frankfurt', 'bundesliga-werder',
+    'europe-italy', 'europe-belgium', 'europe-sweden', 'europe-denmark', 'europe-turkiye',
+    'america-uruguay', 'america-colombia', 'america-chile', 'america-peru', 'america-mexico', 'america-argentina',
+  ],
+  checkerboard: ['europe-croatia'],
+  'half-horizontal': [
+    'laliga-osasuna', 'laliga-real-madrid', 'laliga-sevilla', 'premier-arsenal', 'premier-liverpool', 'premier-man-city',
+    'serie-a-roma', 'serie-a-lazio', 'ligue-1-marseille', 'bundesliga-bayern', 'bundesliga-stuttgart',
+    'europe-spain', 'europe-germany', 'europe-england', 'europe-netherlands', 'europe-poland', 'europe-portugal', 'europe-wales',
+    'america-brazil', 'america-canada', 'america-usa', 'honor-ge-bazan',
+  ],
+  'half-vertical': [
+    'laliga-rayo', 'laliga-deportivo', 'laliga-valencia', 'laliga-villarreal', 'premier-aston-villa', 'premier-everton',
+    'serie-a-napoli', 'serie-a-torino', 'ligue-1-monaco', 'ligue-1-lyon', 'bundesliga-leverkusen', 'bundesliga-hamburg',
+    'europe-france', 'europe-austria', 'europe-greece', 'america-ecuador', 'america-paraguay', 'america-jamaica',
+    'honor-cd-san-fernando-1940',
+  ],
+  quarters: [
+    'laliga-levante', 'premier-west-ham', 'serie-a-cagliari', 'serie-a-venezia', 'ligue-1-strasbourg', 'bundesliga-union-berlin',
+    'europe-czechia', 'europe-romania', 'europe-hungary', 'america-costa-rica', 'america-panama',
+  ],
+};
+const KIT_PATTERN_BY_TEAM = new Map(Object.entries(KIT_PATTERN_GROUPS).flatMap(([pattern, ids]) => ids.map(id => [id, pattern])));
+const RANDOM_KIT_PATTERNS = ['horizontal-stripes', 'vertical-stripes', 'checkerboard', 'half-horizontal', 'half-vertical', 'quarters'];
+function chooseKitPattern(id) {
+  let hash = 2166136261;
+  for (const character of id) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619);
+  return RANDOM_KIT_PATTERNS[(hash >>> 0) % RANDOM_KIT_PATTERNS.length];
+}
+for (const team of [...TEAMS, ...NATIONAL_TEAMS, ...HONORARY_TEAMS]) {
+  team.kitPattern = KIT_PATTERN_BY_TEAM.get(team.id) || chooseKitPattern(team.id);
+}
+
+export function getKitBackground(team) {
+  if (!team) return 'linear-gradient(90deg, #33413b 0 50%, #52645b 50% 100%)';
+  const first = team.primary || '#68746e', second = team.secondary || first;
+  switch (team.kitPattern) {
+    case 'horizontal-stripes': return `repeating-linear-gradient(0deg, ${first} 0 9px, ${second} 9px 17px)`;
+    case 'vertical-stripes': return `repeating-linear-gradient(90deg, ${first} 0 9px, ${second} 9px 17px)`;
+    case 'checkerboard': return `conic-gradient(${first} 25%, ${second} 0 50%, ${first} 0 75%, ${second} 0) 0 0 / 14px 14px`;
+    case 'quarters': return `conic-gradient(${first} 0 25%, ${second} 0 50%, ${first} 0 75%, ${second} 0)`;
+    case 'half-horizontal': return `linear-gradient(180deg, ${first} 0 50%, ${second} 50% 100%)`;
+    case 'half-vertical': default: return `linear-gradient(90deg, ${first} 0 50%, ${second} 50% 100%)`;
+  }
+}
+
 // Strength influences both the selector and the opponent AI. Ratings are a
 // gameplay estimate rather than an official ranking.
 const FIVE_STAR = new Set([

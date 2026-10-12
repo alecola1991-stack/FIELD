@@ -130,14 +130,16 @@ export class Renderer {
     c.strokeStyle = '#ffffff70'; c.lineWidth = 1.5; c.stroke();
     const numberColor = player.numberColor || readable(color);
     const dorsalOutline = readable(numberColor) === '#f5fff8' ? 'rgba(255,255,255,.98)' : 'rgba(5,12,10,.95)';
-    c.font = `800 ${Math.round(r * .91)}px "DM Mono",monospace`; c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.lineWidth = 3.5; c.lineJoin = 'round'; c.strokeStyle = dorsalOutline; c.strokeText(String(player.number), 0, 1);
-    c.fillStyle = numberColor; c.fillText(String(player.number), 0, 1);
-    c.restore();
+    c.beginPath(); c.arc(0, 0, r - 1, 0, Math.PI * 2); c.clip();
+    c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineJoin = 'round';
     const name = String(player.name || '').toUpperCase();
-    c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.font = '800 12px "DM Mono",monospace';
-    c.lineWidth = 4; c.lineJoin = 'round'; c.strokeStyle = 'rgba(5,12,10,.96)'; c.strokeText(name, x, y - r - 13, r * 5.5);
-    c.fillStyle = numberColor; c.fillText(name, x, y - r - 13, r * 5.5);
+    c.font = `900 ${Math.round(r * .6)}px "DM Mono",monospace`;
+    c.lineWidth = 2.3; c.strokeStyle = dorsalOutline; c.strokeText(name, 0, -r * .5, r * 1.6);
+    c.fillStyle = numberColor; c.fillText(name, 0, -r * .5, r * 1.6);
+    c.font = `900 ${Math.round(r * 1.15)}px "DM Mono",monospace`;
+    c.lineWidth = 2.8; c.strokeText(String(player.number), 0, r * .32, r * 1.5);
+    c.fillText(String(player.number), 0, r * .32, r * 1.5);
+    c.restore();
   }
   drawKitPattern(c, player, r, primary) {
     const secondary = player.secondaryColor, pattern = player.kitPattern || 'half-vertical';

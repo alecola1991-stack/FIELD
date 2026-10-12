@@ -640,7 +640,7 @@ export class UI {
     card.setAttribute('aria-label', `${team.name}. Valoración ${team.stars || 3} de 5 estrellas. ${chosen ? 'Equipo elegido' : 'Elegir este equipo'}`);
     card.setAttribute('aria-pressed', String(chosen)); card.classList.toggle('selected', chosen);
     const strip = document.createElement('span'); strip.className = 'team-card-colors';
-    strip.style.background = getKitBackground(team);
+    this.paintPlayerPreview(strip, team);
     strip.setAttribute('aria-label', `Camiseta: ${team.kitPattern.replaceAll('-', ' ')}`);
     const details = document.createElement('span'); details.className = 'team-card-details';
     const name = document.createElement('span'); name.className = 'team-card-name'; name.textContent = team.name;
@@ -679,15 +679,28 @@ export class UI {
     const team = getTeamById(this.selectedTeamId), name = this.player_name.value.trim() || 'TU NOMBRE';
     const rawNumber = this.player_number.value, number = rawNumber === '' ? '—' : clamp(Number(rawNumber) || 0, 0, 99);
     this.preview_name.textContent = name.toUpperCase(); this.preview_number.textContent = number;
-    this.preview_ball.style.setProperty('--dorsal-color', team?.numberColor || '#ffffff');
-    this.preview_name.style.fontSize = `${Math.min(12, 82 / Math.max(1, name.length * .6))}px`;
-    this.preview_ball.style.background = getKitBackground(team);
+    this.paintPlayerPreview(this.preview_ball, team);
     this.preview_ball.style.boxShadow = team ? `0 8px 28px ${team.primary}55, inset -7px -8px 13px #0003` : 'none';
     this.preview_team.textContent = team ? team.name.toUpperCase() : 'ELIGE UN EQUIPO';
     const league = team && TEAM_GROUPS.find(item => item.id === team.league);
     this.chosen_team_label.textContent = team ? `${team.name} · ${league.label.split(' · ')[0]}` : 'SELECCIONA UN EQUIPO PRIMERO';
     this.player_name.disabled = !team; this.player_number.disabled = !team;
+    this.renderTeamCarousel();
     this.updateProfileValidity(); this.updateHomeClub();
+  }
+
+  paintPlayerPreview(circle, team) {
+    circle.classList.add('player-circle-preview');
+    let name = circle.querySelector('.circle-preview-name');
+    let number = circle.querySelector('.circle-preview-number');
+    if (!name) { name = document.createElement('span'); name.className = 'circle-preview-name'; circle.append(name); }
+    if (!number) { number = document.createElement('b'); number.className = 'circle-preview-number'; circle.append(number); }
+    const label = (this.player_name.value.trim() || 'TU NOMBRE').toUpperCase();
+    name.textContent = label;
+    number.textContent = this.player_number.value === '' ? '—' : clamp(Number(this.player_number.value) || 0, 0, 99);
+    circle.style.background = getKitBackground(team);
+    circle.style.setProperty('--dorsal-color', team?.numberColor || '#ffffff');
+    circle.style.setProperty('--preview-name-size', String(Math.min(16, 75 / Math.max(1, label.length * .65))));
   }
 
   updateProfileValidity() {

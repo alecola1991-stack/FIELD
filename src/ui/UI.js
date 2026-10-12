@@ -8,6 +8,7 @@ import { MenuBackdrop } from './MenuBackdrop.js';
 import { Confetti } from './Confetti.js';
 import { clearCompetitionSave, loadCompetitionSave, setCompetitionSaveScope, storeCompetitionSave } from '../game/CompetitionSave.js';
 import { MISSION_DEFINITIONS, getLeagueMission } from '../game/Missions.js';
+import { LEGEND_MATCHES, LEGENDS_UNLOCK_LEVEL, resolveLegendMatch } from '../config/legends.js';
 
 const ROUND_NAMES = ['OCTAVOS DE FINAL', 'CUARTOS DE FINAL', 'SEMIFINAL', 'FINAL'];
 const ROUND_NAMES_32 = ['DIECISÉISAVOS DE FINAL', ...ROUND_NAMES];
@@ -64,11 +65,14 @@ export class UI {
     this.currentMatchMode = null; this.currentMatchOptions = null; this.autoMatchmaking = false; this.confetti = new Confetti();
     this.activeLeague = TEAM_LEAGUES[0].id;
     this.activeCountry = TEAM_COUNTRIES[0].id;
+    this.quickChoices = { player: '', rival: 'laliga-real-madrid' }; this.quickCountries = {}; this.quickDifficulty = this.settings.difficulty;
+    this.legendIndex = 0; this.legendTeamId = '';
     this.screens = {
       home: document.querySelector('#home-screen'), play: document.querySelector('#play-screen'), store: document.querySelector('#store-screen'), customize: document.querySelector('#customize-screen'),
       settings: document.querySelector('#settings-screen'), account: document.querySelector('#account-screen'), online: document.querySelector('#online-screen'), leaderboard: document.querySelector('#leaderboard-screen'), competitions: document.querySelector('#competition-screen'), tournament: document.querySelector('#tournament-screen'),
       league: document.querySelector('#league-screen'), game: document.querySelector('#game-screen'), profile: document.querySelector('#profile-screen'),
       missions: document.querySelector('#missions-screen'),
+      quick: document.querySelector('#quick-screen'), legends: document.querySelector('#legends-screen'),
     };
     this.cacheElements(); this.menuBackdrop = new MenuBackdrop(this.menu_backdrop); this.populateTeamPicker(); this.populateLeagueCompetitions(); this.fillInputs(); this.bind(); this.updateLeaguePreview(); this.renderProgress(); this.renderStore(); this.show('home'); this.refreshContinueButton();
   }
@@ -86,6 +90,7 @@ export class UI {
       'account-status','account-status-dot','account-message','account-form','account-name','account-name-wrap','account-email','account-password','account-submit','account-form-title','account-dashboard','account-auth-panel','account-email-label','account-sync-state','account-level','account-wins','account-matches','account-goals','account-conceded','account-seasons','account-trophy-count','account-trophies',
       'profile-eyebrow','profile-title','profile-copy','home-club-colors','home-club-name','home-coins','store-coins','store-grid','store-message','store-categories','store-loadout','inventory-count','play-continue-wrap',
       'menu-backdrop',
+      'quick-pickers','quick-difficulty','quick-start','legends-mode-card','legends-mode-tag','legends-lock','legend-prev','legend-next','legend-title','legend-edition','legend-position','legend-history','legend-teams','legend-start',
       'continue-competition','continue-detail','league-goal-target','trajectory-enabled','shot-power-time',
       'promo-code-form','promo-code-input','promo-code-status',
       'online-room-input','online-room-panel','online-status','online-room-code-wrap','online-room-code',
@@ -124,6 +129,7 @@ export class UI {
   }
 
   getAllowedTeamGroups() {
+    if (this.pendingMode === 'legend-profile') return TEAM_GROUPS.filter(group => group.id === getTeamById(this.legendTeamId)?.league);
     if (this.pendingLeagueId === 'south-america-clubs') return TEAM_GROUPS.filter(group => ['argentina', 'brasileirao'].includes(group.id));
     if (this.pendingLeagueId === 'club-world-cup-clubs') return TEAM_CLUB_GROUPS.filter(group => PROFILE_TEAMS.some(team => team.league === group.id && isClubWorldCupEligibleTeam(team.id)));
     if (this.pendingLeagueId) return TEAM_GROUPS.filter(group => group.id === this.pendingLeagueId);
@@ -134,6 +140,7 @@ export class UI {
 
   getProfileTeams(leagueId = this.activeLeague) {
     const teams = PROFILE_TEAMS.filter(team => team.league === leagueId);
+    if (this.pendingMode === 'legend-profile') return teams.filter(team => team.id === this.legendTeamId);
     if (this.pendingMode !== 'tournament') return teams;
     if (this.pendingCompetition === 'copa-libertadores') return teams.filter(team => isLibertadoresEligibleTeam(team.id));
     if (this.pendingCompetition === 'club-world-cup') return teams.filter(team => isClubWorldCupEligibleTeam(team.id));
@@ -282,6 +289,19 @@ export class UI {
     });
     this.teams_prev.addEventListener('click', () => this.moveTeam(-1));
     this.teams_next.addEventListener('click', () => this.moveTeam(1));
+    this.quick_pickers.addEventListener('click', event => {
+      const button = event.target.closest('[data-quick-move]'); if (!button) return;
+      this.moveQuickChoice(button.dataset.side, Number(button.dataset.quickMove), button.dataset.kind === 'country');
+    });
+    this.quick_difficulty.addEventListener('change', () => { this.quickDifficulty = this.quick_difficulty.value; });
+    this.quick_start.addEventListener('click', () => this.beginQuickMatch());
+    this.legend_prev.addEventListener('click', () => this.moveLegend(-1));
+    this.legend_next.addEventListener('click', () => this.moveLegend(1));
+    this.legend_teams.addEventListener('click', event => {
+      const choice = event.target.closest('[data-legend-team]');
+      if (choice && this.progression.level >= LEGENDS_UNLOCK_LEVEL) { this.legendTeamId = choice.dataset.legendTeam; this.renderLegends(); }
+    });
+    this.legend_start.addEventListener('click', () => this.beginLegendMatch());
     this.player_name.addEventListener('input', () => { this.updateProfilePreview(); this.updateProfileValidity(); });
     this.player_number.addEventListener('input', () => { this.updateProfilePreview(); this.updateProfileValidity(); });
     document.getElementById('save-player').addEventListener('click', () => this.savePlayer());
@@ -526,6 +546,11 @@ export class UI {
   }
 
   selectMode(mode) {
+    if (mode === 'legends') { this.openLegends(); return; }
+    if (mode === 'bot') {
+      if (!this.profileComplete()) { this.pendingMode = 'quick'; this.pendingTeamType = 'all'; this.pendingLeagueId = ''; this.openProfile(); return; }
+      this.openQuickSetup(); return;
+    }
     if (mode === 'leaderboard') { this.show('leaderboard'); this.loadLeaderboard(); return; }
     if (mode === 'competitions') { this.show('competitions'); this.renderCompetitionPicker(); return; }
     if (mode === 'online') { this.openOnline(); return; }
@@ -533,6 +558,106 @@ export class UI {
     if (mode === 'tournament') this.openTournamentSetup();
     else if (mode === 'league') { this.updateLeaguePreview(); this.show(mode); }
     else this.start(mode);
+  }
+
+  openQuickSetup() {
+    this.quickChoices.player = getTeamById(this.settings.teamId)?.id || 'laliga-barcelona';
+    if (!getTeamById(this.quickChoices.rival)) this.quickChoices.rival = 'laliga-real-madrid';
+    this.quickDifficulty = this.settings.difficulty;
+    for (const side of ['player', 'rival']) this.quickCountries[side] = TEAM_COUNTRIES.find(country => country.groups.includes(getTeamById(this.quickChoices[side]).league))?.id || TEAM_COUNTRIES[0].id;
+    this.renderQuickSetup(); this.show('quick');
+  }
+
+  moveQuickChoice(side, direction, changeCountry = false) {
+    if (!['player', 'rival'].includes(side)) return;
+    const countryIndex = TEAM_COUNTRIES.findIndex(country => country.id === this.quickCountries[side]);
+    if (changeCountry) {
+      const country = TEAM_COUNTRIES[(countryIndex + direction + TEAM_COUNTRIES.length) % TEAM_COUNTRIES.length];
+      this.quickCountries[side] = country.id;
+      this.quickChoices[side] = PROFILE_TEAMS.find(team => country.groups.includes(team.league))?.id || '';
+    } else {
+      const country = TEAM_COUNTRIES[countryIndex] || TEAM_COUNTRIES[0];
+      const teams = PROFILE_TEAMS.filter(team => country.groups.includes(team.league));
+      const index = teams.findIndex(team => team.id === this.quickChoices[side]);
+      this.quickChoices[side] = teams[(index + direction + teams.length) % teams.length]?.id || '';
+    }
+    this.renderQuickSetup(); this.sound?.play('click');
+  }
+
+  renderQuickSetup() {
+    this.quick_pickers.replaceChildren(...['player', 'rival'].map(side => {
+      const country = TEAM_COUNTRIES.find(item => item.id === this.quickCountries[side]) || TEAM_COUNTRIES[0];
+      const teams = PROFILE_TEAMS.filter(team => country.groups.includes(team.league));
+      const team = getTeamById(this.quickChoices[side]) || teams[0];
+      const panel = document.createElement('section'); panel.className = 'match-team-panel';
+      const title = document.createElement('h3'); title.textContent = side === 'player' ? 'TU EQUIPO' : 'EQUIPO RIVAL';
+      const makeArrow = (kind, delta, label) => { const button = document.createElement('button'); button.type = 'button'; button.className = 'carousel-arrow'; button.dataset.quickMove = String(delta); button.dataset.side = side; button.dataset.kind = kind; button.textContent = delta < 0 ? '‹' : '›'; button.setAttribute('aria-label', label); return button; };
+      const categories = document.createElement('div'); categories.className = 'match-category-carousel';
+      const category = document.createElement('b'); category.textContent = country.label;
+      categories.append(makeArrow('country', -1, 'Categoría anterior'), category, makeArrow('country', 1, 'Categoría siguiente'));
+      const carousel = document.createElement('div'); carousel.className = 'match-category-carousel';
+      const card = document.createElement('div'); card.className = 'match-team-display';
+      const circle = document.createElement('span'); circle.className = 'match-team-preview';
+      this.paintPlayerPreview(circle, team, { name: side === 'player' ? this.settings.name : 'RIVAL', number: side === 'player' ? this.settings.number : 10 });
+      const name = document.createElement('b'); name.textContent = team.name;
+      const group = document.createElement('small'); group.textContent = `${TEAM_GROUPS.find(item => item.id === team.league)?.label.split(' · ')[0] || ''} · ${team.stars || 3}/5`;
+      card.append(circle, name, group);
+      carousel.append(makeArrow('team', -1, 'Equipo anterior'), card, makeArrow('team', 1, 'Equipo siguiente'));
+      const count = document.createElement('small'); count.className = 'match-team-count'; count.textContent = `${teams.findIndex(item => item.id === team.id) + 1} / ${teams.length} EQUIPOS`;
+      panel.append(title, categories, carousel, count); return panel;
+    }));
+    this.updateDifficultyControls();
+  }
+
+  beginQuickMatch() {
+    if (!this.profileComplete()) { this.selectMode('bot'); return; }
+    const player = getTeamById(this.quickChoices.player), rival = getTeamById(this.quickChoices.rival);
+    if (!player || !rival) return;
+    const difficulty = ['easy', 'normal', 'hard'].includes(this.quick_difficulty.value) ? this.quick_difficulty.value : 'easy';
+    if (difficulty === 'hard' && this.progression.level < 5) return;
+    this.settings.teamId = player.id; this.settings.difficulty = difficulty; this.persist(); this.updateHomeClub();
+    const label = { easy: 'FÁCIL', normal: 'NORMAL', hard: 'DIFÍCIL' }[difficulty];
+    this.start('bot', { opponentTeam: rival, opponentName: rival.name, difficulty, label: `PARTIDO RÁPIDO · ${label} · A 5 GOLES` });
+  }
+
+  openLegends() { this.renderLegends(); this.show('legends'); }
+
+  moveLegend(direction) {
+    this.legendIndex = (this.legendIndex + direction + LEGEND_MATCHES.length) % LEGEND_MATCHES.length;
+    this.legendTeamId = ''; this.renderLegends(); this.sound?.play('click');
+  }
+
+  renderLegends() {
+    const match = LEGEND_MATCHES[this.legendIndex], unlocked = this.progression.level >= LEGENDS_UNLOCK_LEVEL;
+    if (!match.teams.includes(this.legendTeamId)) this.legendTeamId = match.teams[0];
+    this.legend_title.textContent = match.name; this.legend_edition.textContent = match.edition;
+    this.legend_position.textContent = `${this.legendIndex + 1} / ${LEGEND_MATCHES.length}`;
+    this.legends_lock.textContent = unlocked ? 'LEYENDAS DESBLOQUEADO · ELIGE TU EQUIPO' : `DESBLOQUEA LEYENDAS AL NIVEL 7 · NIVEL ACTUAL ${this.progression.level}`;
+    this.legends_lock.classList.toggle('unlocked', unlocked);
+    this.legend_history.textContent = match.history;
+    const source = document.createElement('a'); source.href = match.source; source.target = '_blank'; source.rel = 'noopener noreferrer'; source.textContent = 'Historia del partido ↗'; this.legend_history.append(source);
+    this.legend_teams.replaceChildren(...match.teams.map(id => {
+      const team = getTeamById(id), selected = id === this.legendTeamId;
+      const card = document.createElement('button'); card.type = 'button'; card.className = `legend-team-choice${selected ? ' selected' : ''}`; card.dataset.legendTeam = id; card.disabled = !unlocked; card.setAttribute('aria-pressed', String(selected));
+      const circle = document.createElement('span'); circle.className = 'match-team-preview'; this.paintPlayerPreview(circle, team, { name: this.settings.name || 'TU NOMBRE', number: this.settings.number });
+      const name = document.createElement('b'); name.textContent = team.name;
+      const action = document.createElement('small'); action.textContent = selected ? 'TU EQUIPO ✓' : 'ELEGIR ESTE EQUIPO';
+      card.append(circle, name, action); return card;
+    }));
+    this.legend_start.disabled = !unlocked;
+    this.legend_start.textContent = unlocked ? `Jugar con ${getTeamById(this.legendTeamId).name} ↗` : 'Bloqueado · alcanza el nivel 7';
+  }
+
+  beginLegendMatch() {
+    let duel;
+    try { duel = resolveLegendMatch(LEGEND_MATCHES[this.legendIndex].id, this.legendTeamId, this.progression.level); }
+    catch (error) { this.legends_lock.textContent = error.message; return; }
+    this.settings.teamId = duel.playerTeam.id;
+    if (!this.profileComplete()) {
+      this.pendingMode = 'legend-profile'; this.pendingTeamType = 'club'; this.pendingLeagueId = duel.playerTeam.league; this.openProfile(); return;
+    }
+    this.persist(); this.updateHomeClub();
+    this.start('legends', { legendId: duel.match.id, opponentTeam: duel.opponentTeam, opponentName: duel.opponentTeam.name, difficulty: 'legend', fieldTheme: 'champions', competitionRound: 4, label: `LEYENDAS · ${duel.match.name.toUpperCase()} · IA MUY DIFÍCIL · A 5` });
   }
 
   renderCompetitionPicker() {
@@ -704,15 +829,15 @@ export class UI {
     this.updateProfileValidity(); this.updateHomeClub();
   }
 
-  paintPlayerPreview(circle, team) {
+  paintPlayerPreview(circle, team, preview = {}) {
     circle.classList.add('player-circle-preview');
     let name = circle.querySelector('.circle-preview-name');
     let number = circle.querySelector('.circle-preview-number');
     if (!name) { name = document.createElement('span'); name.className = 'circle-preview-name'; circle.append(name); }
     if (!number) { number = document.createElement('b'); number.className = 'circle-preview-number'; circle.append(number); }
-    const label = (this.player_name.value.trim() || 'TU NOMBRE').toUpperCase();
+    const label = String(preview.name ?? (this.player_name.value.trim() || 'TU NOMBRE')).toUpperCase();
     name.textContent = label;
-    number.textContent = this.player_number.value === '' ? '—' : clamp(Number(this.player_number.value) || 0, 0, 99);
+    number.textContent = preview.number ?? (this.player_number.value === '' ? '—' : clamp(Number(this.player_number.value) || 0, 0, 99));
     circle.style.background = getKitBackground(team);
     circle.style.setProperty('--dorsal-color', team?.numberColor || '#ffffff');
     const relief = this.career.equipped.circleRelief || 'off';
@@ -756,6 +881,8 @@ export class UI {
     const nextMode = this.pendingMode; this.pendingMode = null; this.sound?.play('click');
     const nextCompetition = this.pendingCompetition, nextLeagueId = this.pendingLeagueId; this.pendingCompetition = null; this.pendingTeamType = 'all'; this.pendingLeagueId = '';
     this.renderTeamNavigation();
+    if (nextMode === 'quick') { this.openQuickSetup(); return; }
+    if (nextMode === 'legend-profile') { this.legendTeamId = team.id; this.beginLegendMatch(); return; }
     if (nextMode === 'online') { this.openOnline(); return; }
     if (nextMode === 'tournament') { this.openTournamentSetup(nextCompetition); return; }
     if (nextMode === 'league') {
@@ -879,6 +1006,13 @@ export class UI {
       if (hard) { hard.disabled = !hardUnlocked; hard.textContent = hardUnlocked ? 'Difícil' : 'Difícil · nivel 5'; }
       select.value = this.settings.difficulty;
     }
+    const quickHard = [...this.quick_difficulty.options].find(option => option.value === 'hard');
+    quickHard.disabled = !hardUnlocked; quickHard.textContent = hardUnlocked ? 'Difícil' : 'Difícil · nivel 5';
+    if (!hardUnlocked && this.quickDifficulty === 'hard') this.quickDifficulty = 'easy';
+    this.quick_difficulty.value = this.quickDifficulty || this.settings.difficulty;
+    const legendsUnlocked = this.progression.level >= LEGENDS_UNLOCK_LEVEL;
+    this.legends_mode_card.classList.toggle('mode-locked', !legendsUnlocked);
+    this.legends_mode_tag.textContent = legendsUnlocked ? 'CLÁSICOS · IA LEYENDA' : 'BLOQUEADO · NIVEL 7';
   }
 
   updateLeaguePreview() {
@@ -1023,13 +1157,17 @@ export class UI {
   }
 
   start(mode, options = {}, preserveCompetition = false, snapshot = null) {
+    if (mode === 'legends') {
+      try { const duel = resolveLegendMatch(options.legendId, this.settings.teamId, this.progression.level); options = { ...options, difficulty: duel.difficulty, opponentTeam: duel.opponentTeam, opponentName: duel.opponentTeam.name }; }
+      catch { this.openLegends(); return; }
+    }
     if (!this.profileComplete()) { this.pendingMode = mode; this.openProfile(); return; }
     if (!preserveCompetition) { this.tournament = null; this.league = null; }
     this.currentMatchMode = mode; this.currentMatchOptions = options;
     this.countdown_banner.classList.add('hidden'); this.goal_banner.classList.add('hidden');
     this.pause_overlay.classList.add('hidden'); this.result_overlay.classList.add('hidden');
     this.result_rematch.classList.add('hidden'); this.result_online_status.classList.add('hidden'); this.hideConnectionStatus();
-    this.show('game'); this.game.start(mode, snapshot?.difficulty || this.settings.difficulty, options);
+    this.show('game'); this.game.start(mode, mode === 'legends' ? 'legend' : snapshot?.difficulty || options.difficulty || this.settings.difficulty, options);
     if (snapshot) this.game.restoreSnapshot(snapshot);
     this.trajectory_toggle.checked = this.game.trajectory; this.trajectory_enabled.checked = this.game.trajectory;
     this.hud_player_name.textContent = this.settings.name.toUpperCase(); this.player_dot.style.background = getTeamById(this.settings.teamId)?.primary || '#68746e';

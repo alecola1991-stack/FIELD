@@ -11,6 +11,13 @@ export const TEAM_LEAGUES = [
   { id: 'ligue-2', label: 'Ligue 2 · Francia 26/27' },
   { id: 'bundesliga', label: 'Bundesliga · Alemania 26/27' },
   { id: 'bundesliga-2', label: '2. Bundesliga · Alemania 26/27' },
+  { id: 'argentina', label: 'Liga Profesional · Argentina 2026' },
+  { id: 'liga-mx', label: 'Liga MX · México Apertura 2026' },
+  { id: 'brasileirao', label: 'Brasileirão Série A · Brasil 2026' },
+  { id: 'mls', label: 'MLS · Estados Unidos y Canadá 2026' },
+  { id: 'liga-portugal', label: 'Liga Portugal Betclic · Portugal 26/27' },
+  { id: 'belgian-pro', label: 'Jupiler Pro League · Bélgica 26/27' },
+  { id: 'super-lig', label: 'Süper Lig · Turquía 26/27' },
 ];
 
 export const NATIONAL_GROUPS = [
@@ -28,11 +35,19 @@ export const TEAM_COUNTRIES = [
   { id: 'italy', label: 'Italia', groups: ['serie-a', 'serie-b'] },
   { id: 'france', label: 'Francia', groups: ['ligue-1', 'ligue-2'] },
   { id: 'germany', label: 'Alemania', groups: ['bundesliga', 'bundesliga-2'] },
+  { id: 'argentina', label: 'Argentina', groups: ['argentina'] },
+  { id: 'mexico', label: 'México', groups: ['liga-mx'] },
+  { id: 'brazil', label: 'Brasil', groups: ['brasileirao'] },
+  { id: 'north-america', label: 'Estados Unidos y Canadá', groups: ['mls'] },
+  { id: 'portugal', label: 'Portugal', groups: ['liga-portugal'] },
+  { id: 'belgium', label: 'Bélgica', groups: ['belgian-pro'] },
+  { id: 'turkey', label: 'Turquía', groups: ['super-lig'] },
   { id: 'national', label: 'Selecciones', groups: ['europe', 'america'] },
   { id: 'honorary', label: 'Honoríficos', groups: ['honorificos'] },
 ];
 
 const define = (league, rows) => rows.map(([id, name, primary, secondary]) => ({ league, id: `${league}-${id}`, name: `${name} CF`, primary, secondary }));
+const defineExact = (league, rows) => rows.map(([id, name, primary, secondary]) => ({ league, id: `${league}-${id}`, name, primary, secondary }));
 
 export const TEAMS = [
   ...define('laliga', [
@@ -154,6 +169,27 @@ export const TEAMS = [
     ['karlsruhe', 'Karlsruher SC', '#1766AA', '#FFFFFF'], ['kiel', 'Holstein Kiel', '#16834A', '#FFFFFF'],
     ['dresden', 'Dynamo Dresden', '#F5D61D', '#171717'], ['darmstadt', 'SV Darmstadt 98', '#1766AA', '#FFFFFF'],
   ]),
+  ...defineExact('argentina', [
+    ['aldosivi','Aldosivi','#1685A8','#FFFFFF'],['argentinos','Argentinos Juniors','#D92332','#FFFFFF'],['atletico-tucuman','Atlético Tucumán','#1766AA','#FFFFFF'],['banfield','Banfield','#167A48','#FFFFFF'],['barracas','Barracas Central','#D71920','#FFFFFF'],['belgrano','Belgrano','#1766AA','#FFFFFF'],['boca','Boca Juniors','#153E7E','#F4D21F'],['rosario-central','Rosario Central','#F5D21B','#1766AA'],['central-cordoba','Central Córdoba','#171717','#FFFFFF'],['defensa','Defensa y Justicia','#F5D21B','#167A48'],['estudiantes','Estudiantes de La Plata','#D71920','#FFFFFF'],['estudiantes-rio-cuarto','Estudiantes de Río Cuarto','#FFFFFF','#1766AA'],['gimnasia','Gimnasia La Plata','#FFFFFF','#1766AA'],['gimnasia-mendoza','Gimnasia de Mendoza','#171717','#FFFFFF'],['huracan','Huracán','#FFFFFF','#D71920'],['independiente-rivadavia','Independiente Rivadavia','#1766AA','#171717'],['independiente','Independiente','#D71920','#FFFFFF'],['instituto','Instituto','#D71920','#FFFFFF'],['lanus','Lanús','#8A2438','#FFFFFF'],['newells','Newell’s Old Boys','#D71920','#171717'],['platense','Platense','#171717','#FFFFFF'],['racing','Racing Club','#82C9E8','#FFFFFF'],['riestra','Deportivo Riestra','#171717','#FFFFFF'],['river','River Plate','#FFFFFF','#D71920'],['san-lorenzo','San Lorenzo','#D71920','#1766AA'],['sarmiento','Sarmiento','#167A48','#FFFFFF'],['talleres','Talleres','#1766AA','#FFFFFF'],['tigre','Tigre','#1766AA','#D71920'],['union','Unión','#D71920','#FFFFFF'],['velez','Vélez Sarsfield','#FFFFFF','#1766AA'],
+  ]),
+  ...defineExact('liga-mx', [
+    ['america','América','#F5D21B','#1766AA'],['atlante','Atlante','#1766AA','#D71920'],['atlas','Atlas','#D71920','#171717'],['atletico-san-luis','Atlético de San Luis','#D71920','#171717'],['cruz-azul','Cruz Azul','#1766AA','#FFFFFF'],['juarez','FC Juárez','#171717','#167A48'],['guadalajara','Guadalajara','#D71920','#FFFFFF'],['leon','León','#167A48','#FFFFFF'],['monterrey','Monterrey','#1766AA','#FFFFFF'],['necaxa','Necaxa','#D71920','#FFFFFF'],['pachuca','Pachuca','#1766AA','#FFFFFF'],['puebla','Puebla','#1766AA','#FFFFFF'],['pumas','Pumas UNAM','#1766AA','#F5D21B'],['queretaro','Querétaro','#171717','#1766AA'],['santos','Santos Laguna','#167A48','#FFFFFF'],['tigres','Tigres UANL','#F5D21B','#1766AA'],['tijuana','Tijuana','#D71920','#171717'],['toluca','Toluca','#D71920','#FFFFFF'],
+  ]),
+  ...defineExact('brasileirao', [
+    ['athletico-pr','Athletico Paranaense','#D71920','#171717'],['atletico-mg','Atlético Mineiro','#171717','#FFFFFF'],['bahia','Bahia','#1766AA','#D71920'],['botafogo','Botafogo','#171717','#FFFFFF'],['chapecoense','Chapecoense','#167A48','#FFFFFF'],['corinthians','Corinthians','#FFFFFF','#171717'],['coritiba','Coritiba','#167A48','#FFFFFF'],['cruzeiro','Cruzeiro','#1766AA','#FFFFFF'],['flamengo','Flamengo','#D71920','#171717'],['fluminense','Fluminense','#7A2139','#167A48'],['gremio','Grêmio','#1766AA','#171717'],['internacional','Internacional','#D71920','#FFFFFF'],['mirassol','Mirassol','#F5D21B','#167A48'],['palmeiras','Palmeiras','#167A48','#FFFFFF'],['bragantino','Red Bull Bragantino','#D71920','#FFFFFF'],['remo','Remo','#1766AA','#FFFFFF'],['santos','Santos','#FFFFFF','#171717'],['sao-paulo','São Paulo','#FFFFFF','#D71920'],['vasco','Vasco da Gama','#171717','#FFFFFF'],['vitoria','Vitória','#D71920','#171717'],
+  ]),
+  ...defineExact('mls', [
+    ['atlanta','Atlanta United','#A71930','#171717'],['charlotte','Charlotte FC','#0085CA','#171717'],['chicago','Chicago Fire FC','#D71920','#1766AA'],['cincinnati','FC Cincinnati','#F05A28','#1766AA'],['columbus','Columbus Crew','#F5D21B','#171717'],['dc','D.C. United','#171717','#D71920'],['inter-miami','Inter Miami CF','#F6A5C9','#171717'],['montreal','CF Montréal','#171717','#1766AA'],['nashville','Nashville SC','#F5D21B','#171717'],['new-england','New England Revolution','#1766AA','#D71920'],['nycfc','New York City FC','#1766AA','#FFFFFF'],['orlando','Orlando City SC','#633492','#F5D21B'],['philadelphia','Philadelphia Union','#17284A','#B28A4A'],['red-bull-ny','Red Bull New York','#D71920','#1766AA'],['toronto','Toronto FC','#D71920','#171717'],['austin','Austin FC','#167A48','#171717'],['colorado','Colorado Rapids','#8B2635','#1766AA'],['dallas','FC Dallas','#D71920','#1766AA'],['houston','Houston Dynamo FC','#F36F21','#171717'],['lafc','Los Angeles FC','#171717','#C6A15B'],['galaxy','LA Galaxy','#1766AA','#FFFFFF'],['minnesota','Minnesota United FC','#171717','#82C9E8'],['portland','Portland Timbers','#167A48','#F5D21B'],['salt-lake','Real Salt Lake','#8C1D40','#1766AA'],['st-louis','St. Louis CITY SC','#D71920','#1766AA'],['san-diego','San Diego FC','#171717','#D6B26D'],['san-jose','San Jose Earthquakes','#1766AA','#171717'],['seattle','Seattle Sounders FC','#167A48','#1766AA'],['sporting-kc','Sporting Kansas City','#1766AA','#FFFFFF'],['vancouver','Vancouver Whitecaps FC','#1766AA','#FFFFFF'],
+  ]),
+  ...defineExact('liga-portugal', [
+    ['academico-viseu','Académico de Viseu','#171717','#F5D21B'],['alverca','Alverca','#D71920','#1766AA'],['arouca','Arouca','#F5D21B','#171717'],['benfica','Benfica','#D71920','#FFFFFF'],['braga','Braga','#D71920','#171717'],['casa-pia','Casa Pia','#171717','#FFFFFF'],['estoril','Estoril Praia','#F5D21B','#1766AA'],['estrela','Estrela da Amadora','#D71920','#FFFFFF'],['famalicao','Famalicão','#1766AA','#FFFFFF'],['gil-vicente','Gil Vicente','#D71920','#171717'],['maritimo','Marítimo','#167A48','#D71920'],['moreirense','Moreirense','#167A48','#171717'],['nacional','Nacional','#171717','#FFFFFF'],['porto','Porto','#1766AA','#FFFFFF'],['rio-ave','Rio Ave','#167A48','#FFFFFF'],['santa-clara','Santa Clara','#D71920','#171717'],['sporting','Sporting CP','#167A48','#FFFFFF'],['vitoria','Vitória de Guimarães','#171717','#FFFFFF'],
+  ]),
+  ...defineExact('belgian-pro', [
+    ['cercle','Cercle Brugge','#167A48','#171717'],['club-brugge','Club Brugge','#1766AA','#171717'],['gent','KAA Gent','#1766AA','#FFFFFF'],['genk','KRC Genk','#1766AA','#FFFFFF'],['kortrijk','KV Kortrijk','#D71920','#FFFFFF'],['mechelen','KV Mechelen','#D71920','#F5D21B'],['westerlo','KVC Westerlo','#F5D21B','#1766AA'],['lommel','Lommel SK','#167A48','#FFFFFF'],['leuven','OH Leuven','#D71920','#171717'],['la-louviere','RAAL La Louvière','#167A48','#FFFFFF'],['antwerp','Royal Antwerp FC','#D71920','#FFFFFF'],['union-sg','Union Saint-Gilloise','#F5D21B','#1766AA'],['anderlecht','RSC Anderlecht','#6B3FA0','#FFFFFF'],['beveren','SK Beveren','#F5D21B','#1766AA'],['charleroi','Sporting Charleroi','#171717','#FFFFFF'],['standard','Standard de Liège','#D71920','#FFFFFF'],['stvv','STVV','#F5D21B','#1766AA'],['zulte-waregem','Zulte Waregem','#D71920','#167A48'],
+  ]),
+  ...defineExact('super-lig', [
+    ['alanyaspor','Alanyaspor','#F07825','#167A48'],['amedspor','Amedspor','#167A48','#D71920'],['basaksehir','Başakşehir','#F07825','#1766AA'],['besiktas','Beşiktaş','#171717','#FFFFFF'],['corum','Çorum FK','#D71920','#171717'],['erzurumspor','Erzurumspor FK','#1766AA','#FFFFFF'],['eyupspor','Eyüpspor','#6B3FA0','#F5D21B'],['fenerbahce','Fenerbahçe','#1766AA','#F5D21B'],['galatasaray','Galatasaray','#D71920','#F5D21B'],['gaziantep','Gaziantep FK','#D71920','#171717'],['genclerbirligi','Gençlerbirliği','#D71920','#171717'],['goztepe','Göztepe','#D71920','#F5D21B'],['kasimpasa','Kasımpaşa','#1766AA','#FFFFFF'],['kocaelispor','Kocaelispor','#167A48','#171717'],['konyaspor','Konyaspor','#167A48','#FFFFFF'],['rizespor','Çaykur Rizespor','#167A48','#1766AA'],['samsunspor','Samsunspor','#D71920','#FFFFFF'],['trabzonspor','Trabzonspor','#7D2444','#1766AA'],
+  ]),
 ];
 
 const national = (group, rows) => rows.map(([id, name, primary, secondary]) => ({
@@ -196,6 +232,8 @@ export const HONORARY_TEAMS = [
 const KIT_PATTERN_GROUPS = {
   'horizontal-stripes': [
     'laliga-betis', 'premier-man-united', 'europe-argentina', 'europe-usa',
+    'brasileirao-flamengo', 'brasileirao-gremio', 'brasileirao-internacional',
+    'liga-mx-monterrey', 'liga-portugal-sporting', 'super-lig-besiktas',
   ],
   'vertical-stripes': [
     'laliga-athletic', 'laliga-atletico', 'laliga-barcelona', 'laliga-celta', 'laliga-alaves', 'laliga-espanyol', 'laliga-sociedad', 'laliga-racing',
@@ -204,6 +242,10 @@ const KIT_PATTERN_GROUPS = {
     'ligue-1-psg', 'ligue-1-nice', 'ligue-1-lille', 'bundesliga-dortmund', 'bundesliga-frankfurt', 'bundesliga-werder',
     'europe-italy', 'europe-belgium', 'europe-sweden', 'europe-denmark', 'europe-turkiye',
     'america-uruguay', 'america-colombia', 'america-chile', 'america-peru', 'america-mexico', 'america-argentina',
+    'argentina-racing', 'argentina-rosario-central', 'argentina-newells', 'argentina-san-lorenzo', 'argentina-lanus',
+    'brasileirao-athletico-pr', 'brasileirao-atletico-mg', 'brasileirao-corinthians', 'brasileirao-fluminense',
+    'liga-mx-cruz-azul', 'liga-mx-guadalajara', 'liga-mx-tigres', 'liga-mx-atlas', 'liga-portugal-benfica', 'liga-portugal-porto',
+    'belgian-pro-club-brugge', 'belgian-pro-gent', 'belgian-pro-standard', 'super-lig-fenerbahce', 'super-lig-trabzonspor',
   ],
   checkerboard: ['europe-croatia'],
   'half-horizontal': [
@@ -211,12 +253,16 @@ const KIT_PATTERN_GROUPS = {
     'serie-a-roma', 'serie-a-lazio', 'ligue-1-marseille', 'bundesliga-bayern', 'bundesliga-stuttgart',
     'europe-spain', 'europe-germany', 'europe-england', 'europe-netherlands', 'europe-poland', 'europe-portugal', 'europe-wales',
     'america-brazil', 'america-canada', 'america-usa', 'honor-ge-bazan',
+    'argentina-boca', 'argentina-river', 'argentina-huracan', 'argentina-velez', 'brasileirao-sao-paulo', 'brasileirao-santos',
+    'liga-mx-america', 'liga-mx-puebla', 'liga-mx-toluca', 'liga-portugal-braga', 'belgian-pro-antwerp', 'super-lig-goztepe', 'super-lig-galatasaray',
   ],
   'half-vertical': [
     'laliga-rayo', 'laliga-deportivo', 'laliga-valencia', 'laliga-villarreal', 'premier-aston-villa', 'premier-everton',
     'serie-a-napoli', 'serie-a-torino', 'ligue-1-monaco', 'ligue-1-lyon', 'bundesliga-leverkusen', 'bundesliga-hamburg',
     'europe-france', 'europe-austria', 'europe-greece', 'america-ecuador', 'america-paraguay', 'america-jamaica',
     'honor-cd-san-fernando-1940',
+    'argentina-talleres', 'argentina-belgrano', 'argentina-independiente', 'liga-mx-queretaro', 'liga-mx-leon', 'liga-portugal-vitoria',
+    'belgian-pro-union-sg', 'super-lig-basaksehir',
   ],
   quarters: [
     'laliga-levante', 'premier-west-ham', 'serie-a-cagliari', 'serie-a-venezia', 'ligue-1-strasbourg', 'bundesliga-union-berlin',
@@ -303,6 +349,12 @@ const FIVE_STAR = new Set([
   'premier-liverpool', 'premier-arsenal', 'serie-a-inter', 'serie-a-juventus', 'serie-a-milan',
   'ligue-1-psg', 'bundesliga-bayern', 'bundesliga-dortmund', 'europe-spain', 'europe-france',
   'europe-england', 'europe-germany', 'america-argentina', 'america-brazil',
+  'argentina-boca','argentina-river','argentina-independiente','argentina-racing','argentina-velez','argentina-estudiantes','argentina-talleres',
+  'liga-mx-america','liga-mx-guadalajara','liga-mx-cruz-azul','liga-mx-toluca','liga-mx-monterrey','liga-mx-tigres',
+  'brasileirao-flamengo','brasileirao-palmeiras','brasileirao-sao-paulo','brasileirao-corinthians',
+  'mls-inter-miami','mls-lafc','mls-seattle','liga-portugal-porto','liga-portugal-benfica','liga-portugal-sporting',
+  'belgian-pro-club-brugge','belgian-pro-anderlecht','belgian-pro-union-sg',
+  'super-lig-galatasaray','super-lig-fenerbahce','super-lig-besiktas',
 ]);
 const FOUR_STAR = new Set([
   'laliga-athletic', 'laliga-betis', 'laliga-sociedad', 'laliga-sevilla', 'laliga-villarreal',
@@ -314,6 +366,10 @@ const FOUR_STAR = new Set([
   'bundesliga-leipzig', 'bundesliga-leverkusen', 'bundesliga-stuttgart', 'bundesliga-2-hertha',
   'bundesliga-2-wolfsburg', 'bundesliga-2-st-pauli',
   'europe-portugal', 'europe-netherlands', 'europe-belgium', 'america-uruguay', 'america-colombia',
+  'argentina-rosario-central','argentina-san-lorenzo','argentina-lanus','argentina-argentinos',
+  'liga-mx-pachuca','liga-mx-pumas','liga-mx-atlas','liga-mx-leon','liga-mx-santos',
+  'brasileirao-atletico-mg','brasileirao-cruzeiro','brasileirao-gremio','brasileirao-internacional','brasileirao-fluminense','brasileirao-botafogo','brasileirao-vasco',
+  'mls-galaxy','mls-columbus','mls-atlanta','liga-portugal-braga','belgian-pro-genk','super-lig-trabzonspor',
 ]);
 const ONE_STAR = new Set([
   'laliga2-ceuta', 'laliga2-real-sociedad-b', 'championship-oxford', 'serie-b-virtus-entella',

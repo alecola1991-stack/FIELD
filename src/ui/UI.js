@@ -14,8 +14,8 @@ const ROUND_NAMES_32 = ['DIECISÉISAVOS DE FINAL', ...ROUND_NAMES];
 const roundName = (size, round) => (size === 32 ? ROUND_NAMES_32 : ROUND_NAMES)[Math.max(0, Math.min(size === 32 ? 4 : 3, round - 1))];
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const STORE_ITEMS = [
-  { id: 'circle-raised', name: 'Círculo en relieve', slot: 'circleRelief', value: 'raised', price: 80, icon: '◉', preview: 'ring', description: 'Un aro con sombra y luz que destaca el círculo central.' },
-  { id: 'circle-gold', name: 'Aro de campeón', slot: 'circleRelief', value: 'gold', price: 170, icon: '✧', preview: 'ring gold', description: 'Dale un acabado dorado y brillante al círculo central.' },
+  { id: 'circle-raised', name: 'Círculo en relieve', slot: 'circleRelief', value: 'raised', price: 80, icon: '◉', preview: 'ring', description: 'Un aro con sombra y luz que destaca el círculo de tu jugador.' },
+  { id: 'circle-gold', name: 'Aro de campeón', slot: 'circleRelief', value: 'gold', price: 170, icon: '✧', preview: 'ring gold', description: 'Dale un acabado dorado y brillante al círculo de tu jugador.' },
   { id: 'field-mint', name: 'Campo menta', slot: 'fieldTint', value: 'mint', price: 90, icon: '▦', preview: 'field mint', description: 'Un tono fresco para vestir todo el terreno de juego.' },
   { id: 'field-dusk', name: 'Campo crepúsculo', slot: 'fieldTint', value: 'dusk', price: 110, icon: '▦', preview: 'field dusk', description: 'Colores violeta y azul para jugar al anochecer.' },
   { id: 'field-lagoon', name: 'Campo laguna', slot: 'fieldTint', value: 'lagoon', price: 130, icon: '▦', preview: 'field lagoon', description: 'Un acabado turquesa inspirado en aguas profundas.' },
@@ -29,13 +29,28 @@ const STORE_ITEMS = [
   { id: 'ball-cosmic', name: 'Balón cósmico', slot: 'ballSkin', value: 'cosmic', price: 220, icon: '⚽', preview: 'ball cosmic', description: 'Un balón de otra galaxia, profundo y brillante.' },
   { id: 'ball-carbon', name: 'Balón carbono', slot: 'ballSkin', value: 'carbon', price: 200, icon: '⚽', preview: 'ball carbon', description: 'Un diseño oscuro con detalles metálicos.' },
   { id: 'player-halo', name: 'Aura de energía', slot: 'playerEffect', value: 'halo', price: 140, icon: '✺', preview: 'player halo', description: 'Un halo suave destaca a tu jugador en el campo.' },
-  { id: 'player-speed', name: 'Ráfaga veloz', slot: 'playerEffect', value: 'speed', price: 160, icon: '➤', preview: 'player speed', description: 'Líneas de velocidad aparecen cuando te mueves.' },
+  { id: 'player-speed', name: 'Ráfaga veloz', slot: 'playerTrail', value: 'speed', price: 160, icon: '➤', preview: 'player speed', description: 'Líneas de velocidad aparecen cuando te mueves.' },
+  { id: 'circle-chrome', name: 'Relieve cromado', slot: 'circleRelief', value: 'chrome', price: 190, icon: '◉', preview: 'ring chrome', description: 'Borde metálico con luces y sombras en el círculo del jugador.' },
+  { id: 'circle-obsidian', name: 'Relieve obsidiana', slot: 'circleRelief', value: 'obsidian', price: 210, icon: '◉', preview: 'ring obsidian', description: 'Un borde oscuro con reflejos violeta para tu jugador.' },
+  { id: 'circle-prism', name: 'Relieve prisma', slot: 'circleRelief', value: 'prism', price: 260, icon: '◉', preview: 'ring prism', description: 'Un borde iridiscente que cambia de color en tu círculo.' },
+  { id: 'shot-plasma', name: 'Estela plasma', slot: 'shotEffect', value: 'plasma', price: 210, icon: '〰', preview: 'trail plasma', description: 'Luz magenta con un núcleo blanco detrás del balón.' },
+  { id: 'shot-ice', name: 'Estela glaciar', slot: 'shotEffect', value: 'ice', price: 190, icon: '〰', preview: 'trail ice', description: 'Una cola azul helada sigue el recorrido del balón.' },
+  { id: 'shot-rainbow', name: 'Estela arcoíris', slot: 'shotEffect', value: 'rainbow', price: 270, icon: '〰', preview: 'trail rainbow', description: 'La estela del balón recorre todos los colores.' },
+  { id: 'ball-pearl', name: 'Balón perla', slot: 'ballSkin', value: 'pearl', price: 220, icon: '⚽', preview: 'ball pearl', description: 'Acabado nacarado blanco y violeta.' },
+  { id: 'ball-emerald', name: 'Balón esmeralda', slot: 'ballSkin', value: 'emerald', price: 230, icon: '⚽', preview: 'ball emerald', description: 'Un balón verde brillante con detalles oscuros.' },
+  { id: 'player-orbit', name: 'Aura orbital', slot: 'playerEffect', value: 'orbit', price: 200, icon: '✺', preview: 'player orbit', description: 'Tres luces azules orbitan alrededor de tu jugador.' },
+  { id: 'player-pulse', name: 'Aura pulsar', slot: 'playerEffect', value: 'pulse', price: 210, icon: '✺', preview: 'player pulse', description: 'Ondas rosadas se expanden alrededor de tu círculo.' },
+  { id: 'player-cosmic', name: 'Aura cósmica', slot: 'playerEffect', value: 'cosmic', price: 260, icon: '✺', preview: 'player cosmic', description: 'Un halo violeta con estrellas que giran alrededor.' },
+  { id: 'player-flame', name: 'Aura solar', slot: 'playerEffect', value: 'flame', price: 240, icon: '✺', preview: 'player flame', description: 'Chispas cálidas recorren el borde de tu jugador.' },
+  { id: 'player-comet', name: 'Estela cometa', slot: 'playerTrail', value: 'comet', price: 210, icon: '➤', preview: 'player speed comet', description: 'Una cola violeta de luz y partículas sigue tus movimientos.' },
+  { id: 'player-storm', name: 'Estela tormenta', slot: 'playerTrail', value: 'storm', price: 240, icon: '➤', preview: 'player speed storm', description: 'Un rastro cian luminoso acompaña al jugador al correr.' },
+  { id: 'player-sparks', name: 'Estela de chispas', slot: 'playerTrail', value: 'sparks', price: 190, icon: '➤', preview: 'player speed sparks', description: 'Pequeñas chispas doradas quedan detrás de tu jugador.' },
   { id: 'goal-shockwave', name: 'Onda de gol', slot: 'goalEffect', value: 'shockwave', price: 180, icon: '◎', preview: 'goal shockwave', description: 'Una onda expansiva celebra cada gol.' },
   { id: 'goal-fireworks', name: 'Fuegos de gol', slot: 'goalEffect', value: 'fireworks', price: 240, icon: '✹', preview: 'goal fireworks', description: 'Chispas de colores llenan el campo al marcar.' },
 ];
 const STORE_CATEGORIES = [['all', 'Todo'], ['field', 'Campo'], ['ball', 'Balones'], ['trail', 'Estelas'], ['player', 'Jugador'], ['goal', 'Goles']];
-const SLOT_LABELS = { circleRelief: 'Relieve', fieldTint: 'Campo', ballSkin: 'Balón', shotEffect: 'Estela', playerEffect: 'Jugador', goalEffect: 'Gol' };
-const SLOT_DEFAULTS = { circleRelief: 'off', fieldTint: 'off', ballSkin: 'classic', shotEffect: 'off', playerEffect: 'off', goalEffect: 'off' };
+const SLOT_LABELS = { circleRelief: 'Relieve', fieldTint: 'Campo', ballSkin: 'Balón', shotEffect: 'Estela balón', playerEffect: 'Aura', playerTrail: 'Estela jugador', goalEffect: 'Gol' };
+const SLOT_DEFAULTS = { circleRelief: 'off', fieldTint: 'off', ballSkin: 'classic', shotEffect: 'off', playerEffect: 'off', playerTrail: 'off', goalEffect: 'off' };
 
 export class UI {
   constructor(initialUser = null) {
@@ -700,6 +715,9 @@ export class UI {
     number.textContent = this.player_number.value === '' ? '—' : clamp(Number(this.player_number.value) || 0, 0, 99);
     circle.style.background = getKitBackground(team);
     circle.style.setProperty('--dorsal-color', team?.numberColor || '#ffffff');
+    const relief = this.career.equipped.circleRelief || 'off';
+    circle.classList.toggle('has-player-relief', relief !== 'off');
+    circle.style.setProperty('--relief-color', ({ raised: '#ccebdc', gold: '#ffe39a', chrome: '#e6f7ff', obsidian: '#a394dd', prism: '#9af2ee' })[relief] || '#ccebdc');
     circle.classList.toggle('white-dorsal', [team?.numberColor || '#ffffff', team?.primary, team?.secondary].some(value => /^#(?:fff|ffffff|f5fff8|f7f7f7|f4f3ee|f4f2e9)$/i.test(value || '')));
     circle.style.setProperty('--preview-name-size', String(Math.min(16, 75 / Math.max(1, label.length * .65))));
   }
@@ -812,13 +830,14 @@ export class UI {
     const visibleItems = STORE_ITEMS.filter(item => {
       if (this.storeTab === 'inventory' && !this.career.ownedItems.includes(item.id)) return false;
       if (this.storeCategory === 'all' || this.storeTab === 'inventory') return true;
-      const category = item.slot === 'ballSkin' ? 'ball' : item.slot === 'shotEffect' ? 'trail' : item.slot === 'playerEffect' ? 'player' : item.slot === 'goalEffect' ? 'goal' : 'field';
+      const category = item.slot === 'ballSkin' ? 'ball' : ['shotEffect', 'playerTrail'].includes(item.slot) ? 'trail' : ['playerEffect', 'circleRelief'].includes(item.slot) ? 'player' : item.slot === 'goalEffect' ? 'goal' : 'field';
       return category === this.storeCategory;
     });
     this.store_grid.replaceChildren(...visibleItems.map(item => {
       const owned = this.career.ownedItems.includes(item.id), equipped = owned && this.career.equipped[item.slot] === item.value;
       const card = document.createElement('article'); card.className = 'store-item';
       const preview = document.createElement('div'); preview.className = `item-preview preview-${item.preview}`; preview.setAttribute('aria-label', `Vista previa animada: ${item.name}`); preview.innerHTML = '<span></span><i></i><b></b>';
+      if (item.slot === 'circleRelief') preview.querySelector('b').textContent = '10';
       const icon = document.createElement('span'); icon.className = 'store-item-icon'; icon.textContent = item.icon;
       const tag = document.createElement('small'); tag.className = 'store-item-tag'; tag.textContent = equipped ? 'EQUIPADO' : owned ? 'EN INVENTARIO' : SLOT_LABELS[item.slot].toUpperCase();
       const title = document.createElement('b'); title.textContent = item.name;

@@ -679,6 +679,8 @@ export class UI {
     const team = getTeamById(this.selectedTeamId), name = this.player_name.value.trim() || 'TU NOMBRE';
     const rawNumber = this.player_number.value, number = rawNumber === '' ? '—' : clamp(Number(rawNumber) || 0, 0, 99);
     this.preview_name.textContent = name.toUpperCase(); this.preview_number.textContent = number;
+    this.preview_ball.style.setProperty('--dorsal-color', team?.numberColor || '#ffffff');
+    this.preview_name.style.fontSize = `${Math.min(12, 82 / Math.max(1, name.length * .6))}px`;
     this.preview_ball.style.background = getKitBackground(team);
     this.preview_ball.style.boxShadow = team ? `0 8px 28px ${team.primary}55, inset -7px -8px 13px #0003` : 'none';
     this.preview_team.textContent = team ? team.name.toUpperCase() : 'ELIGE UN EQUIPO';

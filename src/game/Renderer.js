@@ -117,18 +117,40 @@ export class Renderer {
     c.shadowColor = color + '55'; c.shadowBlur = 15;
     const grad = c.createRadialGradient(-r * .35, -r * .42, 2, 0, 0, r * 1.2); grad.addColorStop(0, lighten(color)); grad.addColorStop(.52, color); grad.addColorStop(1, shade(color));
     c.fillStyle = grad; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill(); c.shadowBlur = 0;
-    if (player.secondaryColor) {
-      // Paint a true semicircle instead of a clipped rectangle, avoiding
-      // square color bleed on Canvas implementations with different clip edges.
-      c.fillStyle = player.secondaryColor; c.beginPath(); c.moveTo(0, -r);
-      c.arc(0, 0, r, -Math.PI / 2, Math.PI / 2); c.lineTo(0, r); c.closePath(); c.fill();
-    }
+    if (player.secondaryColor) this.drawKitPattern(c, player, r, color);
     c.strokeStyle = '#ffffff70'; c.lineWidth = 1.5; c.stroke();
     c.font = '700 15px "DM Mono",monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
     c.lineWidth = 2.5; c.lineJoin = 'round'; c.strokeStyle = 'rgba(5,12,10,.8)'; c.strokeText(String(player.number), 0, 1);
     c.fillStyle = readable(color); c.fillText(String(player.number), 0, 1);
     c.restore();
     c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.font = '600 10px "DM Mono",monospace'; c.fillStyle = '#eaf4ed'; c.shadowColor = '#07100c'; c.shadowBlur = 5; c.fillText(player.name.toUpperCase(), x, y - r - 12); c.shadowBlur = 0;
+  }
+  drawKitPattern(c, player, r, primary) {
+    const secondary = player.secondaryColor, pattern = player.kitPattern || 'half-vertical';
+    c.save(); c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.clip();
+    const stripes = horizontal => {
+      const size = r / 2;
+      for (let i = 0; i < 4; i += 2) {
+        c.fillStyle = secondary;
+        if (horizontal) c.fillRect(-r, -r + i * size, r * 2, size);
+        else c.fillRect(-r + i * size, -r, size, r * 2);
+      }
+    };
+    if (pattern === 'horizontal-stripes') stripes(true);
+    else if (pattern === 'vertical-stripes') stripes(false);
+    else if (pattern === 'checkerboard') {
+      const size = r / 2;
+      for (let row = 0; row < 4; row++) for (let column = 0; column < 4; column++) {
+        if ((row + column) % 2 === 0) { c.fillStyle = secondary; c.fillRect(-r + column * size, -r + row * size, size, size); }
+      }
+    } else if (pattern === 'quarters') {
+      c.fillStyle = secondary; c.fillRect(-r, -r, r, r); c.fillRect(0, 0, r, r);
+    } else if (pattern === 'half-horizontal') {
+      c.fillStyle = secondary; c.fillRect(-r, 0, r * 2, r);
+    } else {
+      c.fillStyle = secondary; c.fillRect(0, -r, r, r * 2);
+    }
+    c.restore();
   }
   drawBall(c, ball, skin = 'classic') {
     const [x, y] = this.smooth(ball), r = ball.radius;

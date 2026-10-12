@@ -40,7 +40,9 @@ export class Game {
     this.botAI.setTeamStrength(opponentTeam?.stars || 3);
     this.matchStats = { shotsPlayer: 0, shotsOpponent: 0, goals: [] };
     const opponentX = this.localSide === 'left' ? WORLD.width * .69 : WORLD.width * .31;
-    this.bot = mode !== 'training' ? new Player({ x: opponentX, y: WORLD.height / 2, name: options.opponentName || 'BOT', number: options.opponentNumber ?? (opponentTeam ? teamInitials(opponentTeam.name) : 'BOT'), color: opponentTeam?.primary || '#f19676', secondaryColor: opponentTeam?.secondary || null, numberColor: opponentTeam?.numberColor, kitPattern: opponentTeam?.kitPattern, isBot: mode !== 'online', speed: 280 }) : null;
+    const opponentName = mode === 'online' ? options.opponentName || 'RIVAL' : teamInitials(opponentTeam?.name || options.opponentName || 'BOT');
+    const opponentNumber = mode === 'online' ? options.opponentNumber ?? 10 : [10, 9, 11][Math.floor(Math.random() * 3)];
+    this.bot = mode !== 'training' ? new Player({ x: opponentX, y: WORLD.height / 2, name: opponentName, number: opponentNumber, color: opponentTeam?.primary || '#f19676', secondaryColor: opponentTeam?.secondary || null, numberColor: opponentTeam?.numberColor, kitPattern: opponentTeam?.kitPattern, isBot: mode !== 'online', speed: 280 }) : null;
     if (this.bot && mode === 'online') this.bot.faceX = this.localSide === 'left' ? -1 : 1;
     this.ball.reset(WORLD.width / 2, WORLD.height / 2); this.goalResetTimer = 0; this.last = 0;
     this.beginCountdown();
@@ -295,6 +297,7 @@ export class Game {
 function teamInitials(name) {
   const words = String(name || '').replace(/\s+CF$/i, '').match(/[\p{L}\p{N}]+/gu) || [];
   const meaningful = words.filter(word => !/^(de|del|la|las|los|the|and|of)$/i.test(word));
-  if (meaningful.length > 1) return meaningful.map(word => word[0]).join('').slice(0, 3).toUpperCase();
+  if (meaningful.length === 2) return `${meaningful[0][0]}${meaningful[1].slice(0, 2)}`.toUpperCase();
+  if (meaningful.length > 2) return meaningful.map(word => word[0]).join('').slice(0, 3).toUpperCase();
   return (meaningful[0] || 'BOT').slice(0, 3).toUpperCase();
 }

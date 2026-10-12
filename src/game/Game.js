@@ -34,13 +34,13 @@ export class Game {
     this.input.down.clear(); this.input.pressed.clear();
     this.trajectory = !!this.settings.trajectory; this.shotRangeTimer = 0; this.autosaveClock = 0; this.powerHudClock = 0;
     const localX = this.localSide === 'left' ? WORLD.width * .31 : WORLD.width * .69;
-    this.player = new Player({ x: localX, y: WORLD.height / 2, name: this.settings.name, number: this.settings.number, color: team?.primary || '#68746e', secondaryColor: team?.secondary || null });
+    this.player = new Player({ x: localX, y: WORLD.height / 2, name: this.settings.name, number: this.settings.number, color: team?.primary || '#68746e', secondaryColor: team?.secondary || null, kitPattern: team?.kitPattern });
     if (this.localSide === 'right') this.player.faceX = -1;
     const opponentTeam = options.opponentTeam || null;
     this.botAI.setTeamStrength(opponentTeam?.stars || 3);
     this.matchStats = { shotsPlayer: 0, shotsOpponent: 0, goals: [] };
     const opponentX = this.localSide === 'left' ? WORLD.width * .69 : WORLD.width * .31;
-    this.bot = mode !== 'training' ? new Player({ x: opponentX, y: WORLD.height / 2, name: options.opponentName || 'BOT', number: options.opponentNumber ?? (opponentTeam ? teamInitials(opponentTeam.name) : 'BOT'), color: opponentTeam?.primary || '#f19676', secondaryColor: opponentTeam?.secondary || null, isBot: mode !== 'online', speed: 280 }) : null;
+    this.bot = mode !== 'training' ? new Player({ x: opponentX, y: WORLD.height / 2, name: options.opponentName || 'BOT', number: options.opponentNumber ?? (opponentTeam ? teamInitials(opponentTeam.name) : 'BOT'), color: opponentTeam?.primary || '#f19676', secondaryColor: opponentTeam?.secondary || null, kitPattern: opponentTeam?.kitPattern, isBot: mode !== 'online', speed: 280 }) : null;
     if (this.bot && mode === 'online') this.bot.faceX = this.localSide === 'left' ? -1 : 1;
     this.ball.reset(WORLD.width / 2, WORLD.height / 2); this.goalResetTimer = 0; this.last = 0;
     this.beginCountdown();
@@ -52,7 +52,7 @@ export class Game {
     if (this.player) {
       const team = getTeamById(settings.teamId);
       this.player.name = settings.name; this.player.number = settings.number;
-      this.player.color = team?.primary || '#68746e'; this.player.secondaryColor = team?.secondary || null;
+      this.player.color = team?.primary || '#68746e'; this.player.secondaryColor = team?.secondary || null; this.player.kitPattern = team?.kitPattern || 'half-vertical';
     }
     this.botAI.setDifficulty(settings.difficulty); this.trajectory = !!settings.trajectory;
   }

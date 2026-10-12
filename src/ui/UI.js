@@ -110,7 +110,7 @@ export class UI {
 
   getAllowedTeamGroups() {
     if (this.pendingLeagueId === 'south-america-clubs') return TEAM_GROUPS.filter(group => ['argentina', 'brasileirao'].includes(group.id));
-    if (this.pendingLeagueId === 'club-world-cup-clubs') return TEAM_CLUB_GROUPS;
+    if (this.pendingLeagueId === 'club-world-cup-clubs') return TEAM_CLUB_GROUPS.filter(group => PROFILE_TEAMS.some(team => team.league === group.id && isClubWorldCupEligibleTeam(team.id)));
     if (this.pendingLeagueId) return TEAM_GROUPS.filter(group => group.id === this.pendingLeagueId);
     if (this.pendingTeamType === 'club') return TEAM_CLUB_GROUPS;
     if (this.pendingTeamType === 'national') return NATIONAL_GROUPS;

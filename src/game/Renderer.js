@@ -129,7 +129,7 @@ export class Renderer {
     if (player.secondaryColor) this.drawKitPattern(c, player, r, color);
     c.strokeStyle = '#ffffff70'; c.lineWidth = 1.5; c.stroke();
     const numberColor = player.numberColor || readable(color);
-    const whiteDorsal = /^#(?:fff|ffffff|f5fff8|f7f7f7)$/i.test(numberColor);
+    const whiteDorsal = [numberColor, color, player.secondaryColor].some(value => /^#(?:fff|ffffff|f5fff8|f7f7f7|f4f3ee|f4f2e9)$/i.test(value || ''));
     const dorsalOutline = whiteDorsal ? '#000000' : readable(numberColor) === '#f5fff8' ? 'rgba(255,255,255,.98)' : 'rgba(5,12,10,.95)';
     c.beginPath(); c.arc(0, 0, r - 1, 0, Math.PI * 2); c.clip();
     c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineJoin = 'round';

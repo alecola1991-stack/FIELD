@@ -209,3 +209,5 @@ button,a,select,input{font:inherit}button{ -webkit-tap-highlight-color:transpare
 .league-tabs{margin:0 0 11px;padding:0 0 3px}
 .league-tab{min-height:33px;padding:8px 11px;background:#111b1d}
 @media(max-width:600px){.country-tabs{margin:12px 0 7px;gap:5px}.country-tab{min-height:34px;padding:8px 10px;font-size:8px}.league-tabs{margin:0 0 9px;gap:4px}.league-tab{min-height:32px;padding:7px 9px;font-size:8px}}
+
+.category-carousel-wrap{margin:17px 0 11px}.category-carousel-wrap .country-tabs{margin:0;overflow:hidden;display:block}.category-carousel-wrap .country-tab{width:100%;min-height:58px;font-size:13px;text-align:center;white-space:normal}.category-carousel-wrap .country-tab[hidden]{display:none}#country-position{display:block;margin-top:6px;color:#82938a;font:8px var(--mono);text-align:center}@media(max-width:600px){.category-carousel-wrap{margin:12px 0 9px}.category-carousel-wrap .country-tab{min-height:48px;font-size:11px}}

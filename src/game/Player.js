@@ -1,6 +1,6 @@
 export class Player {
-  constructor({ x, y, name, number = 0, color = '#65e6a5', secondaryColor = null, kitPattern = 'half-vertical', radius = 22, speed = 305, isBot = false }) {
-    this.x = x; this.y = y; this.vx = 0; this.vy = 0; this.name = name; this.number = number; this.color = color; this.secondaryColor = secondaryColor; this.kitPattern = kitPattern;
+  constructor({ x, y, name, number = 0, color = '#65e6a5', secondaryColor = null, numberColor = '#ffffff', kitPattern = 'half-vertical', radius = 22, speed = 305, isBot = false }) {
+    this.x = x; this.y = y; this.vx = 0; this.vy = 0; this.name = name; this.number = number; this.color = color; this.secondaryColor = secondaryColor; this.numberColor = numberColor; this.kitPattern = kitPattern;
     this.radius = radius; this.maxSpeed = speed; this.isBot = isBot; this.faceX = isBot ? -1 : 1; this.faceY = 0;
     this.shotCooldown = 0; this.powerCooldown = 0; this.powerFlash = 0; this.kickScale = 0; this.boost = 0;
   }

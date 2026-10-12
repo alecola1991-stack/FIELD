@@ -294,6 +294,24 @@ export function getKitBackground(team) {
 }
 
 const KIT_NUMBER_COLORS = {
+  'liga-portugal-academico-viseu': '#ffffff', 'liga-portugal-alverca': '#ffffff', 'liga-portugal-arouca': '#173b73',
+  'liga-portugal-benfica': '#ffffff', 'liga-portugal-braga': '#ffffff', 'liga-portugal-casa-pia': '#ffffff',
+  'liga-portugal-estoril': '#173b73', 'liga-portugal-estrela': '#ffffff', 'liga-portugal-famalicao': '#173b73',
+  'liga-portugal-gil-vicente': '#ffffff', 'liga-portugal-maritimo': '#ffffff', 'liga-portugal-moreirense': '#172027',
+  'liga-portugal-nacional': '#ffffff', 'liga-portugal-porto': '#ffffff', 'liga-portugal-rio-ave': '#172027',
+  'liga-portugal-santa-clara': '#ffffff', 'liga-portugal-sporting': '#17683c', 'liga-portugal-vitoria': '#172027',
+  'belgian-pro-cercle': '#ffffff', 'belgian-pro-club-brugge': '#ffffff', 'belgian-pro-gent': '#ffffff',
+  'belgian-pro-genk': '#ffffff', 'belgian-pro-kortrijk': '#ffffff', 'belgian-pro-mechelen': '#172027',
+  'belgian-pro-westerlo': '#173b73', 'belgian-pro-lommel': '#ffffff', 'belgian-pro-leuven': '#172027',
+  'belgian-pro-la-louviere': '#ffffff', 'belgian-pro-antwerp': '#ffffff', 'belgian-pro-union-sg': '#173b73',
+  'belgian-pro-anderlecht': '#ffffff', 'belgian-pro-beveren': '#173b73', 'belgian-pro-charleroi': '#ffffff',
+  'belgian-pro-standard': '#ffffff', 'belgian-pro-stvv': '#173b73', 'belgian-pro-zulte-waregem': '#ffffff',
+  'super-lig-alanyaspor': '#ffffff', 'super-lig-amedspor': '#ffffff', 'super-lig-basaksehir': '#173b73',
+  'super-lig-besiktas': '#172027', 'super-lig-corum': '#ffffff', 'super-lig-erzurumspor': '#173b73',
+  'super-lig-eyupspor': '#ffffff', 'super-lig-fenerbahce': '#173b73', 'super-lig-galatasaray': '#172027',
+  'super-lig-gaziantep': '#ffffff', 'super-lig-genclerbirligi': '#ffffff', 'super-lig-goztepe': '#172027',
+  'super-lig-kasimpasa': '#ffffff', 'super-lig-kocaelispor': '#ffffff', 'super-lig-konyaspor': '#172027',
+  'super-lig-rizespor': '#ffffff', 'super-lig-samsunspor': '#ffffff', 'super-lig-trabzonspor': '#ffffff',
   'laliga-athletic': '#ffffff', 'laliga-atletico': '#ffffff', 'laliga-barcelona': '#f6d65c', 'laliga-osasuna': '#ffffff',
   'laliga-celta': '#ffffff', 'laliga-alaves': '#ffffff', 'laliga-elche': '#ffffff', 'laliga-getafe': '#ffffff',
   'laliga-levante': '#ffffff', 'laliga-malaga': '#ffffff', 'laliga-racing': '#ffffff', 'laliga-rayo': '#182027',
@@ -339,7 +357,8 @@ function contrastingNumberColor(hex) {
   return luminance > .45 ? '#172027' : '#ffffff';
 }
 for (const team of [...TEAMS, ...NATIONAL_TEAMS, ...HONORARY_TEAMS]) {
-  team.numberColor = KIT_NUMBER_COLORS[team.id] || contrastingNumberColor(team.primary || '#68746e');
+  const usesTeamDorsalColor = team.type === 'national' || ['laliga', 'premier', 'serie-a', 'ligue-1', 'bundesliga', 'liga-portugal', 'belgian-pro', 'super-lig'].includes(team.league);
+  team.numberColor = (usesTeamDorsalColor ? KIT_NUMBER_COLORS[team.id] : null) || contrastingNumberColor(team.primary || '#68746e');
 }
 
 // Strength influences both the selector and the opponent AI. Ratings are a

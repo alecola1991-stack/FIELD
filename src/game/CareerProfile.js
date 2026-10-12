@@ -138,11 +138,12 @@ function normalizeStats(value = {}) { return Object.fromEntries(statKeys.map(key
 function normalizeRedeemedCodes(value) { return Array.isArray(value) ? [...new Set(value.filter(code => typeof code === 'string').map(code => code.trim().toLowerCase()).filter(code => Object.hasOwn(PROMO_CODES, code)))].slice(0, 100) : []; }
 function normalizeEquipped(value = {}) {
   return {
-    circleRelief: ['off', 'raised', 'gold'].includes(value?.circleRelief) ? value.circleRelief : 'off',
+    circleRelief: ['off', 'raised', 'gold', 'chrome', 'obsidian', 'prism'].includes(value?.circleRelief) ? value.circleRelief : 'off',
     fieldTint: ['off', 'mint', 'dusk', 'lagoon'].includes(value?.fieldTint) ? value.fieldTint : 'off',
-    shotEffect: ['off', 'neon', 'fire', 'lightning', 'aurora'].includes(value?.shotEffect) ? value.shotEffect : 'off',
-    ballSkin: ['classic', 'gold', 'lava', 'ice', 'cosmic', 'carbon'].includes(value?.ballSkin) ? value.ballSkin : 'classic',
-    playerEffect: ['off', 'halo', 'speed'].includes(value?.playerEffect) ? value.playerEffect : 'off',
+    shotEffect: ['off', 'neon', 'fire', 'lightning', 'aurora', 'plasma', 'ice', 'rainbow'].includes(value?.shotEffect) ? value.shotEffect : 'off',
+    ballSkin: ['classic', 'gold', 'lava', 'ice', 'cosmic', 'carbon', 'pearl', 'emerald'].includes(value?.ballSkin) ? value.ballSkin : 'classic',
+    playerEffect: ['off', 'halo', 'orbit', 'pulse', 'cosmic', 'flame'].includes(value?.playerEffect) ? value.playerEffect : 'off',
+    playerTrail: ['off', 'speed', 'comet', 'storm', 'sparks'].includes(value?.playerTrail) ? value.playerTrail : value?.playerEffect === 'speed' ? 'speed' : 'off',
     goalEffect: ['off', 'shockwave', 'fireworks'].includes(value?.goalEffect) ? value.goalEffect : 'off',
   };
 }

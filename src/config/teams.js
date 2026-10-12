@@ -247,6 +247,55 @@ export function getKitBackground(team) {
   }
 }
 
+const KIT_NUMBER_COLORS = {
+  'laliga-athletic': '#ffffff', 'laliga-atletico': '#ffffff', 'laliga-barcelona': '#f6d65c', 'laliga-osasuna': '#ffffff',
+  'laliga-celta': '#ffffff', 'laliga-alaves': '#ffffff', 'laliga-elche': '#ffffff', 'laliga-getafe': '#ffffff',
+  'laliga-levante': '#ffffff', 'laliga-malaga': '#ffffff', 'laliga-racing': '#ffffff', 'laliga-rayo': '#182027',
+  'laliga-deportivo': '#ffffff', 'laliga-espanyol': '#ffffff', 'laliga-betis': '#ffffff', 'laliga-real-madrid': '#17274b',
+  'laliga-sociedad': '#ffffff', 'laliga-sevilla': '#c9162e', 'laliga-valencia': '#171717', 'laliga-villarreal': '#123b75',
+  'premier-arsenal': '#ffffff', 'premier-aston-villa': '#ffffff', 'premier-bournemouth': '#ffffff', 'premier-brentford': '#ffffff',
+  'premier-brighton': '#ffffff', 'premier-chelsea': '#ffffff', 'premier-crystal-palace': '#ffffff', 'premier-everton': '#ffffff',
+  'premier-fulham': '#171717', 'premier-liverpool': '#ffffff', 'premier-man-city': '#ffffff', 'premier-man-united': '#f6d74e',
+  'premier-newcastle': '#ffffff', 'premier-nottingham': '#ffffff', 'premier-sunderland': '#ffffff', 'premier-tottenham': '#17274b',
+  'premier-coventry': '#17274b', 'premier-hull': '#171717', 'premier-ipswich': '#ffffff', 'premier-leeds': '#17274b',
+  'serie-a-atalanta': '#ffffff', 'serie-a-bologna': '#ffffff', 'serie-a-inter': '#f6d65c', 'serie-a-juventus': '#ffffff',
+  'serie-a-lazio': '#17274b', 'serie-a-milan': '#ffffff', 'serie-a-napoli': '#ffffff', 'serie-a-roma': '#f6d65c',
+  'serie-a-sassuolo': '#ffffff', 'serie-a-torino': '#ffffff', 'serie-a-cagliari': '#ffffff', 'serie-a-como': '#ffffff',
+  'serie-a-fiorentina': '#ffffff', 'serie-a-frosinone': '#17274b', 'serie-a-genoa': '#ffffff', 'serie-a-lecce': '#ffffff',
+  'serie-a-monza': '#ffffff', 'serie-a-parma': '#173b73', 'serie-a-udinese': '#ffffff', 'serie-a-venezia': '#f6d65c',
+  'ligue-1-psg': '#ffffff', 'ligue-1-marseille': '#133c70',
+  'ligue-1-monaco': '#ffffff', 'ligue-1-lyon': '#ffffff', 'ligue-1-lille': '#ffffff', 'ligue-1-nice': '#ffffff',
+  'ligue-1-angers': '#ffffff', 'ligue-1-auxerre': '#ffffff', 'ligue-1-brest': '#ffffff', 'ligue-1-le-havre': '#173b73',
+  'ligue-1-le-mans': '#171717', 'ligue-1-lens': '#171717', 'ligue-1-lorient': '#171717', 'ligue-1-paris-fc': '#ffffff',
+  'ligue-1-rennes': '#ffffff', 'ligue-1-strasbourg': '#ffffff', 'ligue-1-toulouse': '#ffffff', 'ligue-1-troyes': '#ffffff',
+  'bundesliga-bayern': '#ffffff', 'bundesliga-dortmund': '#171717', 'bundesliga-leipzig': '#ffffff',
+  'bundesliga-leverkusen': '#ffffff', 'bundesliga-frankfurt': '#ffffff', 'bundesliga-stuttgart': '#d71920',
+  'bundesliga-augsburg': '#ffffff', 'bundesliga-union-berlin': '#ffffff', 'bundesliga-werder': '#ffffff',
+  'bundesliga-elversberg': '#ffffff', 'bundesliga-freiburg': '#ffffff', 'bundesliga-hamburg': '#ffffff',
+  'bundesliga-hoffenheim': '#ffffff', 'bundesliga-koln': '#c9162e', 'bundesliga-mainz': '#ffffff',
+  'bundesliga-gladbach': '#ffffff', 'bundesliga-paderborn': '#ffffff', 'bundesliga-schalke': '#ffffff',
+  'europe-spain': '#f6d65c', 'europe-france': '#ffffff', 'europe-germany': '#171717', 'europe-italy': '#ffffff',
+  'europe-england': '#152d54', 'europe-portugal': '#ffffff', 'europe-netherlands': '#ffffff', 'europe-belgium': '#f4d24a',
+  'europe-croatia': '#ffffff', 'europe-denmark': '#ffffff', 'europe-sweden': '#173b73', 'europe-norway': '#ffffff',
+  'europe-poland': '#d7193f', 'europe-switzerland': '#ffffff', 'europe-austria': '#ffffff', 'europe-turkiye': '#ffffff',
+  'europe-serbia': '#ffffff', 'europe-ukraine': '#f6d65c', 'europe-scotland': '#ffffff', 'europe-wales': '#ffffff',
+  'europe-greece': '#ffffff', 'europe-czechia': '#ffffff', 'europe-romania': '#f6d65c', 'europe-hungary': '#ffffff',
+  'america-argentina': '#17274b', 'america-brazil': '#17683c', 'america-uruguay': '#ffffff', 'america-colombia': '#173b73',
+  'america-chile': '#ffffff', 'america-ecuador': '#173b73', 'america-paraguay': '#173b73', 'america-peru': '#ffffff',
+  'america-venezuela': '#173b73', 'america-bolivia': '#173b73', 'america-mexico': '#ffffff', 'america-usa': '#ffffff',
+  'america-canada': '#ffffff', 'america-costa-rica': '#ffffff', 'america-jamaica': '#f3d344', 'america-panama': '#ffffff',
+  'america-honduras': '#ffffff', 'america-guatemala': '#173b73',
+};
+function contrastingNumberColor(hex) {
+  const value = hex.replace('#', '');
+  const rgb = [0, 2, 4].map(offset => Number.parseInt(value.slice(offset, offset + 2), 16) / 255).map(channel => channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4);
+  const luminance = .2126 * rgb[0] + .7152 * rgb[1] + .0722 * rgb[2];
+  return luminance > .45 ? '#172027' : '#ffffff';
+}
+for (const team of [...TEAMS, ...NATIONAL_TEAMS, ...HONORARY_TEAMS]) {
+  team.numberColor = KIT_NUMBER_COLORS[team.id] || contrastingNumberColor(team.primary || '#68746e');
+}
+
 // Strength influences both the selector and the opponent AI. Ratings are a
 // gameplay estimate rather than an official ranking.
 const FIVE_STAR = new Set([

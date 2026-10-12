@@ -23,7 +23,7 @@ export class Game {
     this.matchStats = { shotsPlayer: 0, shotsOpponent: 0, goals: [] };
   }
   start(mode = 'bot', difficulty = this.settings.difficulty, options = {}) {
-    this.state.start(mode); this.settings.difficulty = difficulty; this.botAI.setDifficulty(difficulty);
+    this.state.start(mode); if (mode !== 'legends') this.settings.difficulty = difficulty; this.botAI.setDifficulty(mode === 'legends' ? 'legend' : difficulty);
     const team = getTeamById(this.settings.teamId);
     this.fieldTheme = options.fieldTheme || (mode === 'training' ? 'training' : mode === 'tournament' ? 'champions' : 'arcade');
     this.competitionRound = options.competitionRound || 0;
@@ -56,7 +56,7 @@ export class Game {
       this.player.name = settings.name; this.player.number = settings.number;
       this.player.color = team?.primary || '#68746e'; this.player.secondaryColor = team?.secondary || null; this.player.numberColor = team?.numberColor || '#ffffff'; this.player.kitPattern = team?.kitPattern || 'half-vertical';
     }
-    this.botAI.setDifficulty(settings.difficulty); this.trajectory = !!settings.trajectory;
+    this.botAI.setDifficulty(this.state.mode === 'legends' ? 'legend' : settings.difficulty); this.trajectory = !!settings.trajectory;
   }
   setPaused(paused) { this.state.paused = paused; this.last = 0; }
   stop() { this.state.running = false; this.state.paused = false; this.trajectory = false; if (this.raf) cancelAnimationFrame(this.raf); this.raf = 0; this.last = 0; }

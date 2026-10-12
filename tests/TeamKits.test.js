@@ -17,3 +17,12 @@ test('every team gets a stable kit pattern and second divisions get a varied mix
   const secondDivision = PROFILE_TEAMS.filter(team => ['laliga2', 'championship', 'serie-b', 'ligue-2', 'bundesliga-2'].includes(team.league));
   assert.ok(new Set(secondDivision.map(team => team.kitPattern)).size >= 5);
 });
+
+test('first-division and national shirts use their dorsal font colors', () => {
+  const byId = new Map(PROFILE_TEAMS.map(team => [team.id, team]));
+  assert.equal(byId.get('laliga-barcelona').numberColor, '#f6d65c');
+  assert.equal(byId.get('europe-spain').numberColor, '#f6d65c');
+  assert.equal(byId.get('america-argentina').numberColor, '#17274b');
+  assert.equal(byId.get('bundesliga-dortmund').numberColor, '#171717');
+  for (const team of PROFILE_TEAMS) assert.match(team.numberColor, /^#[0-9a-f]{6}$/i, `${team.id} needs a dorsal color`);
+});

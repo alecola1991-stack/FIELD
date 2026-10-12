@@ -31,3 +31,18 @@ test('goal celebration draws its wave at the goal that was scored', () => {
     assert.deepEqual(arcXs, [expectedX]);
   }
 });
+
+test('player name and larger dorsal are drawn inside the circle in the team color', () => {
+  const texts = []; let clipped = false;
+  const context = new Proxy({
+    createRadialGradient() { return { addColorStop() {} }; },
+    clip() { clipped = true; },
+    fillText(text, x, y, width) { texts.push({ text, x, y, width, font: this.font, color: this.fillStyle, clipped }); },
+  }, { get(target, key) { return key in target ? target[key] : () => {}; } });
+  const player = { x: 100, y: 100, radius: 22, name: 'Lamine', number: 10, numberColor: '#f6d65c' };
+  const renderer = Object.create(Renderer.prototype);
+  renderer.drawPlayer(context, player, '#a50044');
+  assert.deepEqual(texts.map(item => item.text), ['LAMINE', '10']);
+  assert.ok(texts.every(item => item.clipped && item.x === 0 && Math.abs(item.y) < player.radius && item.width < player.radius * 2 && item.color === player.numberColor));
+  assert.match(texts[1].font, /25px/);
+});

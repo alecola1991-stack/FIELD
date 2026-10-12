@@ -87,7 +87,7 @@ export class Game {
         if (this.autosaveClock >= 2) { this.autosaveClock %= 2; this.hooks.onAutosave?.(); }
       }
     }
-    this.renderer.render({ player: this.player, bot: this.bot, ball: this.ball, trajectory: this.trajectory, goalTimer: this.state.goalTimer, fieldTheme: this.fieldTheme, competitionRound: this.competitionRound, shotRangeTimer: this.shotRangeTimer, cosmetics: this.settings.cosmetics || {} }, dt);
+    this.renderer.render({ player: this.player, bot: this.bot, ball: this.ball, trajectory: this.trajectory, goalTimer: this.state.goalTimer, goalSide: this.state.goalSide, fieldTheme: this.fieldTheme, competitionRound: this.competitionRound, shotRangeTimer: this.shotRangeTimer, cosmetics: this.settings.cosmetics || {} }, dt);
     this.input.endFrame();
   }
   update(dt) {
@@ -189,6 +189,7 @@ export class Game {
     }
   }
   recordGoal(side) {
+    this.state.goalSide = side;
     const playerScored = this.state.mode === 'training' || (this.state.mode === 'online'
       ? (this.localSide === 'left' ? side === 1 : side === -1)
       : side === 1);
@@ -207,7 +208,7 @@ export class Game {
     const entity = body => body && ({ x: body.x, y: body.y, vx: body.vx, vy: body.vy, faceX: body.faceX, faceY: body.faceY, shotCooldown: body.shotCooldown, powerCooldown: body.powerCooldown, powerFlash: body.powerFlash, kickScale: body.kickScale, boost: body.boost, spin: body.spin });
     return {
       mode: this.state.mode, elapsed: this.state.elapsed, scorePlayer: this.state.scorePlayer, scoreBot: this.state.scoreBot,
-      goalTimer: this.state.goalTimer, matchOver: this.state.matchOver, goalTarget: this.goalTarget,
+      goalTimer: this.state.goalTimer, goalSide: this.state.goalSide, matchOver: this.state.matchOver, goalTarget: this.goalTarget,
       countdown: this.countdown, countdownClock: this.countdownClock, trajectory: this.trajectory,
       fieldTheme: this.fieldTheme, competitionRound: this.competitionRound,
       matchStats: this.matchSummary(),
@@ -224,6 +225,7 @@ export class Game {
     };
     this.state.elapsed = Number(snapshot.elapsed) || 0; this.state.scorePlayer = Number(snapshot.scorePlayer) || 0;
     this.state.scoreBot = Number(snapshot.scoreBot) || 0; this.state.goalTimer = Number(snapshot.goalTimer) || 0;
+    this.state.goalSide = [-1, 1].includes(Number(snapshot.goalSide)) ? Number(snapshot.goalSide) : 0;
     this.state.matchOver = !!snapshot.matchOver; this.state.paused = false;
     this.goalTarget = Number(snapshot.goalTarget) || this.goalTarget; this.countdown = Number(snapshot.countdown) || 0;
     this.countdownClock = Number(snapshot.countdownClock) || 0; this.trajectory = !!this.settings?.trajectory;

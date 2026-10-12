@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 24382)
-Total output lines: 1349
-
 import { loadSettings, saveSettings, setSettingsScope } from '../config/settings.js';
 import { Progression } from '../game/Progression.js';
 import { CareerProfile } from '../game/CareerProfile.js';
@@ -498,7 +495,242 @@ export class UI {
 
   renderCompetitionPicker() {
     const trophies = {
-      champions: '<svg viewBox="0 0 100 100"><path d="M31 17h38v13c0 18-8 29-19 33-11-4-19-15-19-33V17Zm-10 4h10v9c0…4382 tokens truncated…Children(...Object.entries(SLOT_LABELS).map(([slot, label]) => {
+      champions: '<svg viewBox="0 0 100 100"><path d="M31 17h38v13c0 18-8 29-19 33-11-4-19-15-19-33V17Zm-10 4h10v9c0 9 3 15 8 19-13-2-18-10-18-20v-8Zm58 0v8c0 10-5 18-18 20 5-4 8-10 8-19v-9h10ZM45 63h10v12h15v9H30v-9h15V63Z" fill="currentColor"/><path d="M39 24h22v6H39z" fill="#eaf8ee" opacity=".45"/></svg>',
+      league: '<svg viewBox="0 0 100 100"><path d="M32 17h36l-3 18c-2 12-7 19-15 23-8-4-13-11-15-23l-3-18ZM23 22h11l2 13c1 7 4 12 9 16-14-1-22-8-22-19V22Zm54 0v10c0 11-8 18-22 19 5-4 8-9 9-16l2-13h11ZM45 57h10v14h14v9H31v-9h14V57Z" fill="currentColor"/><path d="m50 26 2.4 5 5.6.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.6-.8 2.4-5Z" fill="#10191b"/></svg>',
+      'world-cup': '<svg viewBox="0 0 100 100"><path d="M50 13 61 19 64 31 58 39 66 48 61 58 56 64H44L39 58 34 48 42 39 36 31 39 19 50 13Z" fill="currentColor"/><path d="M43 19 50 25 57 19M38 31l12 7 12-7M40 45h20M43 57h14M46 64l-3 17h14l-3-17M39 82h22v6H39z" fill="none" stroke="#effaf1" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".8"/><circle cx="50" cy="36" r="17" fill="none" stroke="#effaf1" stroke-width="1.7" opacity=".55"/></svg>',
+      euro: '<svg viewBox="0 0 100 100"><path d="M23 23c0-6 5-10 11-10h32c6 0 11 4 11 10v8c0 8-5 13-13 15l-9 2 8 18-13 12-13-12 8-18-9-2c-8-2-13-7-13-15v-8Z" fill="currentColor"/><path d="M34 24h32M39 32h22M44 41h12M46 68l4 11 4-11" stroke="#effaf1" stroke-width="2.5" stroke-linecap="round" opacity=".75"/></svg>',
+      'copa-america': '<svg viewBox="0 0 100 100"><path d="M35 19h30l-2 10c-1 7-4 12-9 15v9c0 7 4 12 10 16l7 4v8H29v-8l7-4c6-4 10-9 10-16v-9c-5-3-8-8-9-15l-2-10Z" fill="currentColor"/><path d="M32 22h-9v9c0 12 6 18 18 20M68 22h9v9c0 12-6 18-18 20M40 29h20M43 38h14M43 54h14M41 69h18" fill="none" stroke="#effaf1" stroke-width="2.3" stroke-linecap="round" opacity=".8"/><path d="M29 81h42v6H29z" fill="#effaf1" opacity=".45"/></svg>',
+    };
+    const item = CUP_COMPETITIONS[this.competitionIndex] || CUP_COMPETITIONS[0];
+    this.competition_trophy.innerHTML = trophies[item.id];
+    this.competition_picker_card.style.setProperty('--competition-accent', ({ champions: '#78ddb0', league: '#73a9ed', 'world-cup': '#e7c56c', euro: '#7ab6ef', 'copa-america': '#69d2a0' })[item.id]);
+    this.competition_eyebrow.textContent = item.eyebrow;
+    this.competition_title.textContent = item.name;
+    this.competition_description.textContent = item.description;
+    this.competition_dots.replaceChildren(...CUP_COMPETITIONS.map((competition, i) => {
+      const dot = document.createElement('i'); dot.className = i === this.competitionIndex ? 'active' : ''; dot.setAttribute('aria-label', competition.name); return dot;
+    }));
+  }
+
+  moveCompetition(direction) {
+    this.competitionIndex = (this.competitionIndex + direction + CUP_COMPETITIONS.length) % CUP_COMPETITIONS.length;
+    this.renderCompetitionPicker(); this.sound?.play('click');
+  }
+
+  chooseCompetition() {
+    const competition = CUP_COMPETITIONS[this.competitionIndex];
+    this.selectedCompetition = competition.id;
+    const mode = competition.id === 'league' ? 'league' : 'tournament';
+    const required = competition.type === 'club' ? 'club' : 'national';
+    const current = getTeamById(this.settings.teamId);
+    const requiredGroup = competition.type === 'europe' ? 'europe' : competition.type === 'america' ? 'america' : '';
+    if (!this.profileComplete() || (required === 'club' && current?.type === 'national') || (required === 'national' && current?.type !== 'national') || (requiredGroup && current?.league !== requiredGroup)) {
+      this.pendingMode = mode; this.pendingCompetition = competition.id; this.pendingTeamType = required;
+      this.pendingLeagueId = competition.id === 'league' ? this.league_competition.value : requiredGroup;
+      this.openProfile(); return;
+    }
+    if (mode === 'league') {
+      if (current && current.type !== 'national' && TEAM_LEAGUES.some(league => league.id === current.league)) {
+        this.league_competition.value = current.league; this.settings.leagueCompetition = current.league; this.persist();
+      }
+      this.updateLeaguePreview(); this.show('league');
+    }
+    else this.openTournamentSetup(competition.id);
+  }
+
+  openTournamentSetup(competitionId = this.pendingCompetition || this.selectedCompetition || 'champions') {
+    const competition = CUP_COMPETITIONS.find(item => item.id === competitionId) || CUP_COMPETITIONS[0];
+    const isInternational = competition.type !== 'club';
+    const current = getTeamById(this.settings.teamId);
+    const requiredGroup = competition.type === 'europe' ? 'europe' : competition.type === 'america' ? 'america' : '';
+    if (isInternational && current?.type !== 'national' || !isInternational && current?.type === 'national' || requiredGroup && current?.league !== requiredGroup) {
+      this.pendingMode = 'tournament'; this.pendingCompetition = competition.id; this.pendingTeamType = isInternational ? 'national' : 'club'; this.pendingLeagueId = requiredGroup; this.openProfile(); return;
+    }
+    const teams = isInternational ? createInternationalDraw(competition.id, this.settings.teamId) : createChampionsDraw(this.settings.teamId);
+    this.tournament = { size: 16, teams, totalRounds: 4, round: 0, status: 'setup', competitionId: competition.id };
+    this.renderTournamentSetup(competition);
+    this.renderTournamentRoster(); this.show('tournament');
+  }
+
+  openProfile() {
+    this.selectedTeamId = getTeamById(this.settings.teamId)?.id || '';
+    const allowedGroups = this.getAllowedTeamGroups();
+    const selectedTeam = getTeamById(this.selectedTeamId);
+    if (this.pendingLeagueId) {
+      this.activeLeague = this.pendingLeagueId;
+      if (selectedTeam?.league !== this.pendingLeagueId) this.selectedTeamId = '';
+    } else if (this.pendingTeamType === 'club' && selectedTeam?.type === 'national' || this.pendingTeamType === 'national' && selectedTeam?.type !== 'national') this.selectedTeamId = '';
+    else if (selectedTeam) this.activeLeague = selectedTeam.league;
+    if (!allowedGroups.some(group => group.id === this.activeLeague)) this.activeLeague = allowedGroups[0]?.id || TEAM_LEAGUES[0].id;
+    this.activeCountry = TEAM_COUNTRIES.find(country => country.groups.includes(this.activeLeague))?.id || TEAM_COUNTRIES[0].id;
+    this.player_name.value = this.settings.profileReady ? this.settings.name : '';
+    this.player_number.value = this.settings.profileReady ? this.settings.number : '';
+    const setupForMode = !!this.pendingMode;
+    this.profile_eyebrow.textContent = setupForMode ? 'ANTES DEL SAQUE' : 'PERSONALIZACIÓN';
+    this.profile_title.innerHTML = setupForMode ? 'Elige tu<br><em>equipo.</em>' : 'Tu club.<br><em>Tu dorsal.</em>';
+    this.profile_copy.textContent = setupForMode
+      ? `Para empezar, selecciona ${this.pendingTeamType === 'national' ? 'una selección' : 'un club'} y luego completa tu nombre y dorsal.`
+      : 'Cambia de equipo o actualiza el nombre y dorsal que aparecen en el campo.';
+    document.getElementById('save-player').innerHTML = setupForMode ? 'Guardar y continuar <span>→</span>' : 'Guardar jugador <span>✓</span>';
+    this.saved_note.textContent = '';
+    this.renderTeamNavigation();
+    this.renderTeamCarousel(); this.updateProfilePreview(); this.updateProfileValidity(); this.show('customize');
+  }
+
+  renderTeamCarousel() {
+    this.league_tabs.querySelectorAll('[data-league]').forEach(tab => {
+      const active = tab.dataset.league === this.activeLeague; tab.classList.toggle('active', active); tab.setAttribute('aria-selected', String(active));
+    });
+    this.team_grid.replaceChildren();
+    const leagueTeams = PROFILE_TEAMS.filter(team => team.league === this.activeLeague);
+    let index = this.teamCursor.get(this.activeLeague) || 0;
+    if (!this.teamCursor.has(this.activeLeague)) {
+      const selectedIndex = leagueTeams.findIndex(team => team.id === this.selectedTeamId);
+      if (selectedIndex >= 0) index = selectedIndex;
+    }
+    index = (index + leagueTeams.length) % leagueTeams.length; this.teamCursor.set(this.activeLeague, index);
+    const team = leagueTeams[index];
+    if (!team) return;
+    const card = document.createElement('button'); card.type = 'button'; card.className = 'team-card single-team-card'; card.dataset.teamId = team.id;
+    const chosen = team.id === this.selectedTeamId;
+    card.setAttribute('aria-label', `${team.name}. Valoración ${team.stars || 3} de 5 estrellas. ${chosen ? 'Equipo elegido' : 'Elegir este equipo'}`);
+    card.setAttribute('aria-pressed', String(chosen)); card.classList.toggle('selected', chosen);
+    const strip = document.createElement('span'); strip.className = 'team-card-colors';
+    strip.style.background = `linear-gradient(90deg, ${team.primary} 0 50%, ${team.secondary} 50% 100%)`;
+    const details = document.createElement('span'); details.className = 'team-card-details';
+    const name = document.createElement('span'); name.className = 'team-card-name'; name.textContent = team.name;
+    const rating = document.createElement('span'); rating.className = 'team-rating';
+    rating.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.6 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5-5.8-3.1-5.8 3.1 1.1-6.5-4.7-4.6 6.5-.9L12 2.6Z"/></svg><b>${team.stars || 3}</b><span>/ 5</span>`;
+    const league = document.createElement('small'); league.textContent = chosen ? 'EQUIPO ELEGIDO ✓' : 'PULSA PARA ELEGIR';
+    details.append(name, rating, league); card.append(strip, details); this.team_grid.append(card);
+    this.team_position.textContent = `${index + 1} / ${leagueTeams.length}`;
+    this.teams_prev.disabled = this.teams_next.disabled = leagueTeams.length < 2;
+  }
+
+  moveTeam(direction) {
+    const leagueTeams = PROFILE_TEAMS.filter(team => team.league === this.activeLeague);
+    const current = this.teamCursor.get(this.activeLeague) || 0;
+    this.teamCursor.set(this.activeLeague, (current + direction + leagueTeams.length) % leagueTeams.length);
+    this.renderTeamCarousel(); this.sound?.play('click');
+  }
+
+  selectTeam(teamId) {
+    const chosen = getTeamById(teamId);
+    if (!chosen || this.pendingTeamType === 'club' && chosen.type === 'national' || this.pendingTeamType === 'national' && chosen.type !== 'national' || this.pendingLeagueId && chosen.league !== this.pendingLeagueId) return;
+    const firstSelection = this.player_name.disabled;
+    this.selectedTeamId = teamId; this.activeLeague = getTeamById(teamId).league;
+    this.activeCountry = TEAM_COUNTRIES.find(country => country.groups.includes(this.activeLeague))?.id || TEAM_COUNTRIES[0].id;
+    const index = PROFILE_TEAMS.filter(item => item.league === this.activeLeague).findIndex(item => item.id === teamId);
+    if (index >= 0) this.teamCursor.set(this.activeLeague, index);
+    this.renderTeamNavigation(); this.renderTeamCarousel(); this.updateProfilePreview(); this.updateProfileValidity();
+    if (firstSelection) this.player_name.focus();
+    this.sound?.play('click');
+  }
+
+  updateProfilePreview() {
+    const team = getTeamById(this.selectedTeamId), name = this.player_name.value.trim() || 'TU NOMBRE';
+    const rawNumber = this.player_number.value, number = rawNumber === '' ? '—' : clamp(Number(rawNumber) || 0, 0, 99);
+    this.preview_name.textContent = name.toUpperCase(); this.preview_number.textContent = number;
+    this.preview_ball.style.background = team ? `linear-gradient(90deg, ${team.primary} 0 50%, ${team.secondary} 50% 100%)` : '#33413b';
+    this.preview_ball.style.boxShadow = team ? `0 8px 28px ${team.primary}55, inset -7px -8px 13px #0003` : 'none';
+    this.preview_team.textContent = team ? team.name.toUpperCase() : 'ELIGE UN EQUIPO';
+    const league = team && TEAM_GROUPS.find(item => item.id === team.league);
+    this.chosen_team_label.textContent = team ? `${team.name} · ${league.label.split(' · ')[0]}` : 'SELECCIONA UN EQUIPO PRIMERO';
+    this.player_name.disabled = !team; this.player_number.disabled = !team;
+    this.updateProfileValidity(); this.updateHomeClub();
+  }
+
+  updateProfileValidity() {
+    if (!this.save_player) return;
+    const numberText = this.player_number.value, number = Number(numberText);
+    const team = getTeamById(this.selectedTeamId);
+    let typeMatches = !!team;
+    if (this.pendingTeamType === 'national') typeMatches = team?.type === 'national';
+    else if (this.pendingTeamType === 'club') typeMatches = team?.type !== 'national';
+    if (this.pendingLeagueId) typeMatches = typeMatches && team?.league === this.pendingLeagueId;
+    const valid = !!team && typeMatches && !!this.player_name.value.trim()
+      && numberText !== '' && Number.isInteger(number) && number >= 0 && number <= 99;
+    this.save_player.disabled = !valid;
+  }
+
+  updateHomeClub() {
+    const team = getTeamById(this.settings.teamId);
+    this.home_club_name.textContent = team ? `${team.name.toUpperCase()} · ${team.type === 'national' ? 'SELECCIÓN' : team.type === 'honorary' ? 'HONORÍFICO' : 'CLUB'}` : 'SELECCIONA TU EQUIPO AL JUGAR';
+    this.home_club_colors.style.background = team
+      ? `linear-gradient(90deg, ${team.primary} 0 50%, ${team.secondary} 50% 100%)` : 'transparent';
+    this.home_club_colors.classList.toggle('has-team', !!team);
+  }
+
+  savePlayer() {
+    const team = getTeamById(this.selectedTeamId), name = this.player_name.value.trim();
+    const numberText = this.player_number.value, number = Number(numberText);
+    if (!team || this.pendingTeamType === 'club' && team.type === 'national' || this.pendingTeamType === 'national' && team.type !== 'national' || this.pendingLeagueId && team.league !== this.pendingLeagueId || !name || numberText === '' || !Number.isInteger(number) || number < 0 || number > 99) return;
+    this.settings.teamId = team.id; this.settings.name = name.slice(0, 16); this.settings.number = number; this.settings.profileReady = true;
+    delete this.settings.color; this.persist(); this.updateHomeClub();
+    const nextMode = this.pendingMode; this.pendingMode = null; this.sound?.play('click');
+    const nextCompetition = this.pendingCompetition, nextLeagueId = this.pendingLeagueId; this.pendingCompetition = null; this.pendingTeamType = 'all'; this.pendingLeagueId = '';
+    this.renderTeamNavigation();
+    if (nextMode === 'online') { this.openOnline(); return; }
+    if (nextMode === 'tournament') { this.openTournamentSetup(nextCompetition); return; }
+    if (nextMode === 'league') {
+      this.league_competition.value = nextLeagueId || team.league; this.settings.leagueCompetition = this.league_competition.value; this.persist();
+      this.updateLeaguePreview(); this.show('league'); return;
+    }
+    if (nextMode) { this.show('home'); this.start(nextMode); }
+    else this.saved_note.textContent = 'JUGADOR GUARDADO';
+  }
+
+  persist() { saveSettings(this.settings); this.game?.updateSettings(this.settings); this.syncAccount(false); }
+
+  redeemPromoCode() {
+    const result = this.career.redeemPromoCode(this.promo_code_input.value);
+    this.promo_code_status.classList.remove('success', 'error');
+    if (!result.ok) {
+      this.promo_code_status.classList.add('error');
+      this.promo_code_status.textContent = result.reason === 'used' ? 'Este código ya se canjeó en este perfil.' : 'El código no es válido.';
+      return;
+    }
+    this.promo_code_input.value = '';
+    this.promo_code_status.classList.add('success');
+    this.promo_code_status.textContent = `Código canjeado: +${result.coins.toLocaleString('es-ES')} monedas. Saldo: ${result.balance.toLocaleString('es-ES')}.`;
+    this.renderProgress();
+    this.syncAccount(true);
+  }
+
+  show(view) {
+    for (const [key, screen] of Object.entries(this.screens)) screen.classList.toggle('hidden', key !== view);
+    this.menuBackdrop?.setActive(view === 'home');
+    if (view === 'profile') this.renderProfile();
+    if (view === 'missions') this.renderMissions();
+    if (view === 'store') this.renderStore();
+    if (view === 'play') this.refreshContinueButton();
+    if (view === 'game') requestAnimationFrame(() => this.game?.renderer.resize());
+  }
+
+  renderProgress() {
+    const progress = this.progression, maxed = progress.level >= Progression.maxLevel;
+    this.level_value.textContent = progress.level;
+    this.xp_label.textContent = maxed ? 'NIVEL MÁXIMO' : `${progress.xp} / ${progress.xpForNextLevel()} XP`;
+    this.wins_label.textContent = `${progress.wins} VICTORIAS`;
+    this.xp_fill.style.width = `${progress.progressRatio() * 100}%`;
+    this.home_coins.textContent = String(this.career.stats.coinsEarned - this.career.stats.coinsSpent);
+    if (this.store_coins) this.store_coins.innerHTML = `${this.career.stats.coinsEarned - this.career.stats.coinsSpent} <i>◈</i>`;
+    this.renderStore();
+    this.updateDifficultyControls();
+    this.renderAccount();
+    this.checkAchievements();
+  }
+
+  renderStore() {
+    if (!this.store_grid || !this.career) return;
+    const balance = Math.max(0, this.career.stats.coinsEarned - this.career.stats.coinsSpent);
+    this.home_coins.textContent = String(balance);
+    this.store_coins.innerHTML = `${balance} <i>◈</i>`;
+    document.querySelectorAll('[data-store-tab]').forEach(button => { const active = button.dataset.storeTab === this.storeTab; button.classList.toggle('active', active); button.setAttribute('aria-selected', String(active)); });
+    this.inventory_count.textContent = String(this.career.ownedItems.filter(id => STORE_ITEMS.some(item => item.id === id)).length);
+    this.store_categories.classList.toggle('hidden', this.storeTab !== 'shop');
+    this.store_loadout.classList.toggle('hidden', this.storeTab !== 'inventory');
+    this.store_loadout.replaceChildren(...Object.entries(SLOT_LABELS).map(([slot, label]) => {
       const value = this.career.equipped[slot], item = STORE_ITEMS.find(entry => entry.slot === slot && entry.value === value);
       const row = document.createElement('div'); row.className = `loadout-slot${item ? ' filled' : ''}`;
       const slotName = document.createElement('small'); slotName.textContent = label.toUpperCase();

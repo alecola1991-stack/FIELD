@@ -5,6 +5,7 @@ export const BOT_LEVELS = Object.freeze({
   easy: { speed: 165, reaction: .49, accuracy: .385, defense: .266 },
   normal: { speed: 196, reaction: .286, accuracy: .553, defense: .455 },
   hard: { speed: 221, reaction: .156, accuracy: .658, defense: .616 },
+  legend: { speed: 295, reaction: .055, accuracy: .96, defense: .93 },
 });
 const defaults = { name: 'JUGADOR', number: 10, teamId: '', profileReady: false, leagueCompetition: 'laliga', leagueGoalTarget: 2, difficulty: 'easy', sound: true, volume: 45, trajectory: false };
 let storageScope = 'guest';

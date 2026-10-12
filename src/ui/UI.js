@@ -3,13 +3,15 @@ import { Progression } from '../game/Progression.js';
 import { CareerProfile } from '../game/CareerProfile.js';
 import { TROPHY_CATALOG, formatPlayTime } from '../game/Achievements.js';
 import { TEAM_LEAGUES, NATIONAL_GROUPS, TEAM_GROUPS, TEAM_CLUB_GROUPS, TEAM_COUNTRIES, PROFILE_TEAMS, TEAMS, getTeamById, getKitBackground } from '../config/teams.js';
-import { CUP_COMPETITIONS, createChampionsDraw, createInternationalDraw, createLeagueSchedule, createLeagueStandings, updateLeagueStandings, sortLeagueStandings, pickChampionsOpponent } from '../game/Competitions.js';
+import { CUP_COMPETITIONS, createChampionsDraw, createInternationalDraw, createLibertadoresDraw, createClubWorldCupDraw, isLibertadoresEligibleTeam, isClubWorldCupEligibleTeam, createLeagueSchedule, createLeagueStandings, updateLeagueStandings, sortLeagueStandings, pickChampionsOpponent } from '../game/Competitions.js';
 import { MenuBackdrop } from './MenuBackdrop.js';
 import { Confetti } from './Confetti.js';
 import { clearCompetitionSave, loadCompetitionSave, setCompetitionSaveScope, storeCompetitionSave } from '../game/CompetitionSave.js';
 import { MISSION_DEFINITIONS, getLeagueMission } from '../game/Missions.js';
 
 const ROUND_NAMES = ['OCTAVOS DE FINAL', 'CUARTOS DE FINAL', 'SEMIFINAL', 'FINAL'];
+const ROUND_NAMES_32 = ['DIECISÉISAVOS DE FINAL', ...ROUND_NAMES];
+const roundName = (size, round) => (size === 32 ? ROUND_NAMES_32 : ROUND_NAMES)[Math.max(0, Math.min(size === 32 ? 4 : 3, round - 1))];
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const STORE_ITEMS = [
   { id: 'circle-raised', name: 'Círculo en relieve', slot: 'circleRelief', value: 'raised', price: 80, icon: '◉', preview: 'ring', description: 'Un aro con sombra y luz que destaca el círculo central.' },
@@ -61,7 +63,7 @@ export class UI {
       'player-name','player-number','preview-name','preview-number','preview-ball','preview-team','saved-note','save-player',
       'difficulty','settings-difficulty','sound-enabled','volume','volume-value','score','timer','hud-player-name','hud-opponent-name','player-dot','opponent-dot',
       'goal-banner','countdown-banner','pause-overlay','result-overlay','result-eyebrow','result-title','result-copy','result-xp','result-level','result-xp-fill',
-      'result-next','result-finish','result-rematch','result-online-status','result-stats','result-stat-duration','result-stat-goals','result-stat-shots','result-trophy','league-standings-panel','league-standings-title','league-standings-body','connection-banner','leaderboard-message','leaderboard-list','leaderboard-refresh','training-tools','trajectory-toggle','mode-label','game-canvas','level-value','xp-label','wins-label','xp-fill','missions-list',
+      'result-next','result-finish','result-rematch','result-online-status','result-stats','result-stat-duration','result-stat-goals','result-stat-shots','result-trophy','result-season-summary','league-standings-panel','league-standings-title','league-standings-body','connection-banner','leaderboard-message','leaderboard-list','leaderboard-refresh','training-tools','trajectory-toggle','mode-label','game-canvas','level-value','xp-label','wins-label','xp-fill','missions-list',
       'team-position','league-competition','league-competition-summary','country-tabs','league-tabs','team-grid','teams-prev','teams-next','chosen-team-label','tournament-roster',
       'competition-trophy','competition-eyebrow','competition-title','competition-description','competition-dots','competition-select','competition-prev','competition-next',
       'competition-picker-card',
@@ -107,10 +109,20 @@ export class UI {
   }
 
   getAllowedTeamGroups() {
+    if (this.pendingLeagueId === 'south-america-clubs') return TEAM_GROUPS.filter(group => ['argentina', 'brasileirao'].includes(group.id));
+    if (this.pendingLeagueId === 'club-world-cup-clubs') return TEAM_CLUB_GROUPS;
     if (this.pendingLeagueId) return TEAM_GROUPS.filter(group => group.id === this.pendingLeagueId);
     if (this.pendingTeamType === 'club') return TEAM_CLUB_GROUPS;
     if (this.pendingTeamType === 'national') return NATIONAL_GROUPS;
     return TEAM_GROUPS;
+  }
+
+  getProfileTeams(leagueId = this.activeLeague) {
+    const teams = PROFILE_TEAMS.filter(team => team.league === leagueId);
+    if (this.pendingMode !== 'tournament') return teams;
+    if (this.pendingCompetition === 'copa-libertadores') return teams.filter(team => isLibertadoresEligibleTeam(team.id));
+    if (this.pendingCompetition === 'club-world-cup') return teams.filter(team => isClubWorldCupEligibleTeam(team.id));
+    return teams;
   }
 
   renderTeamNavigation() {
@@ -500,10 +512,11 @@ export class UI {
       'world-cup': '<svg viewBox="0 0 100 100"><path d="M50 13 61 19 64 31 58 39 66 48 61 58 56 64H44L39 58 34 48 42 39 36 31 39 19 50 13Z" fill="currentColor"/><path d="M43 19 50 25 57 19M38 31l12 7 12-7M40 45h20M43 57h14M46 64l-3 17h14l-3-17M39 82h22v6H39z" fill="none" stroke="#effaf1" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".8"/><circle cx="50" cy="36" r="17" fill="none" stroke="#effaf1" stroke-width="1.7" opacity=".55"/></svg>',
       euro: '<svg viewBox="0 0 100 100"><path d="M23 23c0-6 5-10 11-10h32c6 0 11 4 11 10v8c0 8-5 13-13 15l-9 2 8 18-13 12-13-12 8-18-9-2c-8-2-13-7-13-15v-8Z" fill="currentColor"/><path d="M34 24h32M39 32h22M44 41h12M46 68l4 11 4-11" stroke="#effaf1" stroke-width="2.5" stroke-linecap="round" opacity=".75"/></svg>',
       'copa-america': '<svg viewBox="0 0 100 100"><path d="M35 19h30l-2 10c-1 7-4 12-9 15v9c0 7 4 12 10 16l7 4v8H29v-8l7-4c6-4 10-9 10-16v-9c-5-3-8-8-9-15l-2-10Z" fill="currentColor"/><path d="M32 22h-9v9c0 12 6 18 18 20M68 22h9v9c0 12-6 18-18 20M40 29h20M43 38h14M43 54h14M41 69h18" fill="none" stroke="#effaf1" stroke-width="2.3" stroke-linecap="round" opacity=".8"/><path d="M29 81h42v6H29z" fill="#effaf1" opacity=".45"/></svg>',
+      'copa-libertadores': '<svg viewBox="0 0 100 100"><path d="M30 16h40l-4 20c-2 11-7 18-16 23-9-5-14-12-16-23l-4-20Zm-8 4h10l2 15c1 5 3 10 7 14-12-1-19-8-19-19V20Zm46 0h10v10c0 11-7 18-19 19 4-4 6-9 7-14l2-15ZM45 58h10v17h15v9H30v-9h15V58Z" fill="currentColor"/><path d="m50 23 3.2 6.5 7.1 1-5.1 5 1.2 7-6.4-3.4-6.4 3.4 1.2-7-5.1-5 7.1-1L50 23Z" fill="#122017"/></svg>',
     };
     const item = CUP_COMPETITIONS[this.competitionIndex] || CUP_COMPETITIONS[0];
-    this.competition_trophy.innerHTML = trophies[item.id];
-    this.competition_picker_card.style.setProperty('--competition-accent', ({ champions: '#78ddb0', league: '#73a9ed', 'world-cup': '#e7c56c', euro: '#7ab6ef', 'copa-america': '#69d2a0' })[item.id]);
+    this.competition_trophy.innerHTML = trophies[item.id] || (item.id === 'club-world-cup' ? trophies['world-cup'] : trophies.champions);
+    this.competition_picker_card.style.setProperty('--competition-accent', ({ champions: '#78ddb0', league: '#73a9ed', 'world-cup': '#e7c56c', euro: '#7ab6ef', 'copa-america': '#69d2a0', 'copa-libertadores': '#e4a66d', 'club-world-cup': '#e7c56c' })[item.id] || '#78ddb0');
     this.competition_eyebrow.textContent = item.eyebrow;
     this.competition_title.textContent = item.name;
     this.competition_description.textContent = item.description;
@@ -524,9 +537,12 @@ export class UI {
     const required = competition.type === 'club' ? 'club' : 'national';
     const current = getTeamById(this.settings.teamId);
     const requiredGroup = competition.type === 'europe' ? 'europe' : competition.type === 'america' ? 'america' : '';
-    if (!this.profileComplete() || (required === 'club' && current?.type === 'national') || (required === 'national' && current?.type !== 'national') || (requiredGroup && current?.league !== requiredGroup)) {
+    const isSouthAmericanCup = competition.id === 'copa-libertadores';
+    const isClubWorldCup = competition.id === 'club-world-cup';
+    const eligibleForCup = (!isSouthAmericanCup || isLibertadoresEligibleTeam(current?.id)) && (!isClubWorldCup || isClubWorldCupEligibleTeam(current?.id));
+    if (!this.profileComplete() || (required === 'club' && current?.type === 'national') || (required === 'national' && current?.type !== 'national') || (requiredGroup && current?.league !== requiredGroup) || !eligibleForCup) {
       this.pendingMode = mode; this.pendingCompetition = competition.id; this.pendingTeamType = required;
-      this.pendingLeagueId = competition.id === 'league' ? this.league_competition.value : requiredGroup;
+      this.pendingLeagueId = competition.id === 'league' ? this.league_competition.value : isSouthAmericanCup ? 'south-america-clubs' : isClubWorldCup ? 'club-world-cup-clubs' : requiredGroup;
       this.openProfile(); return;
     }
     if (mode === 'league') {
@@ -543,11 +559,17 @@ export class UI {
     const isInternational = competition.type !== 'club';
     const current = getTeamById(this.settings.teamId);
     const requiredGroup = competition.type === 'europe' ? 'europe' : competition.type === 'america' ? 'america' : '';
-    if (isInternational && current?.type !== 'national' || !isInternational && current?.type === 'national' || requiredGroup && current?.league !== requiredGroup) {
-      this.pendingMode = 'tournament'; this.pendingCompetition = competition.id; this.pendingTeamType = isInternational ? 'national' : 'club'; this.pendingLeagueId = requiredGroup; this.openProfile(); return;
+    const isSouthAmericanCup = competition.id === 'copa-libertadores';
+    const isClubWorldCup = competition.id === 'club-world-cup';
+    const eligibleForCup = (!isSouthAmericanCup || isLibertadoresEligibleTeam(current?.id)) && (!isClubWorldCup || isClubWorldCupEligibleTeam(current?.id));
+    if (isInternational && current?.type !== 'national' || !isInternational && current?.type === 'national' || requiredGroup && current?.league !== requiredGroup || !eligibleForCup) {
+      this.pendingMode = 'tournament'; this.pendingCompetition = competition.id; this.pendingTeamType = isInternational ? 'national' : 'club'; this.pendingLeagueId = isSouthAmericanCup ? 'south-america-clubs' : isClubWorldCup ? 'club-world-cup-clubs' : requiredGroup; this.openProfile(); return;
     }
-    const teams = isInternational ? createInternationalDraw(competition.id, this.settings.teamId) : createChampionsDraw(this.settings.teamId);
-    this.tournament = { size: 16, teams, totalRounds: 4, round: 0, status: 'setup', competitionId: competition.id };
+    const teams = isInternational ? createInternationalDraw(competition.id, this.settings.teamId)
+      : competition.id === 'copa-libertadores' ? createLibertadoresDraw(this.settings.teamId)
+        : competition.id === 'club-world-cup' ? createClubWorldCupDraw(this.settings.teamId) : createChampionsDraw(this.settings.teamId);
+    const size = teams.length, totalRounds = Math.log2(size);
+    this.tournament = { size, teams, totalRounds, round: 0, status: 'setup', competitionId: competition.id };
     this.renderTournamentSetup(competition);
     this.renderTournamentRoster(); this.show('tournament');
   }
@@ -556,12 +578,19 @@ export class UI {
     this.selectedTeamId = getTeamById(this.settings.teamId)?.id || '';
     const allowedGroups = this.getAllowedTeamGroups();
     const selectedTeam = getTeamById(this.selectedTeamId);
-    if (this.pendingLeagueId) {
+    if (this.pendingLeagueId && !['south-america-clubs', 'club-world-cup-clubs'].includes(this.pendingLeagueId)) {
       this.activeLeague = this.pendingLeagueId;
       if (selectedTeam?.league !== this.pendingLeagueId) this.selectedTeamId = '';
+    } else if (this.pendingLeagueId === 'south-america-clubs') {
+      if (!isLibertadoresEligibleTeam(selectedTeam?.id)) this.selectedTeamId = '';
+      if (!['argentina', 'brasileirao'].includes(this.activeLeague)) this.activeLeague = 'argentina';
+    } else if (this.pendingLeagueId === 'club-world-cup-clubs') {
+      if (!isClubWorldCupEligibleTeam(selectedTeam?.id)) this.selectedTeamId = '';
+      if (!TEAM_CLUB_GROUPS.some(group => group.id === this.activeLeague)) this.activeLeague = 'laliga';
     } else if (this.pendingTeamType === 'club' && selectedTeam?.type === 'national' || this.pendingTeamType === 'national' && selectedTeam?.type !== 'national') this.selectedTeamId = '';
     else if (selectedTeam) this.activeLeague = selectedTeam.league;
     if (!allowedGroups.some(group => group.id === this.activeLeague)) this.activeLeague = allowedGroups[0]?.id || TEAM_LEAGUES[0].id;
+    if (this.pendingMode === 'tournament' && !this.getProfileTeams(this.activeLeague).length) this.activeLeague = TEAM_LEAGUES.find(league => this.getProfileTeams(league.id).length)?.id || TEAM_LEAGUES[0].id;
     this.activeCountry = TEAM_COUNTRIES.find(country => country.groups.includes(this.activeLeague))?.id || TEAM_COUNTRIES[0].id;
     this.player_name.value = this.settings.profileReady ? this.settings.name : '';
     this.player_number.value = this.settings.profileReady ? this.settings.number : '';
@@ -582,7 +611,7 @@ export class UI {
       const active = tab.dataset.league === this.activeLeague; tab.classList.toggle('active', active); tab.setAttribute('aria-selected', String(active));
     });
     this.team_grid.replaceChildren();
-    const leagueTeams = PROFILE_TEAMS.filter(team => team.league === this.activeLeague);
+    const leagueTeams = this.getProfileTeams();
     let index = this.teamCursor.get(this.activeLeague) || 0;
     if (!this.teamCursor.has(this.activeLeague)) {
       const selectedIndex = leagueTeams.findIndex(team => team.id === this.selectedTeamId);
@@ -609,7 +638,7 @@ export class UI {
   }
 
   moveTeam(direction) {
-    const leagueTeams = PROFILE_TEAMS.filter(team => team.league === this.activeLeague);
+    const leagueTeams = this.getProfileTeams();
     const current = this.teamCursor.get(this.activeLeague) || 0;
     this.teamCursor.set(this.activeLeague, (current + direction + leagueTeams.length) % leagueTeams.length);
     this.renderTeamCarousel(); this.sound?.play('click');
@@ -617,11 +646,14 @@ export class UI {
 
   selectTeam(teamId) {
     const chosen = getTeamById(teamId);
-    if (!chosen || this.pendingTeamType === 'club' && chosen.type === 'national' || this.pendingTeamType === 'national' && chosen.type !== 'national' || this.pendingLeagueId && chosen.league !== this.pendingLeagueId) return;
+    const leagueAllowed = this.pendingLeagueId === 'south-america-clubs' ? isLibertadoresEligibleTeam(chosen?.id)
+      : this.pendingLeagueId === 'club-world-cup-clubs' ? isClubWorldCupEligibleTeam(chosen?.id)
+        : !this.pendingLeagueId || chosen?.league === this.pendingLeagueId;
+    if (!chosen || this.pendingTeamType === 'club' && chosen.type === 'national' || this.pendingTeamType === 'national' && chosen.type !== 'national' || !leagueAllowed) return;
     const firstSelection = this.player_name.disabled;
     this.selectedTeamId = teamId; this.activeLeague = getTeamById(teamId).league;
     this.activeCountry = TEAM_COUNTRIES.find(country => country.groups.includes(this.activeLeague))?.id || TEAM_COUNTRIES[0].id;
-    const index = PROFILE_TEAMS.filter(item => item.league === this.activeLeague).findIndex(item => item.id === teamId);
+    const index = this.getProfileTeams().findIndex(item => item.id === teamId);
     if (index >= 0) this.teamCursor.set(this.activeLeague, index);
     this.renderTeamNavigation(); this.renderTeamCarousel(); this.updateProfilePreview(); this.updateProfileValidity();
     if (firstSelection) this.player_name.focus();
@@ -648,7 +680,9 @@ export class UI {
     let typeMatches = !!team;
     if (this.pendingTeamType === 'national') typeMatches = team?.type === 'national';
     else if (this.pendingTeamType === 'club') typeMatches = team?.type !== 'national';
-    if (this.pendingLeagueId) typeMatches = typeMatches && team?.league === this.pendingLeagueId;
+    if (this.pendingLeagueId === 'south-america-clubs') typeMatches = typeMatches && isLibertadoresEligibleTeam(team?.id);
+    else if (this.pendingLeagueId === 'club-world-cup-clubs') typeMatches = typeMatches && isClubWorldCupEligibleTeam(team?.id);
+    else if (this.pendingLeagueId) typeMatches = typeMatches && team?.league === this.pendingLeagueId;
     const valid = !!team && typeMatches && !!this.player_name.value.trim()
       && numberText !== '' && Number.isInteger(number) && number >= 0 && number <= 99;
     this.save_player.disabled = !valid;
@@ -664,7 +698,10 @@ export class UI {
   savePlayer() {
     const team = getTeamById(this.selectedTeamId), name = this.player_name.value.trim();
     const numberText = this.player_number.value, number = Number(numberText);
-    if (!team || this.pendingTeamType === 'club' && team.type === 'national' || this.pendingTeamType === 'national' && team.type !== 'national' || this.pendingLeagueId && team.league !== this.pendingLeagueId || !name || numberText === '' || !Number.isInteger(number) || number < 0 || number > 99) return;
+    const leagueAllowed = this.pendingLeagueId === 'south-america-clubs' ? isLibertadoresEligibleTeam(team?.id)
+      : this.pendingLeagueId === 'club-world-cup-clubs' ? isClubWorldCupEligibleTeam(team?.id)
+        : !this.pendingLeagueId || team?.league === this.pendingLeagueId;
+    if (!team || this.pendingTeamType === 'club' && team.type === 'national' || this.pendingTeamType === 'national' && team.type !== 'national' || !leagueAllowed || !name || numberText === '' || !Number.isInteger(number) || number < 0 || number > 99) return;
     this.settings.teamId = team.id; this.settings.name = name.slice(0, 16); this.settings.number = number; this.settings.profileReady = true;
     delete this.settings.color; this.persist(); this.updateHomeClub();
     const nextMode = this.pendingMode; this.pendingMode = null; this.sound?.play('click');
@@ -829,6 +866,8 @@ export class UI {
   renderTournamentSetup(competition) {
     const international = competition.type !== 'club';
     const title = competition.id === 'champions' ? 'Camino a<br><em>Champions.</em>'
+      : competition.id === 'copa-libertadores' ? 'Rumbo a<br><em>la Gloria Eterna.</em>'
+        : competition.id === 'club-world-cup' ? 'Campeones<br><em>del mundo.</em>'
       : competition.id === 'world-cup' ? 'El sueño<br><em>mundial.</em>'
         : competition.id === 'euro' ? 'Camino a<br><em>la Euro.</em>'
           : 'Rumbo a<br><em>América.</em>';
@@ -837,8 +876,8 @@ export class UI {
     this.tournament_title.innerHTML = title;
     this.tournament_description.textContent = international
       ? '16 selecciones, eliminatorias directas y cuatro rondas hasta levantar el trofeo.'
-      : '16 clubes, eliminatorias directas y cuatro rondas hasta la final.';
-    this.tournament_team_count.textContent = international ? '16 SELECCIONES' : '16 CLUBES';
+      : `${this.tournament.size} clubes clasificados. Cuadro eliminatorio arcade hasta la final.`;
+    this.tournament_team_count.textContent = `${this.tournament.size} ${international ? 'SELECCIONES' : 'CLUBES'}`;
     this.tournament_emblem.innerHTML = this.competition_trophy.innerHTML;
     this.tournament_emblem.style.color = getComputedStyle(this.competition_picker_card).getPropertyValue('--competition-accent').trim() || 'var(--green)';
     document.getElementById('tournament-start').innerHTML = `Empezar ${competition.name} <span>↗</span>`;
@@ -849,8 +888,11 @@ export class UI {
     const competition = CUP_COMPETITIONS.find(item => item.id === cupId) || CUP_COMPETITIONS[0];
     const team = getTeamById(this.settings.teamId);
     const requiredGroup = competition.type === 'europe' ? 'europe' : competition.type === 'america' ? 'america' : '';
-    if (!this.profileComplete() || (competition.type === 'club' && team?.type === 'national') || (competition.type !== 'club' && team?.type !== 'national') || requiredGroup && team?.league !== requiredGroup) {
-      this.pendingMode = 'tournament'; this.pendingCompetition = cupId; this.pendingTeamType = competition.type === 'club' ? 'club' : 'national'; this.pendingLeagueId = requiredGroup; this.openProfile(); return;
+    const southAmericanClub = cupId === 'copa-libertadores';
+    const clubWorldCup = cupId === 'club-world-cup';
+    const eligibleForCup = (!southAmericanClub || isLibertadoresEligibleTeam(team?.id)) && (!clubWorldCup || isClubWorldCupEligibleTeam(team?.id));
+    if (!this.profileComplete() || (competition.type === 'club' && team?.type === 'national') || (competition.type !== 'club' && team?.type !== 'national') || requiredGroup && team?.league !== requiredGroup || !eligibleForCup) {
+      this.pendingMode = 'tournament'; this.pendingCompetition = cupId; this.pendingTeamType = competition.type === 'club' ? 'club' : 'national'; this.pendingLeagueId = southAmericanClub ? 'south-america-clubs' : clubWorldCup ? 'club-world-cup-clubs' : requiredGroup; this.openProfile(); return;
     }
     if (!this.tournament || this.tournament.status !== 'setup') this.openTournamentSetup(cupId);
     this.tournament.round = 0; this.tournament.status = 'playing';
@@ -873,7 +915,7 @@ export class UI {
   launchTournamentRound() {
     const cup = this.tournament;
     cup.round++;
-    const stage = ROUND_NAMES[cup.round - 1];
+    const stage = roundName(cup.size, cup.round);
     const opponentTeam = pickChampionsOpponent(cup.teams, cup.round);
     const competition = CUP_COMPETITIONS.find(item => item.id === cup.competitionId) || CUP_COMPETITIONS[0];
     this.start('tournament', { opponentName: opponentTeam.name, opponentTeam, label: `${competition.name.toUpperCase()} · ${stage} · ${cup.round}/${cup.totalRounds}`, fieldTheme: competition.fieldTheme, competitionRound: cup.round }, true);
@@ -891,7 +933,7 @@ export class UI {
       return getTeamById(fixture.homeId === team.id ? fixture.awayId : fixture.homeId);
     });
     const goalTarget = [2, 3, 5].includes(Number(this.league_goal_target.value)) ? Number(this.league_goal_target.value) : 2;
-    this.league = { jornada: 1, wins: 0, losses: 0, points: 0, status: 'playing', competitionId, playerTeamId: team.id, schedule, opponents, standings: createLeagueStandings(competitionId), goalTarget };
+    this.league = { jornada: 1, wins: 0, losses: 0, points: 0, status: 'playing', competitionId, playerTeamId: team.id, schedule, opponents, standings: createLeagueStandings(competitionId), matchResults: [], goalTarget };
     this.tournament = null; this.launchLeagueRound();
   }
 
@@ -1135,7 +1177,7 @@ export class UI {
       this.continue_detail.textContent = league.status === 'next' ? `SIGUIENTE · JORNADA ${Math.min(total, (league.jornada || 1) + 1)}/${total}` : `LIGA · JORNADA ${league.jornada || 1}/${total}`;
     } else {
       const cup = competition.tournament || {};
-      const stage = ROUND_NAMES[Math.max(0, Math.min(3, (cup.round || 1) - 1))];
+      const stage = roundName(cup.size || 16, cup.round || 1);
       const cupName = CUP_COMPETITIONS.find(item => item.id === cup.competitionId)?.name || 'Champions';
       this.continue_detail.textContent = cup.status === 'next' ? `${cupName.toUpperCase()} · SIGUIENTE RONDA` : `${cupName.toUpperCase()} · ${stage}`;
     }
@@ -1197,7 +1239,7 @@ export class UI {
     if (result.mode === 'tournament' && this.tournament) {
       const cup = this.tournament;
       cupFinal = cup.round >= cup.totalRounds;
-      if (!won) { cup.status = 'eliminated'; this.result_eyebrow.textContent = 'TORNEO TERMINADO'; this.result_title.textContent = 'Fin del camino'; this.result_copy.textContent = `El torneo acaba en ${ROUND_NAMES[cup.size === 16 ? cup.round - 1 : cup.round]}. ${rewardText}${levelText}`; }
+      if (!won) { cup.status = 'eliminated'; this.result_eyebrow.textContent = 'TORNEO TERMINADO'; this.result_title.textContent = 'Fin del camino'; this.result_copy.textContent = `El torneo acaba en ${roundName(cup.size, cup.round).toLowerCase()}. ${rewardText}${levelText}`; }
       else if (cup.round >= cup.totalRounds) {
         cup.status = 'champion';
         cupChampion = true;
@@ -1205,7 +1247,7 @@ export class UI {
         this.unlockTrophy(cup.competitionId, competition.name);
         this.result_eyebrow.textContent = 'CAMPEONES'; this.result_title.textContent = '¡Ganaste la copa!'; this.result_copy.textContent = `Victorias: ${cup.totalRounds}. ${rewardText}${levelText}`;
       }
-      else { cup.status = 'next'; this.result_eyebrow.textContent = `RONDA ${cup.round}/${cup.totalRounds} SUPERADA`; this.result_next.textContent = `Jugar ${ROUND_NAMES[cup.size === 16 ? cup.round : cup.round + 1].toLowerCase()} →`; this.result_next.classList.remove('hidden'); this.result_finish.textContent = 'Abandonar torneo'; }
+      else { cup.status = 'next'; this.result_eyebrow.textContent = `RONDA ${cup.round}/${cup.totalRounds} SUPERADA`; this.result_next.textContent = `Jugar ${roundName(cup.size, cup.round + 1).toLowerCase()} →`; this.result_next.classList.remove('hidden'); this.result_finish.textContent = 'Abandonar torneo'; }
     }
 
     if (result.mode === 'league' && this.league) {
@@ -1214,6 +1256,12 @@ export class UI {
       const playerTeamId = season.playerTeamId || this.settings.teamId;
       const fixtures = season.schedule[season.jornada - 1] || [];
       season.standings = updateLeagueStandings(season.standings, fixtures, playerTeamId, result.playerScore, result.botScore);
+      const playedFixture = fixtures.find(item => item.homeId === playerTeamId || item.awayId === playerTeamId);
+      const opponentId = playedFixture?.homeId === playerTeamId ? playedFixture.awayId : playedFixture?.homeId;
+      season.matchResults ||= [];
+      season.matchResults.push({ round: season.jornada, opponentId, goalsFor: result.playerScore, goalsAgainst: result.botScore,
+        durationSeconds: Math.max(0, Number(result.elapsedSeconds) || 0), shotsFor: result.stats?.shotsPlayer || 0,
+        shotsAgainst: result.stats?.shotsOpponent || 0, goals: (result.stats?.goals || []).map(goal => ({ minute: goal.minute, side: goal.side })) });
       const playerRow = season.standings.find(row => row.teamId === playerTeamId);
       season.wins = playerRow?.wins || 0; season.losses = playerRow?.losses || 0; season.points = playerRow?.points || 0;
       const totalRounds = season.schedule.length;
@@ -1222,8 +1270,10 @@ export class UI {
         leagueFinished = true;
         season.status = 'complete'; this.result_eyebrow.textContent = 'TEMPORADA COMPLETADA'; this.result_title.textContent = 'Fin de la liga';
         this.career.recordLeagueSeason();
-        leagueChampion = season.points >= Math.ceil(totalRounds * 3 * .6);
+        leagueChampion = sortLeagueStandings(season.standings, playerTeamId)[0]?.teamId === playerTeamId;
         if (leagueChampion) {
+          this.result_eyebrow.textContent = 'CAMPEONES · TEMPORADA COMPLETADA';
+          this.result_title.textContent = '¡Liga conquistada!';
           const competition = TEAM_LEAGUES.find(item => item.id === season.competitionId) || TEAM_LEAGUES[0];
           this.unlockTrophy(`league-${season.competitionId}`, `Campeón · ${competition.label.split(' · ')[0]}`);
         }
@@ -1252,7 +1302,7 @@ export class UI {
       this.result_copy.textContent += ` Misiones: ${newMissions.map(mission => mission.title).join(', ')} (+${missionCoins} ◈, +${missionXp} XP).`;
       if (missionReward.leveledUp) this.result_copy.textContent += ` ¡Has subido al nivel ${this.progression.level}!`;
     }
-    if (cupFinal || leagueFinished) this.showCompetitionResultStats(result, cupChampion || leagueChampion);
+    if (cupFinal || leagueFinished) this.showCompetitionResultStats(result, cupChampion || leagueChampion, leagueFinished ? this.league : null, leagueChampion);
     else this.result_stats.classList.add('hidden');
     if (result.mode === 'online') {
       this.result_rematch.classList.remove('hidden');
@@ -1281,13 +1331,52 @@ export class UI {
     this.syncAccount(true);
   }
 
-  showCompetitionResultStats(result, champion) {
+  showCompetitionResultStats(result, champion, season = null, leagueChampion = false) {
     const stats = result.stats || { shotsPlayer: 0, shotsOpponent: 0, goals: [] };
     const minutes = (stats.goals || []).map(goal => `${goal.minute}' ${goal.side === 'player' ? 'TÚ' : 'RIVAL'}`).join(' · ') || 'Sin goles';
     this.result_stat_duration.textContent = formatMatchDuration(result.elapsedSeconds);
     this.result_stat_goals.textContent = minutes;
     this.result_stat_shots.textContent = `${stats.shotsPlayer || 0} · ${stats.shotsOpponent || 0}`;
     this.result_trophy.classList.toggle('trophy-won', !!champion);
+    this.result_season_summary.replaceChildren();
+    this.result_season_summary.classList.toggle('hidden', !season);
+    if (season) {
+      const results = season.matchResults || [];
+      const team = getTeamById(season.playerTeamId);
+      const longest = [...results].sort((a, b) => b.durationSeconds - a.durationSeconds)[0];
+      const longestOpponent = getTeamById(longest?.opponentId);
+      const totalShots = results.reduce((sum, match) => sum + match.shotsFor, 0);
+      const totalShotsAgainst = results.reduce((sum, match) => sum + match.shotsAgainst, 0);
+      const totalGoals = results.reduce((sum, match) => sum + match.goalsFor, 0);
+      const goalsAgainst = results.reduce((sum, match) => sum + match.goalsAgainst, 0);
+      const draws = season.standings.find(row => row.teamId === season.playerTeamId)?.draws || 0;
+      const position = sortLeagueStandings(season.standings, season.playerTeamId).findIndex(row => row.teamId === season.playerTeamId) + 1;
+      const title = document.createElement('h3'); title.textContent = leagueChampion ? `¡CAMPEÓN · ${team?.name || 'TU EQUIPO'}!` : 'RESUMEN DE TEMPORADA';
+      const grid = document.createElement('div'); grid.className = 'season-summary-grid';
+      const values = [
+        ['POSICIÓN FINAL', `${position} / ${season.standings.length}`], ['PARTIDOS', `${results.length} · ${season.wins}V ${draws}E ${season.losses}D`],
+        ['PUNTOS', String(season.points)], ['GOLES · A FAVOR / EN CONTRA', `${totalGoals} / ${goalsAgainst}`], ['TIROS · A FAVOR / EN CONTRA', `${totalShots} / ${totalShotsAgainst}`],
+        ['PARTIDO MÁS LARGO', longest ? `${formatMatchDuration(longest.durationSeconds)} · vs ${longestOpponent?.name || 'rival'} (${longest.goalsFor}-${longest.goalsAgainst})` : '—'],
+        ['TIEMPO TOTAL · MEDIA', `${formatMatchDuration(results.reduce((sum, match) => sum + match.durationSeconds, 0))} · ${formatMatchDuration(results.length ? results.reduce((sum, match) => sum + match.durationSeconds, 0) / results.length : 0)}`],
+        ['MINUTOS DE GOL', results.flatMap(match => (match.goals || []).map(goal => `J${match.round} · ${goal.minute}'`)).join(' · ') || 'Sin goles'],
+      ];
+      for (const [label, value] of values) {
+        const item = document.createElement('div'); const caption = document.createElement('span'); caption.textContent = label;
+        const detail = document.createElement('b'); detail.textContent = value; item.append(caption, detail); grid.append(item);
+      }
+      const historyTitle = document.createElement('h4'); historyTitle.textContent = 'TODOS LOS PARTIDOS · MÁS LARGOS PRIMERO';
+      const history = document.createElement('div'); history.className = 'season-match-history';
+      for (const match of [...results].sort((a, b) => b.durationSeconds - a.durationSeconds)) {
+        const row = document.createElement('div'); row.className = 'season-match-row';
+        const opponent = getTeamById(match.opponentId);
+        const fixture = document.createElement('b'); fixture.textContent = `J${match.round} · ${team?.name || 'Tú'} ${match.goalsFor}–${match.goalsAgainst} ${opponent?.name || 'rival'}`;
+        const detail = document.createElement('span');
+        const minutes = (match.goals || []).map(goal => `${goal.minute}'`).join(' · ') || 'sin goles';
+        detail.textContent = `${formatMatchDuration(match.durationSeconds)} · ${match.shotsFor} tiros · ${minutes}`;
+        row.append(fixture, detail); history.append(row);
+      }
+      this.result_season_summary.append(title, grid, historyTitle, history);
+    }
     this.result_stats.classList.remove('hidden');
   }
 
@@ -1301,9 +1390,13 @@ export class UI {
       const position = document.createElement('td'); position.textContent = String(index + 1);
       const name = document.createElement('th'); name.scope = 'row'; name.textContent = team?.name || entry.teamId;
       const played = document.createElement('td'); played.textContent = String(entry.played);
+      const wins = document.createElement('td'); wins.textContent = String(entry.wins);
+      const draws = document.createElement('td'); draws.textContent = String(entry.draws);
+      const losses = document.createElement('td'); losses.textContent = String(entry.losses);
+      const goals = document.createElement('td'); goals.textContent = `${entry.goalsFor}:${entry.goalsAgainst}`;
       const difference = document.createElement('td'); difference.textContent = `${entry.goalDifference > 0 ? '+' : ''}${entry.goalDifference}`;
       const points = document.createElement('td'); points.textContent = String(entry.points);
-      row.append(position, name, played, difference, points); return row;
+      row.append(position, name, played, wins, draws, losses, goals, difference, points); return row;
     }));
     this.league_standings_panel.classList.remove('hidden');
   }

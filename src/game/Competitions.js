@@ -60,11 +60,65 @@ export function createChampionsDraw(playerTeamId, random = Math.random) {
 
 export const CUP_COMPETITIONS = [
   { id: 'champions', name: 'Champions', eyebrow: 'COPA DE CLUBES', description: '16 clubes. Cuatro rondas y un solo campeón.', type: 'club', fieldTheme: 'champions' },
+  { id: 'copa-libertadores', name: 'Copa Libertadores', eyebrow: 'TORNEO DE CLUBES · CONMEBOL', description: '32 clubes clasificados en la edición 2026; competición en modo arcade.', type: 'club', fieldTheme: 'copa-libertadores', teamPool: 'libertadores' },
+  { id: 'club-world-cup', name: 'Mundial de Clubes', eyebrow: 'TORNEO MUNDIAL · FIFA', description: 'Los 32 clubes de la edición FIFA 2025, en formato arcade.', type: 'club', fieldTheme: 'club-world-cup', teamPool: 'club-world-cup' },
   { id: 'league', name: 'Liga Nacional', eyebrow: 'TEMPORADA', description: 'Una temporada completa en cualquiera de las divisiones disponibles.', type: 'club', fieldTheme: 'league' },
   { id: 'world-cup', name: 'Mundial', eyebrow: 'TORNEO DE SELECCIONES', description: 'Las selecciones de Europa y América se cruzan por el título.', type: 'world', fieldTheme: 'world-cup' },
   { id: 'euro', name: 'Eurocopa', eyebrow: 'TORNEO DE SELECCIONES', description: '16 selecciones europeas. Eliminatorias hasta la final.', type: 'europe', fieldTheme: 'euro' },
   { id: 'copa-america', name: 'Copa América', eyebrow: 'TORNEO DE SELECCIONES', description: '16 selecciones americanas en busca de la copa.', type: 'america', fieldTheme: 'copa-america' },
 ];
+
+const cupClub = (id, name, country, primary, secondary, stars = 3) => ({
+  id: `cup-${id}`, name, league: `cup-${country}`, country, primary, secondary, stars,
+  kitPattern: 'vertical-stripes', numberColor: primary.match(/[0-9a-f]{6}/i) ? (Number.parseInt(primary.slice(1), 16) > 0x888888 ? '#172027' : '#ffffff') : '#ffffff', type: 'club',
+});
+
+// Official 2026 Libertadores group-stage field. Club identities and colors are
+// included for teams outside the leagues currently selectable in the game.
+const LIBERTADORES_TEAMS = [
+  ['argentina-boca','Boca Juniors','argentina','#153E7E','#F4D21F',5],['argentina-estudiantes','Estudiantes de La Plata','argentina','#D71920','#FFFFFF',4],['argentina-independiente-rivadavia','Independiente Rivadavia','argentina','#1766AA','#171717',3],['argentina-lanus','Lanús','argentina','#8A2438','#FFFFFF',4],['argentina-rosario-central','Rosario Central','argentina','#F5D21B','#1766AA',4],['argentina-platense','Platense','argentina','#171717','#FFFFFF',3],
+  ['brasileirao-corinthians','Corinthians','brazil','#FFFFFF','#171717',5],['brasileirao-cruzeiro','Cruzeiro','brazil','#1766AA','#FFFFFF',4],['brasileirao-flamengo','Flamengo','brazil','#D71920','#171717',5],['brasileirao-fluminense','Fluminense','brazil','#7A2139','#167A48',4],['brasileirao-mirassol','Mirassol','brazil','#F5D21B','#167A48',3],['brasileirao-palmeiras','Palmeiras','brazil','#167A48','#FFFFFF',5],
+  ['cup-peñarol','Peñarol','uruguay','#F5D21B','#171717',5],['cup-nacional','Nacional','uruguay','#1766AA','#FFFFFF',5],['cup-coquimbo','Coquimbo Unido','chile','#F5D21B','#171717',3],['cup-universidad-catolica','Universidad Católica','chile','#FFFFFF','#1766AA',4],['cup-tolima','Deportes Tolima','colombia','#D71920','#F5D21B',3],['cup-medellin','Independiente Medellín','colombia','#D71920','#171717',4],['cup-junior','Junior','colombia','#D71920','#FFFFFF',4],['cup-santa-fe','Santa Fe','colombia','#D71920','#FFFFFF',4],['cup-barcelona-ecuador','Barcelona SC','ecuador','#F5D21B','#171717',4],['cup-independiente-valle','Independiente del Valle','ecuador','#171717','#1766AA',4],['cup-liga-quito','Liga de Quito','ecuador','#FFFFFF','#D71920',4],['cup-cerro','Cerro Porteño','paraguay','#1766AA','#D71920',4],['cup-libertad','Libertad','paraguay','#F5D21B','#171717',4],['cup-cusco','Cusco FC','peru','#6B3FA0','#D71920',3],['cup-sporting-cristal','Sporting Cristal','peru','#79BCE8','#FFFFFF',4],['cup-universitario','Universitario','peru','#8A2438','#F5D21B',4],['cup-always-ready','Always Ready','bolivia','#D71920','#FFFFFF',3],['cup-bolivar','Bolívar','bolivia','#1766AA','#FFFFFF',4],['cup-la-guaira','Deportivo La Guaira','venezuela','#F07825','#171717',3],['cup-universidad-central','Universidad Central','venezuela','#D71920','#FFFFFF',3],
+].map(([id,name,country,primary,secondary,stars]) => getTeamById(id) || cupClub(id.replace('cup-',''),name,country,primary,secondary,stars));
+
+// The confirmed 32-club 2025 FIFA Club World Cup field.
+const CLUB_WORLD_CUP_IDS = [
+  'cup-ahly','cup-al-ain','cup-al-hilal','laliga-atletico','cup-auckland','bundesliga-bayern','argentina-boca','cup-botafogo',
+  'bundesliga-dortmund','liga-mx-monterrey','liga-mx-pachuca','premier-chelsea','mls-lafc','cup-es-tunis','liga-portugal-porto','cup-salzburg',
+  'brasileirao-flamengo','brasileirao-fluminense','serie-a-inter','serie-a-juventus','premier-man-city','cup-sundowns','brasileirao-palmeiras','ligue-1-psg',
+  'laliga-real-madrid','argentina-river','mls-seattle','liga-portugal-benfica','cup-ulsan','cup-urawa','cup-wydad','mls-inter-miami',
+];
+const CLUB_WORLD_CUP_EXTRA = {
+  'cup-ahly': ['Al Ahly','egypt','#D71920','#FFFFFF',5], 'cup-al-ain':['Al Ain','uae','#6B3FA0','#FFFFFF',4], 'cup-al-hilal':['Al Hilal','saudi-arabia','#1766AA','#FFFFFF',5], 'cup-auckland':['Auckland City','new-zealand','#1766AA','#FFFFFF',2], 'cup-botafogo':['Botafogo','brazil','#171717','#FFFFFF',4], 'cup-es-tunis':['ES Tunis','tunisia','#D71920','#F5D21B',4], 'cup-salzburg':['FC Salzburg','austria','#FFFFFF','#D71920',4], 'cup-sundowns':['Mamelodi Sundowns','south-africa','#F5D21B','#1766AA',4], 'cup-ulsan':['Ulsan HD','south-korea','#1766AA','#F5D21B',4], 'cup-urawa':['Urawa Red Diamonds','japan','#D71920','#FFFFFF',4], 'cup-wydad':['Wydad AC','morocco','#D71920','#FFFFFF',4],
+};
+const CLUB_WORLD_CUP_TEAMS = CLUB_WORLD_CUP_IDS.map(id => getTeamById(id) || cupClub(id.replace('cup-',''), ...CLUB_WORLD_CUP_EXTRA[id]));
+
+function createClubCupDraw(playerTeamId, pool, random) {
+  const player = getTeamById(playerTeamId);
+  if (!player || player.type === 'national') throw new Error('Selecciona un club para iniciar la copa.');
+  const teams = pool.filter(team => team.id !== player.id);
+  if (!pool.some(team => team.id === player.id)) throw new Error('El club elegido no está en los participantes de esta edición.');
+  return seedProgressively(player, teams, random);
+}
+
+export function createLibertadoresDraw(playerTeamId, random = Math.random) {
+  const player = getTeamById(playerTeamId);
+  if (!player || !LIBERTADORES_TEAMS.some(team => team.id === player.id)) throw new Error('Este club no está clasificado para la Copa Libertadores 2026.');
+  return createClubCupDraw(playerTeamId, LIBERTADORES_TEAMS, random);
+}
+
+export function isLibertadoresEligibleTeam(teamId) {
+  return LIBERTADORES_TEAMS.some(team => team.id === teamId);
+}
+
+export function createClubWorldCupDraw(playerTeamId, random = Math.random) {
+  if (!CLUB_WORLD_CUP_TEAMS.some(team => team.id === playerTeamId)) throw new Error('El club elegido no está clasificado para el Mundial de Clubes 2025.');
+  return createClubCupDraw(playerTeamId, CLUB_WORLD_CUP_TEAMS, random);
+}
+
+export function isClubWorldCupEligibleTeam(teamId) {
+  return CLUB_WORLD_CUP_TEAMS.some(team => team.id === teamId);
+}
 
 export function createInternationalDraw(competitionId, playerTeamId, random = Math.random) {
   const playerTeam = getTeamById(playerTeamId);

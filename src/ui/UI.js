@@ -700,7 +700,7 @@ export class UI {
     number.textContent = this.player_number.value === '' ? '—' : clamp(Number(this.player_number.value) || 0, 0, 99);
     circle.style.background = getKitBackground(team);
     circle.style.setProperty('--dorsal-color', team?.numberColor || '#ffffff');
-    circle.classList.toggle('white-dorsal', /^#(?:fff|ffffff|f5fff8|f7f7f7)$/i.test(team?.numberColor || '#ffffff'));
+    circle.classList.toggle('white-dorsal', [team?.numberColor || '#ffffff', team?.primary, team?.secondary].some(value => /^#(?:fff|ffffff|f5fff8|f7f7f7|f4f3ee|f4f2e9)$/i.test(value || '')));
     circle.style.setProperty('--preview-name-size', String(Math.min(16, 75 / Math.max(1, label.length * .65))));
   }
 

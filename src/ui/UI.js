@@ -64,7 +64,7 @@ export class UI {
       'difficulty','settings-difficulty','sound-enabled','volume','volume-value','score','timer','hud-player-name','hud-opponent-name','player-dot','opponent-dot',
       'goal-banner','countdown-banner','pause-overlay','result-overlay','result-eyebrow','result-title','result-copy','result-xp','result-level','result-xp-fill',
       'result-next','result-finish','result-rematch','result-online-status','result-stats','result-stat-duration','result-stat-goals','result-stat-shots','result-trophy','result-season-summary','league-standings-panel','league-standings-title','league-standings-body','connection-banner','leaderboard-message','leaderboard-list','leaderboard-refresh','training-tools','trajectory-toggle','mode-label','game-canvas','level-value','xp-label','wins-label','xp-fill','missions-list',
-      'team-position','league-competition','league-competition-summary','country-tabs','league-tabs','team-grid','teams-prev','teams-next','chosen-team-label','tournament-roster',
+      'team-position','league-competition','league-competition-summary','country-tabs','countries-prev','countries-next','country-position','league-tabs','team-grid','teams-prev','teams-next','chosen-team-label','tournament-roster',
       'competition-trophy','competition-eyebrow','competition-title','competition-description','competition-dots','competition-select','competition-prev','competition-next',
       'competition-picker-card',
       'tournament-header-tag','tournament-eyebrow','tournament-title','tournament-description','tournament-emblem','tournament-team-count',
@@ -101,7 +101,7 @@ export class UI {
     this.country_tabs.replaceChildren(...TEAM_COUNTRIES.map(country => {
       const tab = document.createElement('button'); tab.type = 'button'; tab.className = 'country-tab';
       tab.dataset.country = country.id; tab.textContent = country.label;
-      tab.setAttribute('role', 'tab'); tab.setAttribute('aria-selected', 'false'); return tab;
+      tab.setAttribute('aria-pressed', 'false'); return tab;
     }));
     this.renderTeamNavigation();
     this.renderTeamCarousel();
@@ -127,12 +127,17 @@ export class UI {
 
   renderTeamNavigation() {
     const allowedIds = new Set(this.getAllowedTeamGroups().map(group => group.id));
+    const countries = TEAM_COUNTRIES.filter(country => country.groups.some(groupId => allowedIds.has(groupId)));
+    if (!countries.some(country => country.id === this.activeCountry)) this.activeCountry = countries[0]?.id || '';
+    const countryIndex = countries.findIndex(country => country.id === this.activeCountry);
+    this.country_position.textContent = `${countryIndex + 1} / ${countries.length}`;
+    this.countries_prev.disabled = this.countries_next.disabled = countries.length < 2;
     for (const tab of this.country_tabs.querySelectorAll('[data-country]')) {
       const country = TEAM_COUNTRIES.find(item => item.id === tab.dataset.country);
       const visible = country?.groups.some(groupId => allowedIds.has(groupId));
-      tab.hidden = !visible;
+      tab.hidden = !visible || tab.dataset.country !== this.activeCountry;
       const active = tab.dataset.country === this.activeCountry;
-      tab.classList.toggle('active', active); tab.setAttribute('aria-selected', String(active));
+      tab.classList.toggle('active', active); tab.setAttribute('aria-pressed', String(active));
     }
     const country = TEAM_COUNTRIES.find(item => item.id === this.activeCountry) || TEAM_COUNTRIES[0];
     const groups = TEAM_GROUPS.filter(group => country.groups.includes(group.id) && allowedIds.has(group.id));
@@ -146,6 +151,14 @@ export class UI {
       const active = tab.dataset.league === this.activeLeague;
       tab.classList.toggle('active', active); tab.setAttribute('aria-selected', String(active));
     }
+  }
+
+  moveCountry(direction) {
+    const allowedIds = new Set(this.getAllowedTeamGroups().map(group => group.id));
+    const countries = TEAM_COUNTRIES.filter(country => country.groups.some(groupId => allowedIds.has(groupId)));
+    if (!countries.length) return;
+    const index = countries.findIndex(country => country.id === this.activeCountry);
+    this.selectTeamCountry(countries[(index + direction + countries.length) % countries.length].id);
   }
 
   selectTeamCountry(countryId) {
@@ -237,6 +250,8 @@ export class UI {
     this.country_tabs.addEventListener('click', event => {
       const tab = event.target.closest('[data-country]'); if (tab) this.selectTeamCountry(tab.dataset.country);
     });
+    this.countries_prev.addEventListener('click', () => this.moveCountry(-1));
+    this.countries_next.addEventListener('click', () => this.moveCountry(1));
     this.league_tabs.addEventListener('click', event => {
       const tab = event.target.closest('[data-league]'); if (!tab) return;
       this.activeLeague = tab.dataset.league;

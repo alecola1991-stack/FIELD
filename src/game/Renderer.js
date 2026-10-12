@@ -12,6 +12,15 @@ const FIELD_THEMES = {
   'league-serie-a': { grass: '#183648', stripe: '#8cddf00a', line: 'rgba(195,231,245,.4)', net: '#142936', accent: '#70c6e0' },
   'league-ligue-1': { grass: '#283044', stripe: '#bbc7ff09', line: 'rgba(215,222,255,.4)', net: '#202639', accent: '#b9aaff' },
   'league-bundesliga': { grass: '#19382f', stripe: '#d4f2a90a', line: 'rgba(216,242,197,.4)', net: '#152c25', accent: '#c5dc83' },
+  'league-argentina': { grass: '#17466d', stripe: '#eaf6ff0a', line: 'rgba(225,241,255,.42)', net: '#102b43', accent: '#82c9f0' },
+  'league-liga-mx': { grass: '#173b31', stripe: '#ffffff08', line: 'rgba(235,245,225,.4)', net: '#122c24', accent: '#e4c45d' },
+  'league-brasileirao': { grass: '#16442e', stripe: '#d8f2a90a', line: 'rgba(216,242,197,.4)', net: '#102c20', accent: '#79d39a' },
+  'league-mls': { grass: '#1b3541', stripe: '#9cd8ee0a', line: 'rgba(215,239,247,.4)', net: '#142731', accent: '#8ccfe3' },
+  'league-liga-portugal': { grass: '#174037', stripe: '#ffffff08', line: 'rgba(230,246,235,.4)', net: '#102d26', accent: '#81d2a5' },
+  'league-belgian-pro': { grass: '#3b2731', stripe: '#f1b5c008', line: 'rgba(249,222,229,.4)', net: '#291b23', accent: '#e8aabd' },
+  'league-super-lig': { grass: '#1d383d', stripe: '#ffffff08', line: 'rgba(224,240,242,.4)', net: '#13282d', accent: '#87c9d3' },
+  'copa-libertadores': { grass: '#183e36', stripe: '#d0a4600a', line: 'rgba(235,220,188,.42)', net: '#112d29', accent: '#d6a25b' },
+  'club-world-cup': { grass: '#23364c', stripe: '#b4d7ff09', line: 'rgba(221,236,251,.42)', net: '#18283a', accent: '#a6c9ec' },
 };
 
 export class Renderer {

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TEAM_LEAGUES, TEAM_COUNTRIES, TEAM_GROUPS, TEAM_CLUB_GROUPS, PROFILE_TEAMS, HONORARY_TEAMS, TEAMS, getTeamById } from '../src/config/teams.js';
-import { createChampionsDraw, createInternationalDraw, createLeagueOpponents, createLeagueSchedule, createLeagueStandings, updateLeagueStandings, sortLeagueStandings } from '../src/game/Competitions.js';
+import { CUP_COMPETITIONS, createChampionsDraw, createInternationalDraw, createLibertadoresDraw, createClubWorldCupDraw, createLeagueOpponents, createLeagueSchedule, createLeagueStandings, updateLeagueStandings, sortLeagueStandings } from '../src/game/Competitions.js';
 
 test('all selector clubs have unique ids and a one-to-five star rating', () => {
   assert.equal(new Set(TEAMS.map(team => team.id)).size, TEAMS.length);
@@ -38,6 +38,38 @@ test('second tiers are playable leagues and schedules use each full roster', () 
     assert.ok(opponents.every(item => item.id !== team.id));
   }
   assert.equal(TEAMS.filter(team => team.league === 'laliga2').length, 22);
+});
+
+test('new national first divisions have country groups, full participant lists, ratings and kit data', () => {
+  const expected = { argentina: 30, 'liga-mx': 18, brasileirao: 20, mls: 30, 'liga-portugal': 18, 'belgian-pro': 18, 'super-lig': 18 };
+  for (const [league, count] of Object.entries(expected)) {
+    assert.ok(TEAM_LEAGUES.some(item => item.id === league), `${league} must be listed`);
+    assert.equal(TEAMS.filter(team => team.league === league).length, count, `${league} roster size`);
+    assert.ok(TEAM_COUNTRIES.some(country => country.groups.includes(league)), `${league} must be grouped by country`);
+  }
+  for (const id of ['argentina-boca','liga-mx-america','brasileirao-flamengo','mls-inter-miami','liga-portugal-benfica','belgian-pro-club-brugge','super-lig-galatasaray']) {
+    const team = getTeamById(id);
+    assert.equal(team.stars, 5, `${id} should be a five-star favorite`);
+    assert.ok(team.primary && team.secondary && team.kitPattern && team.numberColor);
+  }
+});
+
+test('Libertadores and Club World Cup draws contain 32 clubs and accept eligible player teams', () => {
+  assert.ok(CUP_COMPETITIONS.some(item => item.id === 'copa-libertadores'));
+  assert.ok(CUP_COMPETITIONS.some(item => item.id === 'club-world-cup'));
+  const libertadores = createLibertadoresDraw('argentina-boca', () => .5);
+  assert.equal(libertadores.length, 32);
+  assert.equal(libertadores[0].id, 'argentina-boca');
+  assert.ok(libertadores.some(team => team.id === 'brasileirao-flamengo'));
+  assert.ok(libertadores.every(team => team.type !== 'national'));
+  assert.throws(() => createLibertadoresDraw('laliga-barcelona'), /clasificado/);
+  const world = createClubWorldCupDraw('mls-seattle', () => .5);
+  assert.equal(world.length, 32);
+  assert.equal(world[0].id, 'mls-seattle');
+  assert.ok(world.some(team => team.name === 'Al Ahly'));
+  assert.ok(world.some(team => team.name === 'Real Madrid CF'));
+  assert.equal(new Set(world.map(team => team.id)).size, 32);
+  assert.throws(() => createClubWorldCupDraw('laliga-barcelona'), /no está clasificado/);
 });
 
 test('knockout draws seed lower-rated rivals earlier and tougher rivals later', () => {

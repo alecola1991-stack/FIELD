@@ -83,7 +83,7 @@ const LIBERTADORES_TEAMS = [
 
 // The confirmed 32-club 2025 FIFA Club World Cup field.
 const CLUB_WORLD_CUP_IDS = [
-  'cup-ahly','cup-al-ain','cup-al-hilal','laliga-atletico','cup-auckland','bundesliga-bayern','argentina-boca','cup-botafogo',
+  'cup-ahly','cup-al-ain','cup-al-hilal','laliga-atletico','cup-auckland','bundesliga-bayern','argentina-boca','brasileirao-botafogo',
   'bundesliga-dortmund','liga-mx-monterrey','liga-mx-pachuca','premier-chelsea','mls-lafc','cup-es-tunis','liga-portugal-porto','cup-salzburg',
   'brasileirao-flamengo','brasileirao-fluminense','serie-a-inter','serie-a-juventus','premier-man-city','cup-sundowns','brasileirao-palmeiras','ligue-1-psg',
   'laliga-real-madrid','argentina-river','mls-seattle','liga-portugal-benfica','cup-ulsan','cup-urawa','cup-wydad','mls-inter-miami',

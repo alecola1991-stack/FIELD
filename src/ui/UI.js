@@ -2,7 +2,7 @@ import { loadSettings, saveSettings, setSettingsScope } from '../config/settings
 import { Progression } from '../game/Progression.js';
 import { CareerProfile } from '../game/CareerProfile.js';
 import { TROPHY_CATALOG, formatPlayTime } from '../game/Achievements.js';
-import { TEAM_LEAGUES, NATIONAL_GROUPS, TEAM_GROUPS, TEAM_CLUB_GROUPS, TEAM_COUNTRIES, PROFILE_TEAMS, TEAMS, getTeamById } from '../config/teams.js';
+import { TEAM_LEAGUES, NATIONAL_GROUPS, TEAM_GROUPS, TEAM_CLUB_GROUPS, TEAM_COUNTRIES, PROFILE_TEAMS, TEAMS, getTeamById, getKitBackground } from '../config/teams.js';
 import { CUP_COMPETITIONS, createChampionsDraw, createInternationalDraw, createLeagueSchedule, createLeagueStandings, updateLeagueStandings, sortLeagueStandings, pickChampionsOpponent } from '../game/Competitions.js';
 import { MenuBackdrop } from './MenuBackdrop.js';
 import { Confetti } from './Confetti.js';
@@ -596,7 +596,8 @@ export class UI {
     card.setAttribute('aria-label', `${team.name}. Valoración ${team.stars || 3} de 5 estrellas. ${chosen ? 'Equipo elegido' : 'Elegir este equipo'}`);
     card.setAttribute('aria-pressed', String(chosen)); card.classList.toggle('selected', chosen);
     const strip = document.createElement('span'); strip.className = 'team-card-colors';
-    strip.style.background = `linear-gradient(90deg, ${team.primary} 0 50%, ${team.secondary} 50% 100%)`;
+    strip.style.background = getKitBackground(team);
+    strip.setAttribute('aria-label', `Camiseta: ${team.kitPattern.replaceAll('-', ' ')}`);
     const details = document.createElement('span'); details.className = 'team-card-details';
     const name = document.createElement('span'); name.className = 'team-card-name'; name.textContent = team.name;
     const rating = document.createElement('span'); rating.className = 'team-rating';
@@ -631,7 +632,7 @@ export class UI {
     const team = getTeamById(this.selectedTeamId), name = this.player_name.value.trim() || 'TU NOMBRE';
     const rawNumber = this.player_number.value, number = rawNumber === '' ? '—' : clamp(Number(rawNumber) || 0, 0, 99);
     this.preview_name.textContent = name.toUpperCase(); this.preview_number.textContent = number;
-    this.preview_ball.style.background = team ? `linear-gradient(90deg, ${team.primary} 0 50%, ${team.secondary} 50% 100%)` : '#33413b';
+    this.preview_ball.style.background = getKitBackground(team);
     this.preview_ball.style.boxShadow = team ? `0 8px 28px ${team.primary}55, inset -7px -8px 13px #0003` : 'none';
     this.preview_team.textContent = team ? team.name.toUpperCase() : 'ELIGE UN EQUIPO';
     const league = team && TEAM_GROUPS.find(item => item.id === team.league);
@@ -656,8 +657,7 @@ export class UI {
   updateHomeClub() {
     const team = getTeamById(this.settings.teamId);
     this.home_club_name.textContent = team ? `${team.name.toUpperCase()} · ${team.type === 'national' ? 'SELECCIÓN' : team.type === 'honorary' ? 'HONORÍFICO' : 'CLUB'}` : 'SELECCIONA TU EQUIPO AL JUGAR';
-    this.home_club_colors.style.background = team
-      ? `linear-gradient(90deg, ${team.primary} 0 50%, ${team.secondary} 50% 100%)` : 'transparent';
+    this.home_club_colors.style.background = team ? getKitBackground(team) : 'transparent';
     this.home_club_colors.classList.toggle('has-team', !!team);
   }
 
@@ -863,7 +863,7 @@ export class UI {
       const item = document.createElement('div'); item.className = 'roster-team';
       if (team.id === this.settings.teamId) item.classList.add('user-team');
       const colors = document.createElement('span'); colors.className = 'roster-colors';
-      colors.style.background = `linear-gradient(90deg, ${team.primary} 0 50%, ${team.secondary} 50% 100%)`;
+      colors.style.background = getKitBackground(team);
       const name = document.createElement('span'); name.textContent = team.name;
       const flag = document.createElement('small'); flag.textContent = team.id === this.settings.teamId ? 'TÚ' : (team.type === 'national' ? 'SELECCIÓN' : 'CLUB');
       item.append(colors, name, flag); this.tournament_roster.append(item);

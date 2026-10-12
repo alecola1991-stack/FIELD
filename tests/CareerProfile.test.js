@@ -61,7 +61,7 @@ test('new cosmetic equipment slots persist with safe defaults', () => {
   profile.equipped = { ...profile.equipped, fieldTint: 'lagoon', shotEffect: 'aurora', ballSkin: 'cosmic', playerEffect: 'halo', goalEffect: 'fireworks', circleRelief: 'gold' };
   profile.save();
   const restored = new CareerProfile();
-  assert.deepEqual(restored.equipped, { circleRelief: 'gold', fieldTint: 'lagoon', shotEffect: 'aurora', ballSkin: 'cosmic', playerEffect: 'halo', goalEffect: 'fireworks' });
+  assert.deepEqual(restored.equipped, { circleRelief: 'gold', fieldTint: 'lagoon', shotEffect: 'aurora', ballSkin: 'cosmic', playerEffect: 'halo', playerTrail: 'off', goalEffect: 'fireworks' });
 });
 
 test('promo code grants its coins once and merges idempotently across devices', () => {
@@ -97,4 +97,26 @@ test('competition missions give coins and XP progress once and survive profile m
   assert.equal(merged.missions['competition-wins'].completed, true);
   assert.equal(merged.missions['league-champion:laliga-barcelona'].completed, true);
   assert.equal(merged.stats.coinsEarned, 770);
+});
+
+test('new cosmetic variants persist and an aura can coexist with a player trail', () => {
+  memoryStorage();
+  const profile = new CareerProfile();
+  profile.equipped = { ...profile.equipped, circleRelief: 'prism', shotEffect: 'rainbow', ballSkin: 'emerald', playerEffect: 'orbit', playerTrail: 'comet' };
+  profile.save();
+  const restored = new CareerProfile();
+  assert.equal(restored.equipped.circleRelief, 'prism');
+  assert.equal(restored.equipped.shotEffect, 'rainbow');
+  assert.equal(restored.equipped.ballSkin, 'emerald');
+  assert.equal(restored.equipped.playerEffect, 'orbit');
+  assert.equal(restored.equipped.playerTrail, 'comet');
+});
+
+test('existing speed cosmetics migrate to the independent player trail slot', () => {
+  memoryStorage();
+  const profile = new CareerProfile();
+  profile.equipped = { playerEffect: 'speed' }; profile.save();
+  const restored = new CareerProfile();
+  assert.equal(restored.equipped.playerTrail, 'speed');
+  assert.equal(restored.equipped.playerEffect, 'off');
 });

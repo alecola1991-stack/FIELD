@@ -1259,7 +1259,7 @@ export class UI {
     document.getElementById('modifier-ball').setAttribute('r', 6 * rules.ballSize);
     for (const side of ['left', 'right']) {
       document.getElementById(`modifier-${side}-player`).setAttribute('r', 11 * rules.playerSize);
-      const goal = document.getElementById(`modifier-${side}-goal`); goal.setAttribute('y', 80 - 35 * rules.goalSize); goal.setAttribute('height', 70 * rules.goalSize);
+      const goal = document.getElementById(`modifier-${side}-goal`); const depth = Math.max(15, 12 * rules.ballSize + 3); goal.setAttribute('width', depth); goal.setAttribute('x', side === 'left' ? 30 - depth : 230); goal.setAttribute('y', 80 - 35 * rules.goalSize); goal.setAttribute('height', 70 * rules.goalSize);
     }
     const count = MODIFIER_OPTIONS.filter(option => rules[option.key] !== option.default).length;
     this.modifier_summary.textContent = count ? `${count} modificadores activos` : 'Reglas por defecto';

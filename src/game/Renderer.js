@@ -57,7 +57,7 @@ export class Renderer {
     const c = this.ctx, W = this.world; c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = '#0b1115'; c.fillRect(0, 0, this.canvas.width, this.canvas.height);
     c.setTransform(this.scale, 0, 0, this.scale, this.ox, this.oy);
     if (this.fieldCacheContext) {
-      const key = `${game.fieldTheme}|${game.competitionRound}|${game.cosmetics?.fieldTint}|${W.goalTop}|${W.goalBottom}`;
+      const key = `${game.fieldTheme}|${game.competitionRound}|${game.cosmetics?.fieldTint}|${W.goalTop}|${W.goalBottom}|${W.goalBack}`;
       if (key !== this.fieldCacheKey) { this.drawField(this.fieldCacheContext, game.fieldTheme, game.competitionRound, game.cosmetics); this.fieldCacheKey = key; }
       c.drawImage(this.fieldCache, 0, 0);
     } else this.drawField(c, game.fieldTheme, game.competitionRound, game.cosmetics);

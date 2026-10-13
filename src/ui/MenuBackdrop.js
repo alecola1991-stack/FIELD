@@ -37,6 +37,7 @@ export class MenuBackdrop {
   frame(time) {
     this.raf = 0;
     if (!this.active) return;
+    if (this.lastTime && time - this.lastTime < 1000 / 30) { this.raf = requestAnimationFrame(next => this.frame(next)); return; }
     const dt = this.lastTime ? Math.min((time - this.lastTime) / 1000, .04) : 0;
     this.lastTime = time;
     this.update(dt); this.draw();

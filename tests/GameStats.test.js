@@ -46,3 +46,34 @@ test('player name and larger dorsal are drawn inside the circle in the team colo
   assert.ok(texts.every(item => item.clipped && item.x === 0 && Math.abs(item.y) < player.radius && item.width < player.radius * 2 && item.color === player.numberColor));
   assert.match(texts[1].font, /25px/);
 });
+
+test('shots reach the entire ball circle at the visible zone edge in every direction', async () => {
+  const { canKickBall, kickBall, shotRangeRadius } = await import('../src/game/Physics.js');
+  for (const angle of [0, Math.PI / 2, Math.PI, -Math.PI / 2, Math.PI / 4]) {
+    const player = { x: 200, y: 200, vx: 0, vy: 0, radius: 22, faceX: 1, faceY: 0, shotCooldown: 0 };
+    const distance = shotRangeRadius(player) + 12;
+    const ball = { x: 200 + Math.cos(angle) * distance, y: 200 + Math.sin(angle) * distance, radius: 12, vx: 0, vy: 0 };
+    assert.equal(canKickBall(player, ball), true);
+    assert.equal(kickBall(player, ball), true);
+    assert.ok(Math.hypot(ball.vx, ball.vy) > 0);
+    player.shotCooldown = 0;
+    ball.x += Math.cos(angle) * .01; ball.y += Math.sin(angle) * .01;
+    assert.equal(canKickBall(player, ball), false);
+    assert.equal(kickBall(player, ball), false);
+  }
+});
+
+test('shot preview matches real normal and fire shots with momentum without changing state', async () => {
+  const { predictShot, kickBall } = await import('../src/game/Physics.js');
+  for (const power of [1, 1.45]) for (const velocity of [0, 300]) {
+    const player = { x: 200, y: 200, vx: velocity, vy: -40, radius: 22, faceX: 0, faceY: 1, shotCooldown: 0 };
+    const ball = { x: 250, y: 220, radius: 12, vx: 100, vy: 25 };
+    const before = JSON.stringify({ player, ball });
+    const shot = predictShot(player, ball, null, power);
+    assert.equal(JSON.stringify({ player, ball }), before);
+    assert.equal(kickBall(player, ball, () => {}, null, power), true);
+    assert.deepEqual({ vx: ball.vx, vy: ball.vy }, shot);
+    assert.ok(Math.hypot(shot.vx, shot.vy) <= 663.000001);
+    assert.equal(predictShot(player, ball), null, 'cooldown disables the preview');
+  }
+});

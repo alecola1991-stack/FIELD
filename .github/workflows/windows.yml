@@ -1,0 +1,64 @@
+name: Windows executable
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop/**'
+      - 'src/**'
+      - 'index.html'
+      - 'vite.config.js'
+      - 'package*.json'
+      - '.github/workflows/windows.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-desktop
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Bundle local game
+        run: npm run build -- --mode desktop
+      - name: Install desktop tools
+        run: npm ci --prefix desktop
+      - name: Build installer and portable executable
+        run: npm run package:win --prefix desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Test packaged game without internet
+        shell: pwsh
+        run: |
+          $exe = Resolve-Path 'desktop/release/win-unpacked/Futbol Arcade.exe'
+          $process = Start-Process -FilePath $exe -ArgumentList '--smoke-test' -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Offline game test failed: $($process.ExitCode)" }
+      - name: Save Windows executables
+        uses: actions/upload-artifact@v4
+        with:
+          name: Futbol-Arcade-Windows
+          path: desktop/release/*.exe
+      - name: Publish Windows download
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view windows-latest --repo $env:GITHUB_REPOSITORY
+          if ($LASTEXITCODE -ne 0) {
+            gh release create windows-latest --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title 'Fútbol arcade para Windows' --notes 'Windows de 64 bits. Setup: instalador. Portable: abrir sin instalar. Modos contra la IA disponibles sin internet; online y cuenta requieren conexión. El progreso local de esta aplicación es independiente del navegador. Compilación sin firma digital.'
+            if ($LASTEXITCODE -ne 0) { throw 'Could not create Windows release' }
+          }
+          $files = Get-ChildItem desktop/release/*.exe | ForEach-Object { $_.FullName }
+          gh release upload windows-latest $files --repo $env:GITHUB_REPOSITORY --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Could not publish executables' }

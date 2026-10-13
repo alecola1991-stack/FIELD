@@ -278,7 +278,6 @@ export class Renderer {
   drawShotPreview(c, player, ball, position) {
     const powered = player.powerCooldown <= 0;
     const shot = predictShot(player, ball, null, powered ? 1.45 : 1);
-    this.drawShotRange(c, player, ball, shot ? .4 : .18);
     if (!shot) return;
     const ghost = new Ball(ball.x, ball.y); ghost.radius = ball.radius; ghost.vx = shot.vx; ghost.vy = shot.vy;
     const offsetX = position[0] - ball.x, offsetY = position[1] - ball.y;

@@ -138,3 +138,13 @@ test('the goal net is deep enough for the entire oversized ball to cross the goa
     }
   }
 });
+
+
+test('guest career goals use local scoring direction rather than the physical goal side', () => {
+  const ui = Object.create(UI.prototype), recorded = [];
+  Object.assign(ui, { currentMatchMode: 'online', game: { localSide: 'right' }, career: { recordGoal: side => recorded.push(side) }, renderAccount() {}, checkAchievements() {}, syncAccount() {} });
+  ui.recordGoal(-1); ui.recordGoal(1);
+  assert.deepEqual(recorded, [1, -1]);
+  ui.game.localSide = 'left'; ui.recordGoal(1);
+  assert.equal(recorded[2], 1);
+});

@@ -1,3 +1,4 @@
+import { normalizeModifiers, modifierWorld } from '../config/modifiers.js';
 import { WORLD } from '../config/settings.js';
 import { Player } from './Player.js';
 import { Ball } from './Ball.js';
@@ -24,10 +25,12 @@ export class Game {
   }
   start(mode = 'bot', difficulty = this.settings.difficulty, options = {}) {
     this.state.start(mode); if (mode !== 'legends') this.settings.difficulty = difficulty; this.botAI.setDifficulty(mode === 'legends' ? 'legend' : difficulty);
+    this.modifiers = normalizeModifiers(options.modifiers || this.settings.modifiers);
+    this.world = modifierWorld(this.modifiers);
     const team = getTeamById(this.settings.teamId);
     this.fieldTheme = options.fieldTheme || (mode === 'training' ? 'training' : mode === 'tournament' ? 'champions' : 'arcade');
     this.competitionRound = options.competitionRound || 0;
-    this.goalTarget = mode === 'league' ? (Number(options.goalTarget) || 2) : mode === 'tournament' ? 3 : 5;
+    this.goalTarget = this.modifiers.goalTarget || (mode === 'league' ? (Number(options.goalTarget) || 2) : mode === 'tournament' ? 3 : 5);
     this.localSide = options.localSide === 'right' ? 'right' : 'left';
     this.onlineAuthority = mode !== 'online' || this.localSide === 'left';
     this.onlineSnapshotClock = 0; this.onlineInputClock = 0; this.remoteInput = { x: 0, y: 0, kick: false }; this.onlineMatchEnded = false; this.onlinePendingKick = false;
@@ -46,9 +49,21 @@ export class Game {
     this.bot = mode !== 'training' ? new Player({ x: opponentX, y: WORLD.height / 2, name: opponentName, number: opponentNumber, color: opponentTeam?.primary || '#f19676', secondaryColor: opponentTeam?.secondary || null, numberColor: opponentTeam?.numberColor, kitPattern: opponentTeam?.kitPattern, isBot: mode !== 'online', speed: mode === 'online' ? 305 : 280 }) : null;
     if (this.bot && mode === 'online') this.bot.faceX = this.localSide === 'left' ? -1 : 1;
     this.ball.reset(WORLD.width / 2, WORLD.height / 2); this.goalResetTimer = 0; this.last = 0;
+    this.applyModifiers();
     this.beginCountdown();
     if (!this.raf) this.raf = requestAnimationFrame(this.boundLoop);
     this.hooks.onStart?.(mode); this.hooks.onScore?.(0, 0); this.hooks.onTime?.('00:00');
+  }
+  applyModifiers() {
+    this.modifiers = normalizeModifiers(this.modifiers); this.world = modifierWorld(this.modifiers);
+    for (const body of [this.player, this.bot]) if (body) {
+      body.radius = 22 * this.modifiers.playerSize;
+      body.speedScale = this.modifiers.playerSpeed;
+      body.maxSpeed = (body.isBot ? 280 : 305) * body.speedScale;
+      body.shotPower = this.modifiers.shotPower; body.world = this.world;
+    }
+    this.ball.radius = 12 * this.modifiers.ballSize; this.ball.world = this.world;
+    this.ball.maxSpeed = Ball.MAX_SPEED * Math.max(1, this.modifiers.shotPower);
   }
   updateSettings(settings) {
     this.settings = settings;
@@ -59,13 +74,14 @@ export class Game {
     }
     this.botAI.setDifficulty(this.state.mode === 'legends' ? 'legend' : settings.difficulty); this.trajectory = !!settings.trajectory;
   }
-  setPaused(paused) { this.state.paused = paused; this.last = 0; }
+  setPaused(paused) { this.state.paused = paused; this.last = 0; this.input.down.clear(); this.input.pressed.clear(); }
   stop() { this.state.running = false; this.state.paused = false; this.trajectory = false; if (this.raf) cancelAnimationFrame(this.raf); this.raf = 0; this.last = 0; }
   resetBall() { this.ball.reset(WORLD.width / 2, WORLD.height / 2); }
   resetPlayer() { if (this.player) { this.player.x = WORLD.width * .31; this.player.y = WORLD.height / 2; this.player.stop(); } }
   loop(time) {
     this.raf = requestAnimationFrame(this.boundLoop);
     if (!this.state.running) return;
+    if (this.state.paused) { if (time - (this.pausedPaintAt || 0) < 100) return; this.pausedPaintAt = time; }
     const dt = this.last ? Math.min((time - this.last) / 1000, .033) : 0; this.last = time;
     if (!this.state.paused) {
       if (this.state.mode === 'online' && !this.onlineAuthority) {
@@ -91,7 +107,7 @@ export class Game {
         if (this.autosaveClock >= 2) { this.autosaveClock %= 2; this.hooks.onAutosave?.(); }
       }
     }
-    this.renderer.render({ player: this.player, bot: this.bot, ball: this.ball, trajectory: this.trajectory, shotPreview: !!this.settings.shotPreview && this.countdown === 0 && this.state.goalTimer <= 0 && !this.state.matchOver, goalTimer: this.state.goalTimer, goalSide: this.state.goalSide, fieldTheme: this.fieldTheme, competitionRound: this.competitionRound, shotRangeTimer: this.shotRangeTimer, cosmetics: this.settings.cosmetics || {} }, dt);
+    if (this.renderEnabled !== false) this.renderer.render({ player: this.player, bot: this.bot, ball: this.ball, trajectory: this.trajectory, shotPreview: !!this.settings.shotPreview && this.countdown === 0 && this.state.goalTimer <= 0 && !this.state.matchOver, goalTimer: this.state.goalTimer, goalSide: this.state.goalSide, world: this.world || WORLD, fieldTheme: this.fieldTheme, competitionRound: this.competitionRound, shotRangeTimer: this.shotRangeTimer, cosmetics: this.settings.cosmetics || {} }, this.state.paused ? 0 : dt);
     this.input.endFrame();
   }
   update(dt) {
@@ -131,13 +147,14 @@ export class Game {
         else this.renderer.burst(this.ball.x, this.ball.y, '#c5f4d8', 7, 100);
       }, null, powered ? 1.45 : 1);
       if (kicked) this.matchStats.shotsPlayer++;
-      if (kicked && powered) { this.player.powerCooldown = POWER_SHOT_COOLDOWN_SECONDS; this.hooks.onPowerCooldown?.(POWER_SHOT_COOLDOWN_SECONDS); }
+      if (kicked && powered) { this.player.powerCooldown = (this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS); this.hooks.onPowerCooldown?.(this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS); }
     }
     if (this.bot) {
       if (this.state.mode === 'online') {
         const command = this.hooks.getRemoteInput?.() || this.remoteInput;
         this.remoteInput = command;
         this.bot.powerCooldown = Math.max(0, this.bot.powerCooldown - dt);
+        this.bot.powerFlash = Math.max(0, this.bot.powerFlash - dt);
         this.bot.move(command.x || 0, command.y || 0, dt);
         resolvePlayerWalls(this.bot);
         if (command.kick) {
@@ -148,7 +165,7 @@ export class Game {
             else this.renderer.burst(this.ball.x, this.ball.y, '#c5f4d8', 7, 100);
           }, null, powered ? 1.45 : 1);
           if (kicked) this.matchStats.shotsOpponent++;
-          if (kicked && powered) this.bot.powerCooldown = POWER_SHOT_COOLDOWN_SECONDS;
+          if (kicked && powered) this.bot.powerCooldown = (this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS);
         }
       } else {
         const decision = this.botAI.update(this.bot, this.ball, this.player, dt); this.bot.move(decision.x, decision.y, dt, decision.speedMultiplier);
@@ -162,19 +179,23 @@ export class Game {
       // Separation can push a body a few units through a touchline.
       resolvePlayerWalls(this.player); resolvePlayerWalls(this.bot);
     }
-    this.ball.update(dt);
+    const steps = Math.max(1, Math.ceil(Math.hypot(this.ball.vx, this.ball.vy) * dt / Math.max(5, this.ball.radius)));
+    for (let step = 0; step < steps; step++) {
+    this.ball.update(dt / steps);
     if (this.bot) resolvePlayerBall(this.bot, this.ball, strength => { if (strength > 30) this.sound.bump(); });
     resolvePlayerBall(this.player, this.ball, strength => { if (strength > 30) this.sound.bump(); });
+    resolvePlayerWalls(this.player); if (this.bot) resolvePlayerWalls(this.bot);
     const goalSide = isGoal(this.ball);
     if (goalSide !== 0) { this.recordGoal(goalSide); return; }
     resolveBallWalls(this.ball, () => this.sound.bump());
+    }
   }
   predictOnlineGuest(dt) {
     if (dt <= 0 || !this.player) return;
     const axes = this.input.axes();
     const kickPressed = this.input.consume('Space');
+    if (this.countdown > 0 || this.state.goalTimer > 0 || this.state.matchOver) { this.onlinePendingKick = false; return; }
     if (kickPressed) this.onlinePendingKick = true;
-    if (this.countdown > 0 || this.state.goalTimer > 0 || this.state.matchOver) return;
     this.player.powerCooldown = Math.max(0, this.player.powerCooldown - dt);
     this.player.powerFlash = Math.max(0, this.player.powerFlash - dt);
     this.shotRangeTimer = Math.max(0, this.shotRangeTimer - dt);
@@ -199,7 +220,7 @@ export class Game {
         else this.renderer.burst(this.ball.x, this.ball.y, '#c5f4d8', 7, 100);
       }, null, powered ? 1.45 : 1);
       if (kicked) this.matchStats.shotsPlayer++;
-      if (kicked && powered) this.player.powerCooldown = POWER_SHOT_COOLDOWN_SECONDS;
+      if (kicked && powered) this.player.powerCooldown = (this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS);
     }
   }
   recordGoal(side) {
@@ -224,7 +245,7 @@ export class Game {
       mode: this.state.mode, elapsed: this.state.elapsed, scorePlayer: this.state.scorePlayer, scoreBot: this.state.scoreBot,
       goalTimer: this.state.goalTimer, goalSide: this.state.goalSide, matchOver: this.state.matchOver, goalTarget: this.goalTarget,
       countdown: this.countdown, countdownClock: this.countdownClock, trajectory: this.trajectory,
-      ...(online ? {} : { fieldTheme: this.fieldTheme, competitionRound: this.competitionRound }),
+      ...(online ? {} : { modifiers: this.modifiers, fieldTheme: this.fieldTheme, competitionRound: this.competitionRound }),
       matchStats: online ? this.matchStats : this.matchSummary(),
       player: entity(this.player), bot: entity(this.bot), ball: entity(this.ball),
       ...(online ? {} : { difficulty: this.botAI.difficulty, ai: { thinkTimer: this.botAI.thinkTimer, targetX: this.botAI.targetX, targetY: this.botAI.targetY, shotsTaken: this.botAI.shotsTaken, mode: this.botAI.mode } }),
@@ -232,6 +253,7 @@ export class Game {
   }
   restoreSnapshot(snapshot, notify = true, resetRender = true) {
     if (!snapshot || snapshot.mode !== this.state.mode || !snapshot.player || !snapshot.ball) return false;
+    if (snapshot.modifiers) { this.modifiers = normalizeModifiers(snapshot.modifiers); this.applyModifiers(); }
     const restoreBody = (body, saved) => {
       if (!body || !saved) return;
       for (const key of ['x', 'y', 'vx', 'vy', 'faceX', 'faceY', 'shotCooldown', 'powerCooldown', 'powerFlash', 'kickScale', 'boost', 'spin']) if (Number.isFinite(saved[key])) body[key] = saved[key];
@@ -263,13 +285,20 @@ export class Game {
   }
   applyOnlineSnapshot(snapshot) {
     if (this.state.mode !== 'online' || this.onlineAuthority || !snapshot || snapshot.mode !== 'online') return false;
+    for (const body of [snapshot.player, snapshot.bot, snapshot.ball]) {
+      if (!body || !Number.isFinite(body.x) || !Number.isFinite(body.y)) return false;
+      if (['vx', 'vy'].some(key => body[key] !== undefined && !Number.isFinite(body[key]))) return false;
+    }
+    for (const key of ['elapsed', 'goalTimer', 'countdown', 'countdownClock', 'scorePlayer', 'scoreBot']) {
+      if (snapshot[key] !== undefined && (!Number.isFinite(snapshot[key]) || snapshot[key] < 0)) return false;
+    }
     const mapped = {
       ...snapshot,
       player: snapshot.bot,
       bot: snapshot.player,
       scorePlayer: snapshot.scoreBot,
       scoreBot: snapshot.scorePlayer,
-      matchStats: snapshot.matchStats && { shotsPlayer: snapshot.matchStats.shotsOpponent, shotsOpponent: snapshot.matchStats.shotsPlayer, goals: snapshot.matchStats.goals?.map(goal => ({ ...goal, side: goal.side === 'player' ? 'opponent' : 'player' })) },
+      matchStats: snapshot.matchStats && { shotsPlayer: snapshot.matchStats.shotsOpponent, shotsOpponent: snapshot.matchStats.shotsPlayer, goals: Array.isArray(snapshot.matchStats.goals) ? snapshot.matchStats.goals.map(goal => ({ ...goal, side: goal.side === 'player' ? 'opponent' : 'player' })) : [] },
     };
     const priorScorePlayer = this.state.scorePlayer, priorScoreBot = this.state.scoreBot;
     const priorCountdown = this.countdown;
@@ -295,10 +324,12 @@ export class Game {
       const localScored = priorScorePlayer !== this.state.scorePlayer;
       this.hooks.onGoal?.(this.state.goalSide || (localScored ? -1 : 1));
     }
-    if (this.state.matchOver && this.state.goalTimer <= 0 && !this.onlineMatchEnded) {
+    if (this.state.matchOver && this.state.goalTimer <= 0) {
+      this.state.paused = true;
+      if (this.onlineMatchEnded) return true;
       this.onlineMatchEnded = true;
       this.state.paused = true;
-      this.hooks.onMatchEnd?.({ mode: 'online', elapsedSeconds: this.state.elapsed, playerScore: this.state.scorePlayer, botScore: this.state.scoreBot, winner: this.state.scorePlayer > this.state.scoreBot ? 'player' : 'opponent' });
+      this.hooks.onMatchEnd?.({ mode: 'online', elapsedSeconds: this.state.elapsed, playerScore: this.state.scorePlayer, botScore: this.state.scoreBot, winner: this.state.scorePlayer > this.state.scoreBot ? 'player' : 'opponent', stats: this.matchSummary() });
     }
     return true;
   }

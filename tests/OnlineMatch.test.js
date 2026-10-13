@@ -136,3 +136,28 @@ test('empareja automáticamente a dos jugadores que buscan partida', async () =>
   await second.leave();
   await first.leave();
 });
+
+
+test('online peers share host modifiers, preserve them for rematches and reject old match packets', async () => {
+  sessionValues = new Map(); const host = new OnlineMatch(client);
+  sessionValues = new Map(); const guest = new OnlineMatch(client);
+  let hostInfo, guestInfo, snapshots = 0;
+  host.setHandlers({ onMatchStart: info => { hostInfo = info; } });
+  guest.setHandlers({ onMatchStart: info => { guestInfo = info; }, onSnapshot: () => snapshots++ });
+  const code = await host.createRoom({ name: 'Ana', modifiers: { ballSize: 1.7, goalSize: 1.4, playerSpeed: 1.3, powerCooldown: 8 } });
+  await guest.joinRoom(code, { name: 'Luis', modifiers: { ballSize: .5, playerSpeed: .6 } });
+  await new Promise(resolve => setTimeout(resolve, 10));
+  assert.deepEqual(hostInfo.modifiers, guestInfo.modifiers);
+  assert.equal(guestInfo.modifiers.ballSize, 1.7);
+  const oldMatch = host.matchId;
+  guest.requestRematch(); host.requestRematch();
+  assert.notEqual(host.matchId, oldMatch);
+  assert.deepEqual(hostInfo.modifiers, guestInfo.modifiers);
+  host.send('snapshot', { clientId: host.clientId, matchId: oldMatch, sequence: 999, snapshot: { mode: 'online' } });
+  assert.equal(snapshots, 0);
+  guest.send('input', { clientId: guest.clientId, matchId: oldMatch, sequence: 999, x: -1 });
+  guest.sendInput({ x: .4, y: 0, kick: false });
+  assert.equal(host.getRemoteInput().x, .4);
+  host.sendSnapshot({ mode: 'online' }); assert.equal(snapshots, 1);
+  await guest.leave(); await host.leave();
+});

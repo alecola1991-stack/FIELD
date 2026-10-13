@@ -1,3 +1,4 @@
+import { MODIFIER_OPTIONS, DEFAULT_MODIFIERS, normalizeModifiers, modifiersAreDefault, formatModifier } from '../config/modifiers.js';
 import { loadSettings, saveSettings, setSettingsScope } from '../config/settings.js';
 import { Progression } from '../game/Progression.js';
 import { CareerProfile } from '../game/CareerProfile.js';
@@ -72,7 +73,7 @@ export class UI {
       settings: document.querySelector('#settings-screen'), account: document.querySelector('#account-screen'), online: document.querySelector('#online-screen'), leaderboard: document.querySelector('#leaderboard-screen'), competitions: document.querySelector('#competition-screen'), tournament: document.querySelector('#tournament-screen'),
       league: document.querySelector('#league-screen'), game: document.querySelector('#game-screen'), profile: document.querySelector('#profile-screen'),
       missions: document.querySelector('#missions-screen'),
-      quick: document.querySelector('#quick-screen'), legends: document.querySelector('#legends-screen'),
+      modifiers: document.querySelector('#modifiers-screen'), quick: document.querySelector('#quick-screen'), legends: document.querySelector('#legends-screen'),
     };
     this.cacheElements(); this.menuBackdrop = new MenuBackdrop(this.menu_backdrop); this.populateTeamPicker(); this.populateLeagueCompetitions(); this.fillInputs(); this.bind(); this.updateLeaguePreview(); this.renderProgress(); this.renderStore(); this.show('home'); this.refreshContinueButton();
   }
@@ -80,7 +81,7 @@ export class UI {
   cacheElements() {
     const ids = [
       'player-name','player-number','preview-name','preview-number','preview-ball','preview-team','saved-note','save-player',
-      'difficulty','settings-difficulty','sound-enabled','volume','volume-value','score','timer','hud-player-name','hud-opponent-name','player-dot','opponent-dot',
+      'difficulty','play-difficulty','settings-difficulty','sound-enabled','volume','volume-value','score','timer','hud-player-name','hud-opponent-name','player-dot','opponent-dot',
       'goal-banner','countdown-banner','pause-overlay','result-overlay','result-eyebrow','result-title','result-copy','result-xp','result-level','result-xp-fill',
       'result-next','result-finish','result-rematch','result-online-status','result-stats','result-stat-duration','result-stat-goals','result-stat-shots','result-trophy','result-season-summary','league-standings-panel','league-standings-title','league-standings-body','connection-banner','leaderboard-message','leaderboard-list','leaderboard-refresh','training-tools','trajectory-toggle','mode-label','game-canvas','level-value','xp-label','wins-label','xp-fill','missions-list',
       'team-position','league-competition','league-competition-summary','country-tabs','countries-prev','countries-next','country-position','league-tabs','team-grid','teams-prev','teams-next','chosen-team-label','tournament-roster',
@@ -89,7 +90,7 @@ export class UI {
       'tournament-header-tag','tournament-eyebrow','tournament-title','tournament-description','tournament-emblem','tournament-team-count',
       'account-status','account-status-dot','account-message','account-form','account-name','account-name-wrap','account-email','account-password','account-submit','account-form-title','account-dashboard','account-auth-panel','account-email-label','account-sync-state','account-level','account-wins','account-matches','account-goals','account-conceded','account-seasons','account-trophy-count','account-trophies',
       'profile-eyebrow','profile-title','profile-copy','home-club-colors','home-club-name','home-coins','store-coins','store-grid','store-message','store-categories','store-loadout','inventory-count','play-continue-wrap',
-      'menu-backdrop',
+      'menu-backdrop','modifier-controls','modifiers-back','modifiers-done','modifiers-reset','modifiers-note','modifier-summary',
       'match-intro','online-player-details','online-opponent-details','quick-pickers','quick-difficulty','quick-start','legends-mode-card','legends-mode-tag','legends-lock','legend-prev','legend-next','legend-title','legend-edition','legend-position','legend-history','legend-teams','legend-start',
       'continue-competition','continue-detail','league-goal-target','trajectory-enabled','shot-preview-enabled','shot-power-time',
       'promo-code-form','promo-code-input','promo-code-status',
@@ -219,6 +220,7 @@ export class UI {
     this.player_number.value = this.settings.profileReady ? this.settings.number : '';
     this.difficulty.value = this.settings.difficulty; this.settings_difficulty.value = this.settings.difficulty;
     this.sound_enabled.checked = this.settings.sound; this.volume.value = this.settings.volume; this.volume_value.textContent = `${this.settings.volume}%`;
+    this.play_difficulty.value = this.settings.difficulty;
     this.trajectory_enabled.checked = !!this.settings.trajectory;
     this.shot_preview_enabled.checked = !!this.settings.shotPreview;
     this.league_goal_target.value = String([2, 3, 5].includes(Number(this.settings.leagueGoalTarget)) ? this.settings.leagueGoalTarget : 2);
@@ -294,6 +296,9 @@ export class UI {
       const button = event.target.closest('[data-quick-move]'); if (!button) return;
       this.moveQuickChoice(button.dataset.side, Number(button.dataset.quickMove), button.dataset.kind === 'country');
     });
+    for (const button of [this.modifiers_back, this.modifiers_done]) button.addEventListener('click', () => this.closeModifiers());
+    this.modifiers_reset.addEventListener('click', () => { if (this.modifierLocked) return; this.modifierValues = { ...DEFAULT_MODIFIERS }; this.saveModifiers(); this.renderModifiers(); });
+    document.querySelectorAll('[data-modifier-preset]').forEach(button => button.addEventListener('click', () => { if (this.modifierLocked) return; this.modifierValues = { ...DEFAULT_MODIFIERS, ...(button.dataset.modifierPreset === 'fast' ? { playerSpeed: 1.4, shotPower: 1.2, powerCooldown: 10 } : { ballSize: 1.8, playerSize: .8, goalSize: 1.2 }) }; this.saveModifiers(); this.renderModifiers(); }));
     this.quick_difficulty.addEventListener('change', () => { this.quickDifficulty = this.quick_difficulty.value; });
     this.quick_start.addEventListener('click', () => this.beginQuickMatch());
     this.legend_prev.addEventListener('click', () => this.moveLegend(-1));
@@ -306,8 +311,7 @@ export class UI {
     this.player_name.addEventListener('input', () => { this.updateProfilePreview(); this.updateProfileValidity(); });
     this.player_number.addEventListener('input', () => { this.updateProfilePreview(); this.updateProfileValidity(); });
     document.getElementById('save-player').addEventListener('click', () => this.savePlayer());
-    this.difficulty.addEventListener('change', () => { this.settings.difficulty = this.difficulty.value; this.settings_difficulty.value = this.difficulty.value; this.persist(); });
-    this.settings_difficulty.addEventListener('change', () => { this.settings.difficulty = this.settings_difficulty.value; this.difficulty.value = this.settings.difficulty; this.persist(); });
+    for (const select of [this.difficulty, this.play_difficulty, this.settings_difficulty]) select.addEventListener('change', () => { this.settings.difficulty = select.value; this.updateDifficultyControls(); this.persist(); });
     this.shot_preview_enabled.addEventListener('change', () => { this.settings.shotPreview = this.shot_preview_enabled.checked; this.persist(); });
     this.trajectory_enabled.addEventListener('change', () => {
       this.settings.trajectory = this.trajectory_enabled.checked; this.trajectory_toggle.checked = this.settings.trajectory;
@@ -330,14 +334,14 @@ export class UI {
     document.getElementById('resume-button').addEventListener('click', () => this.pause(false));
     document.getElementById('quit-button').addEventListener('click', () => this.saveAndQuit());
     this.result_next.addEventListener('click', () => this.advanceCompetition());
-    this.result_finish.addEventListener('click', () => this.quit());
+    this.result_finish.addEventListener('click', () => this.finishToMenu());
     document.getElementById('reset-ball').addEventListener('click', () => this.game.resetBall());
     document.getElementById('reset-player').addEventListener('click', () => this.game.resetPlayer());
     this.trajectory_toggle.addEventListener('change', () => {
       this.settings.trajectory = this.trajectory_toggle.checked; this.trajectory_enabled.checked = this.settings.trajectory;
       this.game.trajectory = this.settings.trajectory; this.persist();
     });
-    window.addEventListener('keydown', e => { if (e.code === 'Escape' && this.game?.state.running) { e.preventDefault(); this.pause(!this.game.state.paused); } });
+    window.addEventListener('keydown', e => { if (e.code !== 'Escape') return; if (this.currentView === 'modifiers') { e.preventDefault(); this.closeModifiers(); } else if (this.currentView === 'game' && this.game?.state.running) { e.preventDefault(); this.pause(!this.game.state.paused); } });
     window.addEventListener('pagehide', () => { this.saveCurrentCompetition(); this.syncAccount(true); });
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { this.saveCurrentCompetition(); this.syncAccount(true); } });
   }
@@ -548,6 +552,7 @@ export class UI {
   }
 
   selectMode(mode) {
+    if (mode === 'modifiers') { this.openModifiers(); return; }
     if (mode === 'legends') { this.openLegends(); return; }
     if (mode === 'bot') {
       if (!this.profileComplete()) { this.pendingMode = 'quick'; this.pendingTeamType = 'all'; this.pendingLeagueId = ''; this.openProfile(); return; }
@@ -913,6 +918,12 @@ export class UI {
   }
 
   show(view) {
+    this.currentView = view;
+    if (this.game) this.game.renderEnabled = view === 'game';
+    document.querySelectorAll('.section-nav [data-view]').forEach(button => {
+      const active = button.dataset.view === view || button.dataset.view === 'play' && ['quick','legends','online','leaderboard','competitions','tournament','league'].includes(view);
+      button.classList.toggle('active', active); if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
+    });
     for (const [key, screen] of Object.entries(this.screens)) screen.classList.toggle('hidden', key !== view);
     this.menuBackdrop?.setActive(view === 'home');
     if (view === 'profile') this.renderProfile();
@@ -939,6 +950,8 @@ export class UI {
   renderStore() {
     if (!this.store_grid || !this.career) return;
     const balance = Math.max(0, this.career.stats.coinsEarned - this.career.stats.coinsSpent);
+    const storeKey = JSON.stringify([this.storeTab, this.storeCategory, balance, this.career.ownedItems, this.career.equipped]);
+    if (storeKey === this.lastStoreKey) return; this.lastStoreKey = storeKey;
     this.home_coins.textContent = String(balance);
     this.store_coins.innerHTML = `${balance} <i>◈</i>`;
     document.querySelectorAll('[data-store-tab]').forEach(button => { const active = button.dataset.storeTab === this.storeTab; button.classList.toggle('active', active); button.setAttribute('aria-selected', String(active)); });
@@ -1003,7 +1016,7 @@ export class UI {
       this.settings.difficulty = 'easy';
       saveSettings(this.settings);
     }
-    for (const select of [this.difficulty, this.settings_difficulty]) {
+    for (const select of [this.difficulty, this.play_difficulty, this.settings_difficulty]) {
       const hard = [...select.options].find(option => option.value === 'hard');
       if (hard) { hard.disabled = !hardUnlocked; hard.textContent = hardUnlocked ? 'Difícil' : 'Difícil · nivel 5'; }
       select.value = this.settings.difficulty;
@@ -1165,6 +1178,7 @@ export class UI {
     }
     if (!this.profileComplete()) { this.pendingMode = mode; this.openProfile(); return; }
     if (!preserveCompetition) { this.tournament = null; this.league = null; }
+    options = { ...options, modifiers: normalizeModifiers(snapshot?.modifiers || options.modifiers || this.settings.modifiers) };
     this.currentMatchMode = mode; this.currentMatchOptions = options;
     document.querySelector('.game-header').classList.toggle('online-game-header', mode === 'online');
     this.countdown_banner.classList.add('hidden'); this.goal_banner.classList.add('hidden');
@@ -1176,7 +1190,7 @@ export class UI {
     this.hud_player_name.textContent = this.settings.name.toUpperCase(); this.player_dot.style.background = getTeamById(this.settings.teamId)?.primary || '#68746e';
     this.opponent_dot.style.background = options.opponentTeam?.primary || '#f19676';
     this.hud_opponent_name.textContent = mode === 'training' ? 'PRÁCTICA' : (options.opponentName || 'BOT');
-    this.mode_label.textContent = options.label || (mode === 'training' ? 'MODO ENTRENAMIENTO' : `PARTIDO · ${this.settings.difficulty.toUpperCase()} · A 5 GOLES`);
+    this.mode_label.textContent = (modifiersAreDefault(options.modifiers) ? '' : 'REGLAS PERSONALIZADAS · ') + (options.label || (mode === 'training' ? 'MODO ENTRENAMIENTO' : `PARTIDO · ${this.settings.difficulty.toUpperCase()} · A ${this.game.goalTarget} GOLES`));
     this.training_tools.classList.toggle('hidden', mode !== 'training');
     this.pause_overlay.classList.add('hidden'); this.result_overlay.classList.add('hidden'); this.goal_banner.classList.add('hidden');
     document.getElementById('pause-button').textContent = 'Ⅱ';
@@ -1213,13 +1227,62 @@ export class UI {
     this.match_intro.append(title, row); this.match_intro.classList.remove('hidden');
   }
 
+  openModifiers() {
+    this.modifierReturnView = this.currentView || 'play';
+    this.modifierResume = this.modifierReturnView === 'game' && this.currentMatchMode !== 'online' && !this.game.state.paused;
+    if (this.modifierResume) this.game.setPaused(true);
+    this.modifierLocked = !!this.onlineMatch?.channel;
+    const shared = this.onlineMatch?.role === 'host' ? this.onlineMatch.profile?.modifiers : this.onlineMatch?.opponent?.modifiers || this.onlineMatch?.profile?.modifiers;
+    this.modifierValues = normalizeModifiers(this.modifierLocked ? shared : this.settings.modifiers);
+    this.modifiers_note.textContent = this.modifierLocked ? 'La sala ya tiene reglas compartidas. Para cambiarlas, sal de la sala y crea otra.' : this.modifierReturnView === 'game' ? 'La partida actual conserva sus reglas. Tus cambios se aplicarán al próximo partido.' : 'En online, el anfitrión elige las reglas y ambos jugadores usan los mismos valores.';
+    this.renderModifiers(); this.show('modifiers');
+  }
+  renderModifiers() {
+    this.modifier_controls.replaceChildren(...MODIFIER_OPTIONS.map(option => {
+      const row = document.createElement('div'); row.className = 'modifier-row';
+      const label = document.createElement('label'); label.htmlFor = `modifier-${option.key}`; label.textContent = option.label;
+      const output = document.createElement('output'); output.id = `modifier-value-${option.key}`; output.htmlFor = `modifier-${option.key}`; output.textContent = formatModifier(option, this.modifierValues[option.key]);
+      const description = document.createElement('p'); description.textContent = option.description;
+      const input = document.createElement('input'); input.type = 'range'; input.id = label.htmlFor; input.min = option.min; input.max = option.max; input.step = option.step; input.value = this.modifierValues[option.key]; input.disabled = this.modifierLocked;
+      input.setAttribute('aria-describedby', `modifier-description-${option.key}`); description.id = `modifier-description-${option.key}`;
+      input.addEventListener('input', () => { this.modifierValues[option.key] = Number(input.value); output.textContent = formatModifier(option, Number(input.value)); this.updateModifierPreview(); });
+      input.addEventListener('change', () => this.saveModifiers());
+      row.append(label, output, description, input); return row;
+    }));
+    this.modifiers_reset.disabled = this.modifierLocked;
+    document.querySelectorAll('[data-modifier-preset]').forEach(button => { button.disabled = this.modifierLocked; });
+    this.modifiers_done.firstChild.textContent = this.modifierLocked ? 'Volver ' : 'Guardar y volver ';
+    this.updateModifierPreview();
+  }
+  updateModifierPreview() {
+    const rules = this.modifierValues;
+    document.getElementById('modifier-ball').setAttribute('r', 6 * rules.ballSize);
+    for (const side of ['left', 'right']) {
+      document.getElementById(`modifier-${side}-player`).setAttribute('r', 11 * rules.playerSize);
+      const goal = document.getElementById(`modifier-${side}-goal`); goal.setAttribute('y', 80 - 35 * rules.goalSize); goal.setAttribute('height', 70 * rules.goalSize);
+    }
+    const count = MODIFIER_OPTIONS.filter(option => rules[option.key] !== option.default).length;
+    this.modifier_summary.textContent = count ? `${count} modificadores activos` : 'Reglas por defecto';
+  }
+  saveModifiers() {
+    if (this.modifierLocked) return;
+    this.settings.modifiers = normalizeModifiers(this.modifierValues); this.persist();
+  }
+  closeModifiers() {
+    this.saveModifiers(); this.show(this.modifierReturnView || 'play');
+    if (this.modifierResume) this.game.setPaused(false);
+    this.modifierResume = false;
+  }
+
   updateScore(player, bot) { this.score.innerHTML = `${player} <small>:</small> ${bot}`; }
   updateTime(time) { if (this.timer.textContent !== time) this.timer.textContent = time; }
   updatePowerCooldown(seconds) {
+    const total = this.game?.modifiers?.powerCooldown || 20;
+    const key = `${Math.ceil(seconds * 10)}|${total}`; if (key === this.lastPowerHud) return; this.lastPowerHud = key;
     this.shot_power_time.textContent = seconds > 0 ? `${Math.ceil(seconds)}s` : 'LISTO';
     const status = document.getElementById('shot-power-status');
     status.classList.toggle('ready', seconds <= 0);
-    status.style.setProperty('--power-progress', `${Math.max(0, Math.min(100, seconds / 20 * 100))}%`);
+    status.style.setProperty('--power-progress', `${Math.max(0, Math.min(100, (1 - seconds / total) * 100))}%`);
     status.setAttribute('aria-label', seconds > 0 ? `Tiro de fuego disponible en ${Math.ceil(seconds)} segundos` : 'Tiro de fuego disponible');
   }
 
@@ -1266,7 +1329,7 @@ export class UI {
     } catch (error) { this.updateOnlineStatus('error', error?.message); }
   }
 
-  onlinePlayer() { return { name: this.settings.name, number: this.settings.number, teamId: this.settings.teamId, level: this.progression.level }; }
+  onlinePlayer() { return { name: this.settings.name, number: this.settings.number, teamId: this.settings.teamId, modifiers: normalizeModifiers(this.settings.modifiers), level: this.progression.level }; }
 
   updateOnlineStatus(status, detail = '') {
     if (!this.online_status) return;
@@ -1300,7 +1363,7 @@ export class UI {
     this.result_rematch.disabled = false; this.result_rematch.innerHTML = 'Pedir revancha <span>↻</span>';
     this.result_online_status.classList.add('hidden');
     this.start('online', {
-      localSide: info.localSide, opponentName: other.name || 'RIVAL', opponentNumber: other.number, opponentLevel: other.level || 1,
+      modifiers: normalizeModifiers(info.modifiers), localSide: info.localSide, opponentName: other.name || 'RIVAL', opponentNumber: other.number, opponentLevel: other.level || 1,
       opponentTeam: team, roomCode: info.roomCode, label: `ONLINE · SALA ${info.roomCode}`,
     });
   }
@@ -1633,6 +1696,10 @@ export class UI {
     this.game.setPaused(paused); this.pause_overlay.classList.toggle('hidden', !paused);
     if (paused) this.saveCurrentCompetition();
     document.getElementById('pause-button').textContent = paused ? '▶' : 'Ⅱ';
+  }
+
+  finishToMenu() {
+    if (this.league?.status === 'next' || this.tournament?.status === 'next') this.saveAndQuit(); else this.quit();
   }
 
   quit() {

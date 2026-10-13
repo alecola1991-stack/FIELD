@@ -60,15 +60,21 @@ test('empareja dos jugadores, transmite entradas y estado, y espera el voto mutu
   host.setHandlers({ onMatchStart: () => hostStarts++, onInput: input => { receivedInput = input; }, onRematchRequested: () => { rematchRequested = true; } });
   guest.setHandlers({ onMatchStart: () => guestStarts++, onSnapshot: snapshot => { receivedSnapshot = snapshot; } });
 
-  const code = await host.createRoom({ name: 'Ana' });
+  const code = await host.createRoom({ name: 'Ana', number: 9, level: 17, teamId: 'laliga-barcelona' });
   await guest.joinRoom(code, { name: 'Luis' });
   await new Promise(resolve => setTimeout(resolve, 10));
   assert.equal(hostStarts, 1);
   assert.equal(guestStarts, 1);
   assert.equal(host.matchId, guest.matchId);
+  assert.equal(guest.opponent.level, 17);
+  assert.equal(guest.opponent.number, 9);
+  assert.equal(guest.opponent.teamId, 'laliga-barcelona');
 
   guest.sendInput({ x: 0.75, y: -1, kick: true });
   assert.equal(receivedInput.kick, true);
+  guest.sendInput({ x: 1, y: 0, kick: false });
+  assert.equal(host.getRemoteInput().kick, true, 'a following movement packet cannot erase a pending shot');
+  assert.equal(host.getRemoteInput().kick, false, 'a shot is consumed once');
   const snapshot = { mode: 'online', scorePlayer: 2, scoreBot: 1 };
   host.sendSnapshot(snapshot);
   assert.deepEqual(receivedSnapshot, snapshot);

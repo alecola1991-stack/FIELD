@@ -31,6 +31,6 @@ export function modifierWorld(value) {
 }
 export function formatModifier(option, value) {
   if (option.unit === 's') return `${value} s`;
-  if (option.unit === 'goals') return value === 0 ? 'Según el modo' : `${value} goles`;
+  if (option.unit === 'goals') return value === 0 ? 'Según el modo' : `${value} ${value === 1 ? 'gol' : 'goles'}`;
   return `${Math.round(value * 100)}%`;
 }

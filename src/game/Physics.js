@@ -1,4 +1,5 @@
 import { WORLD } from '../config/settings.js';
+import { Ball } from './Ball.js';
 
 const GOAL_POSTS = [[WORLD.left, WORLD.goalTop], [WORLD.left, WORLD.goalBottom], [WORLD.right, WORLD.goalTop], [WORLD.right, WORLD.goalBottom]];
 
@@ -94,7 +95,7 @@ export function isGoal(ball) {
 
 // The visible shooting zone extends beyond the player's body. A ball is
 // reachable as soon as any part of its circle intersects this zone.
-export const SHOT_REACH = 49;
+export const SHOT_REACH = 42;
 export function shotRangeRadius(player) { return player.radius + SHOT_REACH; }
 export function canKickBall(player, ball) {
   return !!player && !!ball && Math.hypot(ball.x - player.x, ball.y - player.y) - ball.radius <= shotRangeRadius(player) + 1e-7;
@@ -113,11 +114,15 @@ export function predictShot(player, ball, aim = null, powerMultiplier = 1) {
     const length = Math.hypot(player.faceX, player.faceY) || 1;
     fx = (player.faceX ?? 1) / length; fy = (player.faceY || 0) / length;
   }
-  const strength = (365.5 + Math.min(76.5, move * .17)) * powerMultiplier;
+  // Surface distance: maximum bonus at contact, tapering to zero at the reach edge.
+  const gap = Math.max(0, dist - player.radius - ball.radius);
+  const proximity = Math.max(0, Math.min(1, 1 - gap / SHOT_REACH));
+  const bonus = powerMultiplier > 1 ? .30 : .25;
+  const strength = (365.5 + Math.min(76.5, move * .17)) * powerMultiplier * (1 + bonus * proximity);
   let vx = ball.vx + fx * strength + player.vx * .187;
   let vy = ball.vy + fy * strength + player.vy * .187;
   const speed = Math.hypot(vx, vy);
-  if (speed > 663) { vx *= 663 / speed; vy *= 663 / speed; }
+  if (speed > Ball.MAX_SPEED) { vx *= Ball.MAX_SPEED / speed; vy *= Ball.MAX_SPEED / speed; }
   return { vx, vy };
 }
 

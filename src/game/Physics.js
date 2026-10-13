@@ -92,23 +92,39 @@ export function isGoal(ball) {
   return 0;
 }
 
-export function kickBall(player, ball, onKick = () => {}, aim = null, powerMultiplier = 1) {
-  if (player.shotCooldown > 0) return false;
+// The visible shooting zone extends beyond the player's body. A ball is
+// reachable as soon as any part of its circle intersects this zone.
+export const SHOT_REACH = 49;
+export function shotRangeRadius(player) { return player.radius + SHOT_REACH; }
+export function canKickBall(player, ball) {
+  return !!player && !!ball && Math.hypot(ball.x - player.x, ball.y - player.y) - ball.radius <= shotRangeRadius(player) + 1e-7;
+}
+
+// Shared by the real shot and its preview, so power, momentum and speed caps agree.
+export function predictShot(player, ball, aim = null, powerMultiplier = 1) {
+  if (player.shotCooldown > 0 || !canKickBall(player, ball)) return null;
   const dx = ball.x - player.x, dy = ball.y - player.y, dist = Math.hypot(dx, dy);
-  if (dist > player.radius + ball.radius + 37) return false;
   const move = Math.hypot(player.vx, player.vy);
   let fx, fy;
-  if (aim && Number.isFinite(aim.x) && Number.isFinite(aim.y)) {
-    const aimLength = Math.hypot(aim.x, aim.y) || 1; fx = aim.x / aimLength; fy = aim.y / aimLength;
-  } else {
-    // A player strike sends the ball away from the player's center. Movement
-    // keys and facing direction do not aim the shot.
-    fx = dx / (dist || 1); fy = dy / (dist || 1);
+  if (aim && Number.isFinite(aim.x) && Number.isFinite(aim.y) && Math.hypot(aim.x, aim.y) > 0) {
+    const length = Math.hypot(aim.x, aim.y); fx = aim.x / length; fy = aim.y / length;
+  } else if (dist > 1e-7) { fx = dx / dist; fy = dy / dist; }
+  else {
+    const length = Math.hypot(player.faceX, player.faceY) || 1;
+    fx = (player.faceX ?? 1) / length; fy = (player.faceY || 0) / length;
   }
   const strength = (365.5 + Math.min(76.5, move * .17)) * powerMultiplier;
-  ball.vx += fx * strength + player.vx * .187;
-  ball.vy += fy * strength + player.vy * .187;
-  const speed = Math.hypot(ball.vx, ball.vy); if (speed > 663) { ball.vx *= 663 / speed; ball.vy *= 663 / speed; }
+  let vx = ball.vx + fx * strength + player.vx * .187;
+  let vy = ball.vy + fy * strength + player.vy * .187;
+  const speed = Math.hypot(vx, vy);
+  if (speed > 663) { vx *= 663 / speed; vy *= 663 / speed; }
+  return { vx, vy };
+}
+
+export function kickBall(player, ball, onKick = () => {}, aim = null, powerMultiplier = 1) {
+  const shot = predictShot(player, ball, aim, powerMultiplier);
+  if (!shot) return false;
+  ball.vx = shot.vx; ball.vy = shot.vy;
   player.shotCooldown = .36; player.kickScale = .22; ball.kickScale = .18;
   onKick(); return true;
 }

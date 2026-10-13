@@ -27,6 +27,8 @@ const FIELD_THEMES = {
 
 export class Renderer {
   constructor(canvas) {
+    this.fieldCache = document.createElement('canvas'); this.fieldCache.width = WORLD.width; this.fieldCache.height = WORLD.height;
+    this.fieldCacheContext = this.fieldCache.getContext('2d', { alpha: false });
     this.canvas = canvas; this.ctx = canvas.getContext('2d', { alpha: false }); this.dpr = 1; this.scale = 1; this.ox = 0; this.oy = 0; this.particles = [];
     this.resizeObserver = new ResizeObserver(() => this.resize()); this.resizeObserver.observe(canvas);
     this.resize();
@@ -51,9 +53,14 @@ export class Renderer {
   render(game, dt) {
     this.renderBlend = 1 - Math.exp(-24 * (dt > 0 ? Math.min(dt, .05) : 1 / 60));
     this.effectTime = (this.effectTime || 0) + Math.min(Math.max(dt || 0, 0), .05);
-    const c = this.ctx, W = WORLD; c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = '#0b1115'; c.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    this.world = game.world || WORLD;
+    const c = this.ctx, W = this.world; c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = '#0b1115'; c.fillRect(0, 0, this.canvas.width, this.canvas.height);
     c.setTransform(this.scale, 0, 0, this.scale, this.ox, this.oy);
-    this.drawField(c, game.fieldTheme, game.competitionRound, game.cosmetics);
+    if (this.fieldCacheContext) {
+      const key = `${game.fieldTheme}|${game.competitionRound}|${game.cosmetics?.fieldTint}|${W.goalTop}|${W.goalBottom}`;
+      if (key !== this.fieldCacheKey) { this.drawField(this.fieldCacheContext, game.fieldTheme, game.competitionRound, game.cosmetics); this.fieldCacheKey = key; }
+      c.drawImage(this.fieldCache, 0, 0);
+    } else this.drawField(c, game.fieldTheme, game.competitionRound, game.cosmetics);
     if (game.trajectory) this.drawTrajectory(c, game.ball);
     if (game.shotRangeTimer > 0) this.drawShotRange(c, game.player, game.ball, game.shotRangeTimer);
     const ballPosition = this.smooth(game.ball);
@@ -69,13 +76,14 @@ export class Renderer {
     }
   }
   drawField(c, themeName = 'arcade', round = 0, cosmetics = {}) {
-    const { left, right, top, bottom, goalTop, goalBottom, goalBack } = WORLD;
+    const world = this.world || WORLD;
+    const { left, right, top, bottom, goalTop, goalBottom, goalBack } = world;
     const theme = FIELD_THEMES[themeName] || FIELD_THEMES.arcade;
     const cupMatch = ['champions', 'world-cup', 'euro', 'copa-america'].includes(themeName);
     const importantMatch = cupMatch && round >= 3;
-    c.fillStyle = theme.net; c.fillRect(0, 0, WORLD.width, WORLD.height);
+    c.fillStyle = theme.net; c.fillRect(0, 0, world.width, world.height);
     // Low contrast net texture outside the playing area.
-    c.fillStyle = theme.net; c.fillRect(goalBack, goalTop, left - goalBack, goalBottom - goalTop); c.fillRect(right, goalTop, WORLD.width - goalBack - right, goalBottom - goalTop);
+    c.fillStyle = theme.net; c.fillRect(goalBack, goalTop, left - goalBack, goalBottom - goalTop); c.fillRect(right, goalTop, world.width - goalBack - right, goalBottom - goalTop);
     c.save(); c.beginPath(); c.rect(left, top, right - left, bottom - top); c.clip();
     c.fillStyle = theme.grass; c.fillRect(left, top, right - left, bottom - top);
     const tint = { mint: 'rgba(40,210,133,.15)', dusk: 'rgba(105,86,210,.19)', lagoon: 'rgba(20,166,195,.17)' }[cosmetics.fieldTint];
@@ -85,11 +93,11 @@ export class Renderer {
     c.restore();
     c.strokeStyle = theme.line; c.lineWidth = 2;
     c.strokeRect(left, top, right - left, bottom - top);
-    c.beginPath(); c.moveTo(WORLD.width / 2, top); c.lineTo(WORLD.width / 2, bottom); c.stroke();
-    c.beginPath(); c.arc(WORLD.width / 2, WORLD.height / 2, WORLD.centerCircleRadius, 0, Math.PI * 2); c.stroke();
+    c.beginPath(); c.moveTo(world.width / 2, top); c.lineTo(world.width / 2, bottom); c.stroke();
+    c.beginPath(); c.arc(world.width / 2, world.height / 2, world.centerCircleRadius, 0, Math.PI * 2); c.stroke();
     if (cupMatch) {
-      const cx = WORLD.width / 2, cy = WORLD.height / 2;
-      c.beginPath(); c.arc(cx, cy, WORLD.centerCircleRadius + 7, 0, Math.PI * 2); c.strokeStyle = `${theme.accent}55`; c.lineWidth = importantMatch ? 3 : 1.5; c.stroke();
+      const cx = world.width / 2, cy = world.height / 2;
+      c.beginPath(); c.arc(cx, cy, world.centerCircleRadius + 7, 0, Math.PI * 2); c.strokeStyle = `${theme.accent}55`; c.lineWidth = importantMatch ? 3 : 1.5; c.stroke();
       c.save(); c.globalAlpha = .28; c.strokeStyle = theme.accent; c.lineWidth = 1.5;
       if (themeName === 'world-cup') { c.beginPath(); c.ellipse(cx, cy, 10, 5, 0, 0, Math.PI * 2); c.ellipse(cx, cy, 5, 10, 0, 0, Math.PI * 2); c.stroke(); }
       else if (themeName === 'euro') { for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5 - Math.PI / 2; c.beginPath(); c.arc(cx + Math.cos(a) * 11, cy + Math.sin(a) * 11, 1.7, 0, Math.PI * 2); c.fillStyle = theme.accent; c.fill(); } }
@@ -97,15 +105,15 @@ export class Renderer {
       else { c.beginPath(); c.moveTo(cx - 8, cy - 6); c.lineTo(cx + 8, cy - 6); c.moveTo(cx - 6, cy); c.lineTo(cx + 6, cy); c.moveTo(cx - 4, cy + 6); c.lineTo(cx + 4, cy + 6); c.stroke(); }
       c.restore();
     }
-    c.beginPath(); c.arc(WORLD.width / 2, WORLD.height / 2, 3, 0, Math.PI * 2); c.fillStyle = theme.accent; c.fill();
+    c.beginPath(); c.arc(world.width / 2, world.height / 2, 3, 0, Math.PI * 2); c.fillStyle = theme.accent; c.fill();
     // Simple penalty areas and goal boxes.
-    c.strokeRect(left, WORLD.height / 2 - 128, 115, 256); c.strokeRect(left, WORLD.height / 2 - 72, 44, 144);
-    c.strokeRect(right - 115, WORLD.height / 2 - 128, 115, 256); c.strokeRect(right - 44, WORLD.height / 2 - 72, 44, 144);
-    c.fillStyle = theme.accent + '66'; c.beginPath(); c.arc(left + 76, WORLD.height / 2, 2.5, 0, Math.PI * 2); c.fill(); c.beginPath(); c.arc(right - 76, WORLD.height / 2, 2.5, 0, Math.PI * 2); c.fill();
-    c.strokeStyle = theme.accent + '88'; c.lineWidth = 3; c.strokeRect(goalBack, goalTop, left - goalBack, goalBottom - goalTop); c.strokeRect(right, goalTop, WORLD.width - goalBack - right, goalBottom - goalTop);
+    c.strokeRect(left, world.height / 2 - 128, 115, 256); c.strokeRect(left, world.height / 2 - 72, 44, 144);
+    c.strokeRect(right - 115, world.height / 2 - 128, 115, 256); c.strokeRect(right - 44, world.height / 2 - 72, 44, 144);
+    c.fillStyle = theme.accent + '66'; c.beginPath(); c.arc(left + 76, world.height / 2, 2.5, 0, Math.PI * 2); c.fill(); c.beginPath(); c.arc(right - 76, world.height / 2, 2.5, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = theme.accent + '88'; c.lineWidth = 3; c.strokeRect(goalBack, goalTop, left - goalBack, goalBottom - goalTop); c.strokeRect(right, goalTop, world.width - goalBack - right, goalBottom - goalTop);
     c.strokeStyle = theme.accent; c.lineWidth = 6; c.lineCap = 'round'; c.beginPath(); c.moveTo(left, goalTop); c.lineTo(left, goalBottom); c.moveTo(right, goalTop); c.lineTo(right, goalBottom); c.stroke(); c.lineCap = 'butt';
-    c.fillStyle = theme.accent; for (const x of [left, right]) for (const y of [goalTop, goalBottom]) { c.beginPath(); c.arc(x, y, WORLD.goalPostRadius, 0, Math.PI * 2); c.fill(); }
-    c.fillStyle = theme.accent + 'a0'; c.font = '9px "DM Mono",monospace'; c.textAlign = 'center'; c.fillText('HOME', (goalBack + left) / 2, goalTop - 8); c.fillText('AWAY', (right + WORLD.width - goalBack) / 2, goalTop - 8);
+    c.fillStyle = theme.accent; for (const x of [left, right]) for (const y of [goalTop, goalBottom]) { c.beginPath(); c.arc(x, y, world.goalPostRadius, 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = theme.accent + 'a0'; c.font = '9px "DM Mono",monospace'; c.textAlign = 'center'; c.fillText('HOME', (goalBack + left) / 2, goalTop - 8); c.fillText('AWAY', (right + world.width - goalBack) / 2, goalTop - 8);
   }
   smooth(entity) {
     if (entity._rx === undefined || Math.hypot(entity.x - entity._rx, entity.y - entity._ry) > 160) { entity._rx = entity.x; entity._ry = entity.y; }
@@ -171,10 +179,11 @@ export class Renderer {
     c.save(); c.translate(x, y); c.fillStyle = '#0007'; c.beginPath(); c.ellipse(2, 5, r * 1.08, r * .76, 0, 0, Math.PI * 2); c.fill();
     c.rotate(ball.spin); c.scale(1 + ball.kickScale * .16, 1 - ball.kickScale * .12);
     const ballStyles = { gold: ['#f3c85e', '#704d14', '#ffd76caa'], lava: ['#f4773f', '#512019', '#ff653dcc'], ice: ['#b9edf1', '#176276', '#7feeffcc'], cosmic: ['#ab78ed', '#241451', '#c38effcc'], carbon: ['#69757a', '#172024', '#b5d1d566'], pearl: ['#f4e6ff', '#8d78bb', '#dfbcff88'], emerald: ['#83e9ad', '#125d42', '#5efba688'] };
+    const sizeScale = r / 12;
     const [ballColor, patchColor, glow] = ballStyles[skin] || ['#e8eee9', '#23352d', '#e9f4ee70'];
     c.shadowColor = glow; c.shadowBlur = skin === 'classic' ? 9 : 16; c.fillStyle = ballColor; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill(); c.shadowBlur = 0;
-    c.fillStyle = patchColor; c.beginPath(); c.arc(0, 0, 3.3, 0, Math.PI * 2); c.fill();
-    for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5; c.beginPath(); c.arc(Math.cos(a) * 7, Math.sin(a) * 7, 2.1, 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = patchColor; c.beginPath(); c.arc(0, 0, 3.3 * sizeScale, 0, Math.PI * 2); c.fill();
+    for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5; c.beginPath(); c.arc(Math.cos(a) * 7 * sizeScale, Math.sin(a) * 7 * sizeScale, 2.1 * sizeScale, 0, Math.PI * 2); c.fill(); }
     c.restore();
   }
   trailPoints(entity, x, y, lifetime = .22) {
@@ -263,7 +272,8 @@ export class Renderer {
     if (!effect || effect === 'off') return;
     const progress = Math.max(0, Math.min(1, 1 - timer / 1.25)), alpha = 1 - progress, color = effect === 'fireworks' ? '#ffb76f' : '#8effc1';
     c.save(); c.globalAlpha = alpha * .82; c.strokeStyle = color; c.lineWidth = 3;
-    const x = goalSide === -1 ? WORLD.left + 24 : WORLD.right - 24;
+    const world = this.world || WORLD;
+    const x = goalSide === -1 ? world.left + 24 : world.right - 24;
     const radius = 18 + progress * 118; c.beginPath(); c.arc(x, WORLD.height / 2, radius, 0, Math.PI * 2); c.stroke();
     if (effect === 'fireworks') for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4 + progress * .5, inner = radius + 5, outer = radius + 13 + progress * 16; c.strokeStyle = ['#ffbd63', '#ff73ad', '#7ce8ff', '#b89cff'][i % 4]; c.beginPath(); c.moveTo(x + Math.cos(a) * inner, WORLD.height / 2 + Math.sin(a) * inner); c.lineTo(x + Math.cos(a) * outer, WORLD.height / 2 + Math.sin(a) * outer); c.stroke(); }
     c.restore();
@@ -279,7 +289,7 @@ export class Renderer {
     const powered = player.powerCooldown <= 0;
     const shot = predictShot(player, ball, null, powered ? 1.45 : 1);
     if (!shot) return;
-    const ghost = new Ball(ball.x, ball.y); ghost.radius = ball.radius; ghost.vx = shot.vx; ghost.vy = shot.vy;
+    const ghost = new Ball(ball.x, ball.y); ghost.radius = ball.radius; ghost.world = ball.world; ghost.maxSpeed = ball.maxSpeed; ghost.vx = shot.vx; ghost.vy = shot.vy;
     const offsetX = position[0] - ball.x, offsetY = position[1] - ball.y;
     c.save(); c.beginPath(); c.moveTo(...position);
     let previousX = ghost.x, previousY = ghost.y;
@@ -302,7 +312,7 @@ export class Renderer {
     c.strokeStyle = '#ffc27c99'; c.stroke(); c.setLineDash([]); c.restore();
   }
   updateParticles(c, dt) {
-    for (let i = this.particles.length - 1; i >= 0; i--) { const p = this.particles[i]; p.life -= dt; if (p.life <= 0) { this.particles.splice(i, 1); continue; } p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .92; p.vy = p.vy * .92 - (p.fire ? 24 : 0) * dt; c.globalAlpha = Math.min(1, p.life / p.max); c.fillStyle = p.color; c.beginPath(); c.arc(p.x, p.y, p.fire ? p.size * (.55 + p.life / p.max * .45) : p.size, 0, Math.PI * 2); c.fill(); }
+    for (let i = this.particles.length - 1; i >= 0; i--) { const p = this.particles[i]; p.life -= dt; if (p.life <= 0) { this.particles.splice(i, 1); continue; } p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= Math.pow(.92, dt * 60); p.vy = p.vy * Math.pow(.92, dt * 60) - (p.fire ? 24 : 0) * dt; c.globalAlpha = Math.min(1, p.life / p.max); c.fillStyle = p.color; c.beginPath(); c.arc(p.x, p.y, p.fire ? p.size * (.55 + p.life / p.max * .45) : p.size, 0, Math.PI * 2); c.fill(); }
     c.globalAlpha = 1;
   }
 }

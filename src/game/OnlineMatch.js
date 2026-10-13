@@ -201,10 +201,10 @@ export class OnlineMatch {
     if (Number.isInteger(message.sequence) && message.sequence <= this.lastInputSequence) return;
     if (Number.isInteger(message.sequence)) this.lastInputSequence = message.sequence;
     this.latestInput = {
-      x: clampAxis(message.x), y: clampAxis(message.y), kick: message.kick === true,
+      x: clampAxis(message.x), y: clampAxis(message.y), kick: this.latestInput.kick || message.kick === true,
       receivedAt: Date.now(),
     };
-    this.handlers.onInput?.(this.getRemoteInput());
+    this.handlers.onInput?.({ ...this.latestInput });
   }
 
   handleSnapshot(message) {
@@ -278,7 +278,9 @@ export class OnlineMatch {
 
   getRemoteInput() {
     if (Date.now() - this.latestInput.receivedAt > 350) return { x: 0, y: 0, kick: false };
-    return this.latestInput;
+    const input = { ...this.latestInput };
+    this.latestInput.kick = false;
+    return input;
   }
 
   sendInput(input) {
@@ -315,6 +317,7 @@ function safeProfile(profile = {}) {
     name: String(profile.name || 'JUGADOR').trim().slice(0, 16),
     number: Math.max(0, Math.min(99, Math.floor(Number(profile.number) || 0))),
     teamId: String(profile.teamId || '').slice(0, 60),
+    level: Math.max(1, Math.min(100, Math.floor(Number(profile.level) || 1))),
   };
 }
 

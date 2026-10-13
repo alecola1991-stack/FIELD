@@ -26,7 +26,8 @@ export function modifiersAreDefault(value) {
 export function modifierWorld(value) {
   const rules = normalizeModifiers(value), center = WORLD.height / 2;
   const half = (WORLD.goalBottom - WORLD.goalTop) * rules.goalSize / 2;
-  return Object.freeze({ ...WORLD, goalTop: center - half, goalBottom: center + half });
+  const depth = Math.max(WORLD.left - WORLD.goalBack, 24 * rules.ballSize + 5);
+  return Object.freeze({ ...WORLD, goalTop: center - half, goalBottom: center + half, goalBack: WORLD.left - depth });
 }
 export function formatModifier(option, value) {
   if (option.unit === 's') return `${value} s`;

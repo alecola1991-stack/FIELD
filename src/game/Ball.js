@@ -6,7 +6,8 @@ export class Ball {
     this.x += this.vx * dt; this.y += this.vy * dt;
     const drag = Math.exp(-.72 * dt); this.vx *= drag; this.vy *= drag;
     const speed = Math.hypot(this.vx, this.vy);
-    if (speed > Ball.MAX_SPEED) { this.vx *= Ball.MAX_SPEED / speed; this.vy *= Ball.MAX_SPEED / speed; }
+    const cap = this.maxSpeed || Ball.MAX_SPEED;
+    if (speed > cap) { this.vx *= cap / speed; this.vy *= cap / speed; }
     if (speed < 4) { this.vx = 0; this.vy = 0; }
     this.spin += speed * dt * .018; this.kickScale = Math.max(0, this.kickScale - dt * 2.7);
   }

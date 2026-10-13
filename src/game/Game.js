@@ -35,7 +35,7 @@ export class Game {
     this.onlineAuthority = mode !== 'online' || this.localSide === 'left';
     this.onlineSnapshotClock = 0; this.onlineInputClock = 0; this.remoteInput = { x: 0, y: 0, kick: false }; this.onlineMatchEnded = false; this.onlinePendingKick = false;
     this.lastOnlineAxes = null; this.onlineSnapshotAge = 0;
-    this.input.down.clear(); this.input.pressed.clear();
+    this.input.enabled = true; this.input.down.clear(); this.input.pressed.clear();
     this.trajectory = !!this.settings.trajectory; this.shotRangeTimer = 0; this.autosaveClock = 0; this.powerHudClock = 0;
     const localX = this.localSide === 'left' ? WORLD.width * .31 : WORLD.width * .69;
     this.player = new Player({ x: localX, y: WORLD.height / 2, name: this.settings.name, number: this.settings.number, color: team?.primary || '#68746e', secondaryColor: team?.secondary || null, numberColor: team?.numberColor, kitPattern: team?.kitPattern });
@@ -74,8 +74,8 @@ export class Game {
     }
     this.botAI.setDifficulty(this.state.mode === 'legends' ? 'legend' : settings.difficulty); this.trajectory = !!settings.trajectory;
   }
-  setPaused(paused) { this.state.paused = paused; this.last = 0; this.input.down.clear(); this.input.pressed.clear(); }
-  stop() { this.state.running = false; this.state.paused = false; this.trajectory = false; if (this.raf) cancelAnimationFrame(this.raf); this.raf = 0; this.last = 0; }
+  setPaused(paused) { this.state.paused = paused; this.input.enabled = !paused; this.last = 0; this.input.down.clear(); this.input.pressed.clear(); }
+  stop() { this.input.enabled = false; this.state.running = false; this.state.paused = false; this.trajectory = false; if (this.raf) cancelAnimationFrame(this.raf); this.raf = 0; this.last = 0; }
   resetBall() { this.ball.reset(WORLD.width / 2, WORLD.height / 2); }
   resetPlayer() { if (this.player) { this.player.x = WORLD.width * .31; this.player.y = WORLD.height / 2; this.player.stop(); } }
   loop(time) {
@@ -131,7 +131,7 @@ export class Game {
       this.state.goalTimer -= dt;
       if (this.state.goalTimer <= 0) {
         if (this.state.matchOver) {
-          this.state.paused = true;
+          this.state.paused = true; this.input.enabled = false;
           this.hooks.onMatchEnd?.({ mode: this.state.mode, elapsedSeconds: this.state.elapsed, playerScore: this.state.scorePlayer, botScore: this.state.scoreBot, winner: this.state.scorePlayer > this.state.scoreBot ? 'player' : 'opponent', stats: this.matchSummary() });
         } else { this.resetPositions(); this.beginCountdown(); }
       }
@@ -325,7 +325,7 @@ export class Game {
       this.hooks.onGoal?.(this.state.goalSide || (localScored ? -1 : 1));
     }
     if (this.state.matchOver && this.state.goalTimer <= 0) {
-      this.state.paused = true;
+      this.state.paused = true; this.input.enabled = false;
       if (this.onlineMatchEnded) return true;
       this.onlineMatchEnded = true;
       this.state.paused = true;

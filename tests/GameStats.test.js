@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Game } from '../src/game/Game.js';
 import { Renderer } from '../src/game/Renderer.js';
+import { Ball } from '../src/game/Ball.js';
 import { WORLD } from '../src/config/settings.js';
 
 test('competition match summary tracks shots and records scorer and goal minute', () => {
@@ -73,7 +74,34 @@ test('shot preview matches real normal and fire shots with momentum without chan
     assert.equal(JSON.stringify({ player, ball }), before);
     assert.equal(kickBall(player, ball, () => {}, null, power), true);
     assert.deepEqual({ vx: ball.vx, vy: ball.vy }, shot);
-    assert.ok(Math.hypot(shot.vx, shot.vy) <= 663.000001);
+    assert.ok(Math.hypot(shot.vx, shot.vy) <= Ball.MAX_SPEED + .000001);
     assert.equal(predictShot(player, ball), null, 'cooldown disables the preview');
   }
+});
+
+
+test('proximity adds up to 25% to normal shots and 30% to fire shots inside the smaller reach', async () => {
+  const { predictShot, SHOT_REACH, shotRangeRadius } = await import('../src/game/Physics.js');
+  assert.equal(SHOT_REACH, 42);
+  const player = { x: 200, y: 200, vx: 0, vy: 0, radius: 22, faceX: 1, faceY: 0, shotCooldown: 0 };
+  for (const [power, bonus] of [[1, .25], [1.45, .30]]) {
+    const ball = { x: 234, y: 200, radius: 12, vx: 0, vy: 0 };
+    const close = predictShot(player, ball, null, power);
+    assert.ok(Math.abs(close.vx - 365.5 * power * (1 + bonus)) < 1e-6);
+    ball.x += SHOT_REACH / 2;
+    const middle = predictShot(player, ball, null, power);
+    assert.ok(Math.abs(middle.vx - 365.5 * power * (1 + bonus / 2)) < 1e-6);
+    ball.x = player.x + shotRangeRadius(player) + ball.radius;
+    const edge = predictShot(player, ball, null, power);
+    assert.ok(Math.abs(edge.vx - 365.5 * power) < 1e-6);
+    assert.ok(close.vx > middle.vx && middle.vx > edge.vx);
+    ball.x += 1; assert.equal(predictShot(player, ball, null, power), null);
+  }
+});
+
+test('ball update keeps the extra fire-shot speed instead of clipping it to the old cap', () => {
+  const ball = new Ball(200, 200); ball.vx = 800;
+  ball.update(1 / 60);
+  assert.ok(ball.vx > 663);
+  assert.ok(ball.vx < 800);
 });

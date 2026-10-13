@@ -47,6 +47,7 @@ export class Renderer {
     }
   }
   render(game, dt) {
+    this.renderBlend = 1 - Math.exp(-24 * (dt > 0 ? Math.min(dt, .05) : 1 / 60));
     this.effectTime = (this.effectTime || 0) + Math.min(Math.max(dt || 0, 0), .05);
     const c = this.ctx, W = WORLD; c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = '#0b1115'; c.fillRect(0, 0, this.canvas.width, this.canvas.height);
     c.setTransform(this.scale, 0, 0, this.scale, this.ox, this.oy);
@@ -105,7 +106,7 @@ export class Renderer {
   }
   smooth(entity) {
     if (entity._rx === undefined || Math.hypot(entity.x - entity._rx, entity.y - entity._ry) > 160) { entity._rx = entity.x; entity._ry = entity.y; }
-    const blend = .33; entity._rx += (entity.x - entity._rx) * blend; entity._ry += (entity.y - entity._ry) * blend;
+    const blend = this.renderBlend ?? .33; entity._rx += (entity.x - entity._rx) * blend; entity._ry += (entity.y - entity._ry) * blend;
     return [entity._rx, entity._ry];
   }
   drawPlayer(c, player, color, effect = 'off', relief = 'off', trail = 'off') {

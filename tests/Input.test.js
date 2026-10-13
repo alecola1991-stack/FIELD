@@ -34,3 +34,13 @@ test('la cruceta permite mantener una dirección mientras se pulsa disparar', ()
   input.release('KeyD');
   assert.deepEqual(input.axes(), { x: 0, y: 0 });
 });
+
+
+test('los menús conservan las flechas de desplazamiento y no transmiten movimiento al juego', () => {
+  const input = new Input(); input.press('KeyD'); input.enabled = false;
+  let prevented = false;
+  input.onKeyDown({ code: 'ArrowDown', target: null, preventDefault() { prevented = true; } });
+  assert.equal(prevented, false);
+  assert.deepEqual(input.axes(), { x: 0, y: 0 });
+  assert.equal(input.down.has('ArrowDown'), false);
+});

@@ -74,6 +74,7 @@
         <div class="online-layout">
           <div class="editor-copy"><p class="eyebrow">JUEGA CON OTRA PERSONA</p><h2>El campo<br><em>se comparte.</em></h2><p>Busca rival automáticamente, crea una sala privada o entra con el código que te han enviado.</p></div>
           <div class="online-card">
+            <button class="menu-button rules-entry" data-action="modifiers" type="button">Modificadores de la sala <span>Ver reglas →</span></button>
             <button id="online-find-match" class="primary-button online-find-button" type="button">Buscar partida <span>⌕</span></button>
             <p class="online-match-hint">Te emparejamos automáticamente con otra persona que esté buscando.</p>
             <div class="online-separator"><span>O CREA UNA SALA PRIVADA</span></div>
@@ -87,7 +88,7 @@
               <div id="online-room-code-wrap" class="online-room-code-wrap hidden"><span>CÓDIGO PARA TU RIVAL</span><b id="online-room-code"></b><button id="online-copy-code" type="button">Copiar código</button></div>
               <button id="online-cancel" class="plain-button online-cancel" type="button">Cancelar sala</button>
             </div>
-            <p class="online-footnote">El código permite entrar a la sala: compártelo solo con tu rival.</p>
+            <p class="online-footnote">Para buscar partida, ambos jugadores deben usar la última versión del juego.</p><p class="online-footnote">El código permite entrar a la sala: compártelo solo con tu rival.</p>
           </div>
         </div>
       </section>
@@ -121,7 +122,7 @@
 
       <section id="modifiers-screen" class="screen sub-screen hidden">
         <header class="sub-header"><button id="modifiers-back" class="back-button" type="button">← Volver</button><a class="brand" href="#"><span class="brand-mark">FA</span> Fútbol arcade</a><span class="version">TUS REGLAS</span></header>
-        <div class="modifiers-layout"><div class="editor-copy"><p class="eyebrow">TODOS LOS MODOS</p><h2>A tu<br><em>manera.</em></h2><p>Cambia las reglas y comprueba los tamaños en la vista previa. Los cambios se aplican al empezar el próximo partido.</p><div class="modifier-preview"><svg viewBox="0 0 260 160" aria-label="Vista previa de tamaños"><rect x="20" y="20" width="220" height="120" rx="3" fill="#163c30" stroke="#9decc2"/><path d="M130 20v120" stroke="#9decc2" opacity=".4"/><rect id="modifier-left-goal" x="6" y="45" width="14" height="70" fill="none" stroke="#ffcd8c" stroke-width="3"/><rect id="modifier-right-goal" x="240" y="45" width="14" height="70" fill="none" stroke="#ffcd8c" stroke-width="3"/><circle id="modifier-left-player" cx="86" cy="80" r="11" fill="#65e6a5"/><circle id="modifier-right-player" cx="174" cy="80" r="11" fill="#f19676"/><circle id="modifier-ball" cx="130" cy="80" r="6" fill="#fff"/></svg><p id="modifier-summary" role="status"></p></div><p id="modifiers-note" class="modifiers-note"></p></div><div class="modifiers-card"><div class="modifier-presets"><button type="button" data-modifier-preset="fast">Partido veloz</button><button type="button" data-modifier-preset="giant">Balón gigante</button><button id="modifiers-reset" class="menu-button" type="button">Restablecer valores por defecto ↺</button></div><div id="modifier-controls"></div><div class="modifier-actions"><button id="modifiers-done" class="primary-button" type="button">Guardar y volver <span>✓</span></button></div></div></div>
+        <div class="modifiers-layout"><div class="editor-copy"><p class="eyebrow">TODOS LOS MODOS</p><h2>A tu<br><em>manera.</em></h2><p>Cambia las reglas y comprueba los tamaños en la vista previa. Los cambios se aplican al empezar el próximo partido.</p><div class="modifier-preview"><svg viewBox="0 0 260 160" aria-label="Vista previa de tamaños"><rect x="30" y="20" width="200" height="120" rx="3" fill="#163c30" stroke="#9decc2"/><path d="M130 20v120" stroke="#9decc2" opacity=".4"/><rect id="modifier-left-goal" x="15" y="45" width="14" height="70" fill="none" stroke="#ffcd8c" stroke-width="3"/><rect id="modifier-right-goal" x="230" y="45" width="14" height="70" fill="none" stroke="#ffcd8c" stroke-width="3"/><circle id="modifier-left-player" cx="86" cy="80" r="11" fill="#65e6a5"/><circle id="modifier-right-player" cx="174" cy="80" r="11" fill="#f19676"/><circle id="modifier-ball" cx="130" cy="80" r="6" fill="#fff"/></svg><p id="modifier-summary" role="status"></p></div><p id="modifiers-note" class="modifiers-note"></p></div><div class="modifiers-card"><div class="modifier-presets"><button type="button" data-modifier-preset="fast">Partido veloz</button><button type="button" data-modifier-preset="giant">Balón gigante</button><button id="modifiers-reset" class="menu-button" type="button">Restablecer valores por defecto ↺</button></div><div id="modifier-controls"></div><div class="modifier-actions"><button id="modifiers-done" class="primary-button" type="button">Guardar y volver <span>✓</span></button></div></div></div>
       </section>
 
       <section id="settings-screen" class="screen sub-screen hidden">

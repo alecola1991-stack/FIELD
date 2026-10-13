@@ -1,8 +1,9 @@
 const MOVE = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 export class Input {
   constructor() {
-    this.down = new Set(); this.pressed = new Set();
+    this.enabled = true; this.down = new Set(); this.pressed = new Set();
     this.onKeyDown = e => {
+      if (!this.enabled) return;
       // Keep gameplay shortcuts out of form fields and native controls. In
       // particular, WASD must remain ordinary text when the name editor is focused.
       if (isInteractiveTarget(e.target)) return;
@@ -13,6 +14,7 @@ export class Input {
     this.onKeyUp = e => this.down.delete(e.code);
     this.onBlur = () => { this.down.clear(); this.pressed.clear(); document.querySelectorAll('[data-touch-code].pressed').forEach(control => control.classList.remove('pressed')); };
     this.onPointerDown = e => {
+      if (!this.enabled) return;
       const control = e.target.closest?.('[data-touch-code]');
       if (!control) return;
       e.preventDefault();
@@ -32,6 +34,7 @@ export class Input {
     for (const event of ['pointerup','pointercancel','lostpointercapture']) document.addEventListener(event, this.onPointerEnd);
   }
   axes() {
+    if (!this.enabled) return { x: 0, y: 0 };
     const left = this.down.has('KeyA') || this.down.has('ArrowLeft'); const right = this.down.has('KeyD') || this.down.has('ArrowRight');
     const up = this.down.has('KeyW') || this.down.has('ArrowUp'); const down = this.down.has('KeyS') || this.down.has('ArrowDown');
     return { x: Number(right) - Number(left), y: Number(down) - Number(up) };

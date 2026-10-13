@@ -102,7 +102,7 @@ export class UI {
   }
 
   attach(game, sound, accountService = null, onlineMatch = null) {
-    this.game = game; this.sound = sound; this.accountService = accountService;
+    this.game = game; this.game.input.enabled = this.currentView === 'game' && !game.state.paused; this.sound = sound; this.accountService = accountService;
     this.onlineMatch = onlineMatch;
     if (onlineMatch) onlineMatch.setHandlers({
       onStatus: (status, detail) => this.updateOnlineStatus(status, detail),
@@ -920,7 +920,10 @@ export class UI {
 
   show(view) {
     this.currentView = view;
-    if (this.game) this.game.renderEnabled = view === 'game';
+    if (this.game) {
+      this.game.renderEnabled = view === 'game'; this.game.input.enabled = view === 'game' && !this.game.state.paused;
+      if (view !== 'game') { this.game.input.down.clear(); this.game.input.pressed.clear(); }
+    }
     document.querySelectorAll('.section-nav [data-view]').forEach(button => {
       const active = button.dataset.view === view || button.dataset.view === 'play' && ['quick','legends','online','leaderboard','competitions','tournament','league'].includes(view);
       button.classList.toggle('active', active); if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');

@@ -1,7 +1,8 @@
+import { normalizeModifiers, modifiersAreDefault } from '../config/modifiers.js';
 const ROOM_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const HELLO_INTERVAL_MS = 500;
 const RECONNECT_GRACE_MS = 15000;
-const MATCHMAKING_TOPIC = 'field-matchmaking-v1';
+const MATCHMAKING_TOPIC = 'field-matchmaking-v2';
 
 export class OnlineMatch {
   constructor(client) {
@@ -75,7 +76,8 @@ export class OnlineMatch {
 
   tryMatchmake(channel = this.channel) {
     if (!this.searching || this.matchmakingStarting || this.channel !== channel || !channel?.presenceState) return;
-    const players = Object.values(channel.presenceState() || {}).flat()
+    const unique = new Map(Object.values(channel.presenceState() || {}).flat().map(player => [player?.clientId, player]));
+    const players = [...unique.values()]
       .filter(presence => presence?.clientId && Number.isFinite(presence.queuedAt) && presence.status === 'searching')
       .sort((a, b) => a.queuedAt - b.queuedAt || String(a.clientId).localeCompare(String(b.clientId)));
     const ownIndex = players.findIndex(player => player.clientId === this.clientId);
@@ -144,13 +146,18 @@ export class OnlineMatch {
   }
 
   announce() {
-    this.send('signal', { kind: 'hello', clientId: this.clientId, role: this.role, profile: this.profile });
+    this.send('signal', { kind: 'hello', version: 2, clientId: this.clientId, role: this.role, profile: this.profile });
   }
 
   handleSignal(message) {
     if (!message || message.clientId === this.clientId) return;
+    if (message.kind === 'version-mismatch' && message.target === this.clientId) { this.handlers.onStatus?.('error', 'Actualiza el juego para usar los modificadores de esta sala.'); return; }
     if (message.kind === 'hello') {
       if (this.role === 'host' && message.role === 'guest') {
+        if (message.version !== 2 && !modifiersAreDefault(this.profile?.modifiers)) {
+          this.send('signal', { kind: 'version-mismatch', clientId: this.clientId, target: message.clientId });
+          this.handlers.onStatus?.('error', 'El rival necesita actualizar el juego para usar estas reglas.'); return;
+        }
         if (this.matched) {
           if (message.clientId !== this.opponent?.clientId) this.send('signal', { kind: 'room-full', target: message.clientId });
           else { this.markPeerReconnected(); this.sendStart(); }
@@ -160,7 +167,7 @@ export class OnlineMatch {
         clearInterval(this.helloTimer); this.helloTimer = 0;
         this.matchId = makeMatchId();
         this.sendStart();
-        this.handlers.onMatchStart?.({ role: 'host', localSide: 'left', opponent: this.opponent, roomCode: this.code });
+        this.handlers.onMatchStart?.({ role: 'host', localSide: 'left', modifiers: normalizeModifiers(this.profile?.modifiers), opponent: this.opponent, roomCode: this.code });
       } else if (this.role === 'guest' && message.role === 'host') {
         this.opponent = { ...safeProfile(message.profile), clientId: message.clientId };
         this.markPeerReconnected();
@@ -173,10 +180,10 @@ export class OnlineMatch {
       this.matched = true; this.matchId = message.matchId;
       this.opponent = { ...safeProfile(message.host), clientId: message.clientId };
       clearInterval(this.helloTimer); this.helloTimer = 0;
-      this.handlers.onMatchStart?.({ role: 'guest', localSide: 'right', opponent: this.opponent, roomCode: this.code });
+      this.handlers.onMatchStart?.({ role: 'guest', localSide: 'right', modifiers: normalizeModifiers(this.opponent?.modifiers), opponent: this.opponent, roomCode: this.code });
       return;
     }
-    if (message.kind === 'rematch-vote' && message.clientId === this.opponent?.clientId) {
+    if (message.kind === 'rematch-vote' && (!message.matchId || message.matchId === this.matchId) && message.clientId === this.opponent?.clientId) {
       this.remoteRematchVote = true;
       this.handlers.onRematchRequested?.();
       this.tryStartRematch();
@@ -184,7 +191,7 @@ export class OnlineMatch {
     }
     if (message.kind === 'rematch-start' && this.role === 'guest' && message.clientId === this.opponent?.clientId) {
       this.matchId = message.matchId; this.localRematchVote = false; this.remoteRematchVote = false; this.rematchStarting = false;
-      this.handlers.onMatchStart?.({ role: 'guest', localSide: 'right', opponent: this.opponent, roomCode: this.code, rematch: true });
+      this.handlers.onMatchStart?.({ role: 'guest', localSide: 'right', modifiers: normalizeModifiers(this.opponent?.modifiers), opponent: this.opponent, roomCode: this.code, rematch: true });
       return;
     }
     if (message.kind === 'room-full' && this.role === 'guest' && message.target === this.clientId) {
@@ -198,6 +205,7 @@ export class OnlineMatch {
 
   handleInput(message) {
     if (this.role !== 'host' || !this.matched || message?.clientId !== this.opponent?.clientId) return;
+    if (message.matchId && message.matchId !== this.matchId) return;
     if (Number.isInteger(message.sequence) && message.sequence <= this.lastInputSequence) return;
     if (Number.isInteger(message.sequence)) this.lastInputSequence = message.sequence;
     this.latestInput = {
@@ -209,6 +217,7 @@ export class OnlineMatch {
 
   handleSnapshot(message) {
     if (this.role !== 'guest' || !this.matched || message?.clientId !== this.opponent?.clientId || !message.snapshot) return;
+    if (message.matchId && message.matchId !== this.matchId) return;
     if (Number.isInteger(message.sequence) && message.sequence <= this.lastSnapshotSequence) return;
     if (Number.isInteger(message.sequence)) this.lastSnapshotSequence = message.sequence;
     this.handlers.onSnapshot?.(message.snapshot);
@@ -261,7 +270,7 @@ export class OnlineMatch {
   requestRematch() {
     if (!this.matched || this.rematchStarting) return;
     this.localRematchVote = true;
-    this.send('signal', { kind: 'rematch-vote', clientId: this.clientId });
+    this.send('signal', { kind: 'rematch-vote', matchId: this.matchId, clientId: this.clientId });
     this.tryStartRematch();
   }
 
@@ -270,7 +279,7 @@ export class OnlineMatch {
     this.rematchStarting = true;
     this.matchId = makeMatchId();
     this.localRematchVote = false; this.remoteRematchVote = false;
-    const info = { role: 'host', localSide: 'left', opponent: this.opponent, roomCode: this.code, rematch: true };
+    const info = { role: 'host', localSide: 'left', modifiers: normalizeModifiers(this.profile?.modifiers), opponent: this.opponent, roomCode: this.code, rematch: true };
     this.send('signal', { kind: 'rematch-start', clientId: this.clientId, matchId: this.matchId });
     this.handlers.onMatchStart?.(info);
     this.rematchStarting = false;
@@ -285,12 +294,12 @@ export class OnlineMatch {
 
   sendInput(input) {
     if (this.role !== 'guest' || !this.matched) return;
-    this.send('input', { clientId: this.clientId, sequence: ++this.inputSequence, x: clampAxis(input.x), y: clampAxis(input.y), kick: input.kick === true });
+    this.send('input', { clientId: this.clientId, matchId: this.matchId, sequence: ++this.inputSequence, x: clampAxis(input.x), y: clampAxis(input.y), kick: input.kick === true });
   }
 
   sendSnapshot(snapshot) {
     if (this.role !== 'host' || !this.matched) return;
-    this.send('snapshot', { clientId: this.clientId, sequence: ++this.snapshotSequence, snapshot });
+    this.send('snapshot', { clientId: this.clientId, matchId: this.matchId, sequence: ++this.snapshotSequence, snapshot });
   }
 
   send(event, payload) {
@@ -313,10 +322,12 @@ export class OnlineMatch {
 }
 
 function safeProfile(profile = {}) {
+  profile = profile && typeof profile === 'object' ? profile : {};
   return {
     name: String(profile.name || 'JUGADOR').trim().slice(0, 16),
     number: Math.max(0, Math.min(99, Math.floor(Number(profile.number) || 0))),
     teamId: String(profile.teamId || '').slice(0, 60),
+    modifiers: normalizeModifiers(profile.modifiers),
     level: Math.max(1, Math.min(100, Math.floor(Number(profile.level) || 1))),
   };
 }

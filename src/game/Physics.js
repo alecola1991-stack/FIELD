@@ -1,10 +1,10 @@
 import { WORLD } from '../config/settings.js';
 import { Ball } from './Ball.js';
 
-const GOAL_POSTS = [[WORLD.left, WORLD.goalTop], [WORLD.left, WORLD.goalBottom], [WORLD.right, WORLD.goalTop], [WORLD.right, WORLD.goalBottom]];
+
 
 export function resolvePlayerWalls(player) {
-  const { left, right, top, bottom, centerCircleRadius } = WORLD, r = player.radius;
+  const { left, right, top, bottom, centerCircleRadius } = player.world || WORLD, r = player.radius;
   const escape = centerCircleRadius * .5;
   if (player.x - r < left - escape) { player.x = left - escape + r; if (player.vx < 0) player.vx *= -.28; }
   if (player.x + r > right + escape) { player.x = right + escape - r; if (player.vx > 0) player.vx *= -.28; }
@@ -17,12 +17,13 @@ export function resolvePlayerPlayers(first, second, onCollision = () => {}) {
   let distance = Math.hypot(dx, dy);
   const minDistance = first.radius + second.radius;
   if (distance >= minDistance) return false;
+  const actualDistance = distance;
   if (distance < .001) {
     // Stable fallback avoids NaNs if two bodies ever land at the same point.
     dx = first.faceX || 1; dy = first.faceY || 0; distance = Math.hypot(dx, dy) || 1;
   }
   const nx = dx / distance, ny = dy / distance;
-  const overlap = minDistance - distance;
+  const overlap = minDistance - actualDistance;
   first.x -= nx * overlap * .5; first.y -= ny * overlap * .5;
   second.x += nx * overlap * .5; second.y += ny * overlap * .5;
 
@@ -38,7 +39,8 @@ export function resolvePlayerPlayers(first, second, onCollision = () => {}) {
 }
 
 export function resolveBallWalls(ball, onBounce = () => {}) {
-  const { left, right, top, bottom, goalTop, goalBottom, goalBack } = WORLD, r = ball.radius;
+  const world = ball.world || WORLD;
+  const { left, right, top, bottom, goalTop, goalBottom, goalBack } = world, r = ball.radius;
   if (ball.y - r < top) { ball.y = top + r; if (ball.vy < 0) { ball.vy *= -.78; onBounce(); } }
   if (ball.y + r > bottom) { ball.y = bottom - r; if (ball.vy > 0) { ball.vy *= -.78; onBounce(); } }
   const mouth = ball.y > goalTop + r * .35 && ball.y < goalBottom - r * .35;
@@ -46,8 +48,8 @@ export function resolveBallWalls(ball, onBounce = () => {}) {
   if (ball.x + r > right && !(mouth && ball.vx > 0)) { ball.x = right - r; if (ball.vx > 0) { ball.vx *= -.8; onBounce(); } }
   // Rounded posts: resolve them as small circles so shots that clip a post
   // rebound naturally instead of slipping through the corner of the frame.
-  const postR = WORLD.goalPostRadius;
-  for (const [px, py] of GOAL_POSTS) {
+  const postR = world.goalPostRadius;
+  for (const [px, py] of [[left, goalTop], [left, goalBottom], [right, goalTop], [right, goalBottom]]) {
     let dx = ball.x - px, dy = ball.y - py, distance = Math.hypot(dx, dy);
     const minDistance = r + postR;
     if (distance >= minDistance) continue;
@@ -59,15 +61,16 @@ export function resolveBallWalls(ball, onBounce = () => {}) {
   }
   // Back net, with a small damped rebound to keep missed shots in play.
   if (ball.x < goalBack + r) { ball.x = goalBack + r; if (ball.vx < 0) { ball.vx *= -.62; onBounce(); } }
-  if (ball.x > WORLD.width - goalBack - r) { ball.x = WORLD.width - goalBack - r; if (ball.vx > 0) { ball.vx *= -.62; onBounce(); } }
+  if (ball.x > world.width - goalBack - r) { ball.x = world.width - goalBack - r; if (ball.vx > 0) { ball.vx *= -.62; onBounce(); } }
 }
 
 export function resolvePlayerBall(player, ball, onHit = () => {}) {
   let dx = ball.x - player.x, dy = ball.y - player.y;
   let dist = Math.hypot(dx, dy), min = player.radius + ball.radius;
   if (dist >= min) return false;
-  if (dist < .001) { dx = player.faceX; dy = player.faceY; dist = Math.hypot(dx, dy) || 1; }
-  const nx = dx / dist, ny = dy / dist, overlap = min - dist;
+  const actualDistance = dist;
+  if (dist < .001) { dx = player.faceX ?? 1; dy = player.faceY || 0; if (Math.hypot(dx, dy) < .001) dx = 1; dist = Math.hypot(dx, dy); }
+  const nx = dx / dist, ny = dy / dist, overlap = min - actualDistance;
   // Restore the earlier contact response: the ball receives most of the
   // positional correction and ordinary movement can push it more firmly.
   player.x -= nx * overlap * .16; player.y -= ny * overlap * .16;
@@ -83,7 +86,7 @@ export function resolvePlayerBall(player, ball, onHit = () => {}) {
 }
 
 export function isGoal(ball) {
-  const { left, right, goalTop, goalBottom, goalPostRadius } = WORLD;
+  const { left, right, goalTop, goalBottom, goalPostRadius } = ball.world || WORLD;
   // A goal counts only when the whole ball clears the rounded posts too.
   const clearance = ball.radius + goalPostRadius;
   const inMouth = ball.y > goalTop + clearance && ball.y < goalBottom - clearance;
@@ -118,11 +121,12 @@ export function predictShot(player, ball, aim = null, powerMultiplier = 1) {
   const gap = Math.max(0, dist - player.radius - ball.radius);
   const proximity = Math.max(0, Math.min(1, 1 - gap / SHOT_REACH));
   const bonus = powerMultiplier > 1 ? .30 : .25;
-  const strength = (365.5 + Math.min(76.5, move * .17)) * powerMultiplier * (1 + bonus * proximity);
+  const strength = (365.5 + Math.min(76.5, move * .17)) * powerMultiplier * (1 + bonus * proximity) * (player.shotPower || 1);
   let vx = ball.vx + fx * strength + player.vx * .187;
   let vy = ball.vy + fy * strength + player.vy * .187;
   const speed = Math.hypot(vx, vy);
-  if (speed > Ball.MAX_SPEED) { vx *= Ball.MAX_SPEED / speed; vy *= Ball.MAX_SPEED / speed; }
+  const cap = ball.maxSpeed || Ball.MAX_SPEED;
+  if (speed > cap) { vx *= cap / speed; vy *= cap / speed; }
   return { vx, vy };
 }
 

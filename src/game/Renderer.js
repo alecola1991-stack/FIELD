@@ -1,4 +1,6 @@
 import { WORLD } from '../config/settings.js';
+import { Ball } from './Ball.js';
+import { predictShot, shotRangeRadius, resolveBallWalls, isGoal } from './Physics.js';
 
 const FIELD_THEMES = {
   training: { grass: '#18352d', stripe: '#ffffff05', line: 'rgba(197,235,215,.31)', net: '#172428', accent: '#8ec8aa' },
@@ -55,6 +57,7 @@ export class Renderer {
     if (game.trajectory) this.drawTrajectory(c, game.ball);
     if (game.shotRangeTimer > 0) this.drawShotRange(c, game.player, game.ball, game.shotRangeTimer);
     const ballPosition = this.smooth(game.ball);
+    if (game.shotPreview) this.drawShotPreview(c, game.player, game.ball, ballPosition);
     if (game.cosmetics?.shotEffect && game.cosmetics.shotEffect !== 'off') this.drawShotEffect(c, game.ball, game.cosmetics.shotEffect, ballPosition);
     if (game.bot) this.drawPlayer(c, game.bot, game.bot.color);
     this.drawPlayer(c, game.player, game.player.color, game.cosmetics?.playerEffect, game.cosmetics?.circleRelief, game.cosmetics?.playerTrail);
@@ -272,8 +275,29 @@ export class Renderer {
     for (let i = 0; i <= steps; i++) { const time = t * i / steps, x = ball.x + ball.vx * (1 - Math.exp(-drag * time)) / drag, y = ball.y + ball.vy * (1 - Math.exp(-drag * time)) / drag; if (i === 0) c.moveTo(x, y); else c.lineTo(x, y); }
     c.setLineDash([4, 7]); c.lineWidth = 2; c.strokeStyle = 'rgba(220,245,229,.33)'; c.stroke(); c.setLineDash([]);
   }
+  drawShotPreview(c, player, ball, position) {
+    const powered = player.powerCooldown <= 0;
+    const shot = predictShot(player, ball, null, powered ? 1.45 : 1);
+    this.drawShotRange(c, player, ball, shot ? .4 : .18);
+    if (!shot) return;
+    const ghost = new Ball(ball.x, ball.y); ghost.radius = ball.radius; ghost.vx = shot.vx; ghost.vy = shot.vy;
+    const offsetX = position[0] - ball.x, offsetY = position[1] - ball.y;
+    c.save(); c.beginPath(); c.moveTo(...position);
+    let previousX = ghost.x, previousY = ghost.y;
+    for (let step = 0; step < 30; step++) {
+      previousX = ghost.x; previousY = ghost.y;
+      ghost.update(1 / 30);
+      const goal = isGoal(ghost);
+      if (!goal) resolveBallWalls(ghost);
+      c.lineTo(ghost.x + offsetX, ghost.y + offsetY);
+      if (goal) break;
+    }
+    c.setLineDash([6, 6]); c.strokeStyle = powered ? '#ffbc70cc' : '#b2f6d6cc'; c.lineWidth = 2; c.stroke(); c.setLineDash([]);
+    const angle = Math.atan2(ghost.y - previousY, ghost.x - previousX), x = ghost.x + offsetX, y = ghost.y + offsetY;
+    c.beginPath(); c.moveTo(x - Math.cos(angle - .5) * 10, y - Math.sin(angle - .5) * 10); c.lineTo(x, y); c.lineTo(x - Math.cos(angle + .5) * 10, y - Math.sin(angle + .5) * 10); c.stroke(); c.restore();
+  }
   drawShotRange(c, player, ball, timer) {
-    const [x, y] = this.smooth(player), radius = player.radius + ball.radius + 37;
+    const [x, y] = [player._rx ?? player.x, player._ry ?? player.y], radius = shotRangeRadius(player);
     c.save(); c.globalAlpha = Math.min(.72, timer * 1.7); c.beginPath(); c.arc(x, y, radius, 0, Math.PI * 2);
     c.fillStyle = 'rgba(255,150,75,.055)'; c.fill(); c.setLineDash([5, 6]); c.lineWidth = 2;
     c.strokeStyle = '#ffc27c99'; c.stroke(); c.setLineDash([]); c.restore();

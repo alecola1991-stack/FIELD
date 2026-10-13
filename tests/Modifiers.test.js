@@ -125,3 +125,16 @@ test('invalid online states are rejected and completed matches remain paused on 
   game.applyOnlineSnapshot(snapshot); assert.equal(game.state.paused, true);
   assert.equal(ended, 1);
 });
+
+
+test('the goal net is deep enough for the entire oversized ball to cross the goal line', () => {
+  for (const ballSize of [1, 1.5, 1.8, 2]) {
+    const world = modifierWorld({ ballSize });
+    for (const side of [-1, 1]) {
+      const ball = new Ball(side === -1 ? world.left - 12 * ballSize - 1 : world.right + 12 * ballSize + 1, world.height / 2);
+      ball.radius = 12 * ballSize; ball.world = world; ball.vx = side * 100;
+      resolveBallWalls(ball);
+      assert.equal(isGoal(ball), side, 'the back net must not stop a large ball before it becomes a goal');
+    }
+  }
+});

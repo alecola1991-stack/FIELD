@@ -540,7 +540,8 @@ export class UI {
   }
 
   recordGoal(side) {
-    this.career.recordGoal(side, this.currentMatchMode === 'training'); this.renderAccount();
+    const localSide = this.currentMatchMode === 'online' && this.game?.localSide === 'right' ? -side : side;
+    this.career.recordGoal(localSide, this.currentMatchMode === 'training'); this.renderAccount();
     this.checkAchievements();
     this.syncAccount(false);
   }
@@ -1190,7 +1191,10 @@ export class UI {
     this.hud_player_name.textContent = this.settings.name.toUpperCase(); this.player_dot.style.background = getTeamById(this.settings.teamId)?.primary || '#68746e';
     this.opponent_dot.style.background = options.opponentTeam?.primary || '#f19676';
     this.hud_opponent_name.textContent = mode === 'training' ? 'PRÁCTICA' : (options.opponentName || 'BOT');
-    this.mode_label.textContent = (modifiersAreDefault(options.modifiers) ? '' : 'REGLAS PERSONALIZADAS · ') + (options.label || (mode === 'training' ? 'MODO ENTRENAMIENTO' : `PARTIDO · ${this.settings.difficulty.toUpperCase()} · A ${this.game.goalTarget} GOLES`));
+    const baseLabel = options.label || (mode === 'training' ? 'MODO ENTRENAMIENTO' : `PARTIDO · ${this.settings.difficulty.toUpperCase()}`);
+    const target = `A ${this.game.goalTarget} ${this.game.goalTarget === 1 ? 'GOL' : 'GOLES'}`;
+    const label = mode === 'training' ? baseLabel : /\bA \d+(?: GOLES)?\b/.test(baseLabel) ? baseLabel.replace(/\bA \d+(?: GOLES)?\b/g, target) : `${baseLabel} · ${target}`;
+    this.mode_label.textContent = (modifiersAreDefault(options.modifiers) ? '' : 'REGLAS PERSONALIZADAS · ') + label;
     this.training_tools.classList.toggle('hidden', mode !== 'training');
     this.pause_overlay.classList.add('hidden'); this.result_overlay.classList.add('hidden'); this.goal_banner.classList.add('hidden');
     document.getElementById('pause-button').textContent = 'Ⅱ';

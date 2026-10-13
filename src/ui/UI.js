@@ -90,7 +90,7 @@ export class UI {
       'account-status','account-status-dot','account-message','account-form','account-name','account-name-wrap','account-email','account-password','account-submit','account-form-title','account-dashboard','account-auth-panel','account-email-label','account-sync-state','account-level','account-wins','account-matches','account-goals','account-conceded','account-seasons','account-trophy-count','account-trophies',
       'profile-eyebrow','profile-title','profile-copy','home-club-colors','home-club-name','home-coins','store-coins','store-grid','store-message','store-categories','store-loadout','inventory-count','play-continue-wrap',
       'menu-backdrop',
-      'quick-pickers','quick-difficulty','quick-start','legends-mode-card','legends-mode-tag','legends-lock','legend-prev','legend-next','legend-title','legend-edition','legend-position','legend-history','legend-teams','legend-start',
+      'match-intro','online-player-details','online-opponent-details','quick-pickers','quick-difficulty','quick-start','legends-mode-card','legends-mode-tag','legends-lock','legend-prev','legend-next','legend-title','legend-edition','legend-position','legend-history','legend-teams','legend-start',
       'continue-competition','continue-detail','league-goal-target','trajectory-enabled','shot-power-time',
       'promo-code-form','promo-code-input','promo-code-status',
       'online-room-input','online-room-panel','online-status','online-room-code-wrap','online-room-code',
@@ -1164,6 +1164,7 @@ export class UI {
     if (!this.profileComplete()) { this.pendingMode = mode; this.openProfile(); return; }
     if (!preserveCompetition) { this.tournament = null; this.league = null; }
     this.currentMatchMode = mode; this.currentMatchOptions = options;
+    document.querySelector('.game-header').classList.toggle('online-game-header', mode === 'online');
     this.countdown_banner.classList.add('hidden'); this.goal_banner.classList.add('hidden');
     this.pause_overlay.classList.add('hidden'); this.result_overlay.classList.add('hidden');
     this.result_rematch.classList.add('hidden'); this.result_online_status.classList.add('hidden'); this.hideConnectionStatus();
@@ -1178,11 +1179,40 @@ export class UI {
     this.pause_overlay.classList.add('hidden'); this.result_overlay.classList.add('hidden'); this.goal_banner.classList.add('hidden');
     document.getElementById('pause-button').textContent = 'Ⅱ';
     document.getElementById('pause-button').classList.toggle('hidden', mode === 'online');
+    this.renderMatchPresentation(mode, options, !snapshot);
     this.updatePowerCooldown(this.game.player?.powerCooldown || 0); this.saveCurrentCompetition();
   }
 
+  renderMatchPresentation(mode, options, animate = true) {
+    const profiles = [
+      { team: getTeamById(this.settings.teamId), player: this.game.player, level: this.progression.level },
+      { team: options.opponentTeam, player: this.game.bot, level: options.opponentLevel || 1 },
+    ];
+    for (const [index, node] of [this.online_player_details, this.online_opponent_details].entries()) {
+      node.classList.toggle('hidden', mode !== 'online');
+      const profile = profiles[index];
+      node.textContent = `${profile.team?.name || 'EQUIPO'} · #${profile.player?.number ?? 10} · NIVEL ${profile.level}`;
+    }
+    this.match_intro.replaceChildren(); this.match_intro.classList.add('hidden');
+    if (!animate || mode === 'training') return;
+    const title = document.createElement('small'); title.className = 'intro-kicker'; title.textContent = 'EL PARTIDO ESTÁ A PUNTO DE EMPEZAR';
+    const row = document.createElement('div'); row.className = 'intro-teams';
+    profiles.forEach((profile, index) => {
+      if (index) { const vs = document.createElement('b'); vs.className = 'intro-versus'; vs.textContent = 'VS'; row.append(vs); }
+      const card = document.createElement('div'); card.className = 'intro-team';
+      const circle = document.createElement('span'); circle.className = 'match-team-preview';
+      this.paintPlayerPreview(circle, profile.team, { name: profile.player?.name || 'RIVAL', number: profile.player?.number ?? 10 });
+      const team = document.createElement('b'); team.textContent = profile.team?.name || 'RIVAL';
+      const name = document.createElement('span'); name.textContent = `${profile.player?.name || 'RIVAL'} · #${profile.player?.number ?? 10}`;
+      card.append(circle, team, name);
+      if (mode === 'online') { const level = document.createElement('small'); level.textContent = `NIVEL ${profile.level}`; card.append(level); }
+      row.append(card);
+    });
+    this.match_intro.append(title, row); this.match_intro.classList.remove('hidden');
+  }
+
   updateScore(player, bot) { this.score.innerHTML = `${player} <small>:</small> ${bot}`; }
-  updateTime(time) { this.timer.textContent = time; }
+  updateTime(time) { if (this.timer.textContent !== time) this.timer.textContent = time; }
   updatePowerCooldown(seconds) {
     this.shot_power_time.textContent = seconds > 0 ? `${Math.ceil(seconds)}s` : 'LISTO';
     const status = document.getElementById('shot-power-status');
@@ -1234,7 +1264,7 @@ export class UI {
     } catch (error) { this.updateOnlineStatus('error', error?.message); }
   }
 
-  onlinePlayer() { return { name: this.settings.name, number: this.settings.number, teamId: this.settings.teamId }; }
+  onlinePlayer() { return { name: this.settings.name, number: this.settings.number, teamId: this.settings.teamId, level: this.progression.level }; }
 
   updateOnlineStatus(status, detail = '') {
     if (!this.online_status) return;
@@ -1263,12 +1293,12 @@ export class UI {
     this.autoMatchmaking = false;
     const other = info.opponent || {};
     const opponentTeam = getTeamById(other.teamId);
-    const team = opponentTeam ? { name: opponentTeam.name, primary: opponentTeam.primary, secondary: opponentTeam.secondary } : null;
+    const team = opponentTeam || null;
     this.online_room_panel.classList.add('hidden');
     this.result_rematch.disabled = false; this.result_rematch.innerHTML = 'Pedir revancha <span>↻</span>';
     this.result_online_status.classList.add('hidden');
     this.start('online', {
-      localSide: info.localSide, opponentName: other.name || 'RIVAL', opponentNumber: other.number,
+      localSide: info.localSide, opponentName: other.name || 'RIVAL', opponentNumber: other.number, opponentLevel: other.level || 1,
       opponentTeam: team, roomCode: info.roomCode, label: `ONLINE · SALA ${info.roomCode}`,
     });
   }
@@ -1399,6 +1429,7 @@ export class UI {
   }
 
   showCountdown(value) {
+    if (value === null || value <= 3) this.match_intro.classList.add('hidden');
     if (value === null || value === undefined) { this.countdown_banner.classList.add('hidden'); return; }
     this.countdown_banner.textContent = String(value); this.countdown_banner.classList.remove('hidden');
     this.countdown_banner.classList.remove('countdown-tick'); void this.countdown_banner.offsetWidth; this.countdown_banner.classList.add('countdown-tick');

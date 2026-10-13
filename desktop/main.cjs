@@ -34,7 +34,7 @@ app.whenReady().then(() => {
     setTimeout(() => { console.error('Offline smoke test timed out'); app.exit(1); }, 45000).unref();
   }
   window = new BrowserWindow({
-    width: 1280, height: 850, minWidth: 800, minHeight: 600, title: 'Fútbol arcade',
+    width: 1280, height: 850, minWidth: smokeTest ? 320 : 800, minHeight: smokeTest ? 480 : 600, title: 'Fútbol arcade',
     backgroundColor: '#0b1115', icon: join(__dirname, 'icon.png'), show: !smokeTest,
     webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true },
   });
@@ -57,12 +57,39 @@ app.whenReady().then(() => {
           await window.webContents.executeJavaScript(`localStorage.setItem('field-settings', JSON.stringify({ name: 'PRUEBA', number: 10, teamId: 'laliga-barcelona', profileReady: true, difficulty: 'easy', sound: false }));`);
           window.reload(); return;
         }
+        for (const width of [1280, 390]) {
+          window.setSize(width, 850);
+          await window.webContents.executeJavaScript(`(async () => {
+            for (let attempt = 0; attempt < 100 && !document.querySelector('#league-competition').options.length; attempt++) await new Promise(resolve => setTimeout(resolve, 50));
+            await new Promise(resolve => setTimeout(resolve, 200));
+            for (const view of ['play', 'store', 'profile', 'customize', 'settings']) {
+              document.querySelector('[data-view="' + view + '"]').click();
+              await new Promise(resolve => setTimeout(resolve, 80));
+              const screen = document.querySelector('#' + view + '-screen');
+              if (screen.classList.contains('hidden')) throw new Error('Navigation failed: ' + view);
+              const overflow = [...screen.querySelectorAll('button, input, select, .store-item, .setting-line')].filter(element => {
+                const box = element.getBoundingClientRect();
+                return box.width > 0 && !element.closest('.section-nav, .league-tabs, .country-tabs') && (box.left < -3 || box.right > innerWidth + 3);
+              });
+              if (overflow.length) throw new Error('Layout overflow: ' + view + ' ' + overflow.map(element => element.id || element.className).join(','));
+            }
+            for (let attempt = 0; attempt < 100 && document.querySelector('#quick-screen').classList.contains('hidden'); attempt++) {
+              document.querySelector('[data-action="bot"]').click();
+              await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            document.querySelector('[data-action="modifiers"]').click();
+            if (document.querySelector('#modifiers-screen').classList.contains('hidden')) throw new Error('Modifiers did not open');
+            document.querySelector('[data-modifier-preset="giant"]').click();
+            if (JSON.parse(localStorage.getItem('field-settings')).modifiers.ballSize !== 1.8) throw new Error('Preset did not save');
+            document.querySelector('#modifiers-reset').click();
+            if (JSON.parse(localStorage.getItem('field-settings')).modifiers.ballSize !== 1) throw new Error('Reset failed');
+            document.querySelector('[data-modifier-preset="fast"]').click();
+            document.querySelector('#modifiers-done').click();
+            if (document.querySelector('#quick-screen').classList.contains('hidden')) throw new Error('Modifiers return destination lost');
+          })()`);
+        }
+        window.setSize(1280, 850);
         const passed = await window.webContents.executeJavaScript(`(async () => {
-          for (let attempt = 0; attempt < 100 && document.querySelector('#quick-screen').classList.contains('hidden'); attempt++) {
-            document.querySelector('[data-action="bot"]').click();
-            await new Promise(resolve => setTimeout(resolve, 100));
-          }
-          if (document.querySelector('#quick-screen').classList.contains('hidden')) throw new Error('Quick match did not open');
           document.querySelector('#quick-start').click();
           await new Promise(resolve => setTimeout(resolve, 1500));
           const canvas = document.querySelector('#game-canvas');

@@ -9,7 +9,7 @@ export class Player {
     if (len > 0) {
       dx /= len; dy /= len;
       this.faceX = dx; this.faceY = dy;
-      const accel = 1850;
+      const accel = 1850 * (this.speedScale || 1);
       this.vx += dx * accel * dt; this.vy += dy * accel * dt;
     }
     const speed = Math.hypot(this.vx, this.vy);

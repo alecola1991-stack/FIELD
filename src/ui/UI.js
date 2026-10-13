@@ -91,7 +91,7 @@ export class UI {
       'profile-eyebrow','profile-title','profile-copy','home-club-colors','home-club-name','home-coins','store-coins','store-grid','store-message','store-categories','store-loadout','inventory-count','play-continue-wrap',
       'menu-backdrop',
       'match-intro','online-player-details','online-opponent-details','quick-pickers','quick-difficulty','quick-start','legends-mode-card','legends-mode-tag','legends-lock','legend-prev','legend-next','legend-title','legend-edition','legend-position','legend-history','legend-teams','legend-start',
-      'continue-competition','continue-detail','league-goal-target','trajectory-enabled','shot-power-time',
+      'continue-competition','continue-detail','league-goal-target','trajectory-enabled','shot-preview-enabled','shot-power-time',
       'promo-code-form','promo-code-input','promo-code-status',
       'online-room-input','online-room-panel','online-status','online-room-code-wrap','online-room-code',
       'online-find-match','online-cancel',
@@ -220,6 +220,7 @@ export class UI {
     this.difficulty.value = this.settings.difficulty; this.settings_difficulty.value = this.settings.difficulty;
     this.sound_enabled.checked = this.settings.sound; this.volume.value = this.settings.volume; this.volume_value.textContent = `${this.settings.volume}%`;
     this.trajectory_enabled.checked = !!this.settings.trajectory;
+    this.shot_preview_enabled.checked = !!this.settings.shotPreview;
     this.league_goal_target.value = String([2, 3, 5].includes(Number(this.settings.leagueGoalTarget)) ? this.settings.leagueGoalTarget : 2);
     this.renderTeamNavigation(); this.renderTeamCarousel(); this.updateProfilePreview(); this.updateHomeClub(); this.updateProfileValidity();
   }
@@ -307,6 +308,7 @@ export class UI {
     document.getElementById('save-player').addEventListener('click', () => this.savePlayer());
     this.difficulty.addEventListener('change', () => { this.settings.difficulty = this.difficulty.value; this.settings_difficulty.value = this.difficulty.value; this.persist(); });
     this.settings_difficulty.addEventListener('change', () => { this.settings.difficulty = this.settings_difficulty.value; this.difficulty.value = this.settings.difficulty; this.persist(); });
+    this.shot_preview_enabled.addEventListener('change', () => { this.settings.shotPreview = this.shot_preview_enabled.checked; this.persist(); });
     this.trajectory_enabled.addEventListener('change', () => {
       this.settings.trajectory = this.trajectory_enabled.checked; this.trajectory_toggle.checked = this.settings.trajectory;
       this.persist();

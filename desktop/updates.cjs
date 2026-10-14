@@ -82,18 +82,20 @@ async function limitedBody(response, limit) {
   } finally { await reader.cancel().catch(() => {}); }
 }
 
-async function checkForUpdate({ fetch, current, base }) {
-  const options = { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'Futbol-Arcade-Updates' }, cache: 'no-store', signal: AbortSignal.timeout(30000) };
+async function checkForUpdate({ fetch, current, base, onStatus = () => {}, timeout = 30000 }) {
+  const options = { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'Futbol-Arcade-Updates' }, cache: 'no-store', signal: AbortSignal.timeout(timeout) };
   const release = JSON.parse((await limitedBody(await fetch(RELEASE_URL, options), 2 * 1024 * 1024)).toString('utf8'));
   const asset = release.assets?.find(item => item.name === ASSET_NAME);
   if (!asset || !/^sha256:[a-f0-9]{64}$/.test(asset.digest || '')) throw new Error('GitHub todavía no tiene un paquete de juego verificado.');
   const url = new URL(asset.browser_download_url);
   if (url.origin !== 'https://github.com' || !url.pathname.startsWith('/alecola1991-stack/FIELD/releases/download/')) throw new Error('Origen de actualización inválido.');
-  const bytes = await limitedBody(await fetch(url.href, { cache: 'no-store', signal: AbortSignal.timeout(30000) }), MAX_DOWNLOAD);
+  onStatus('Descargando actualización', 'Descargando y comprobando el paquete de juego de GitHub…');
+  const bytes = await limitedBody(await fetch(url.href, { cache: 'no-store', signal: AbortSignal.timeout(timeout) }), MAX_DOWNLOAD);
   if (`sha256:${hash(bytes)}` !== asset.digest) throw new Error('La descarga no coincide con la publicada en GitHub.');
   const bundle = JSON.parse(bytes.toString('utf8'));
   validateBundle(bundle);
   if (bundle.build === current.build || bundle.builtAt <= current.builtAt) return null;
+  onStatus('Aplicando actualización', 'La descarga está verificada. Preparando la última versión…');
   return stageBundle(base, bundle);
 }
 

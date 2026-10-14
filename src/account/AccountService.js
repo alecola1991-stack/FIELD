@@ -21,6 +21,12 @@ export class AccountService {
     return supabase;
   }
 
+  async onlineAction(action, payload = {}) {
+    const { data, error } = await this.requireClient().rpc('field_online', { action, payload });
+    if (error) throw accountDatabaseError(error);
+    return data;
+  }
+
   async restoreSession() {
     const client = this.requireClient();
     const { data, error } = await client.auth.getSession();

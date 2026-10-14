@@ -1,3 +1,4 @@
+import { OnlineHub } from './OnlineHub.js';
 import { MODIFIER_OPTIONS, DEFAULT_MODIFIERS, normalizeModifiers, modifiersAreDefault, formatModifier } from '../config/modifiers.js';
 import { loadSettings, saveSettings, setSettingsScope } from '../config/settings.js';
 import { Progression } from '../game/Progression.js';
@@ -104,6 +105,7 @@ export class UI {
   attach(game, sound, accountService = null, onlineMatch = null) {
     this.game = game; this.game.input.enabled = this.currentView === 'game' && !game.state.paused; this.sound = sound; this.accountService = accountService;
     this.onlineMatch = onlineMatch;
+    this.hub = new OnlineHub(this);
     if (onlineMatch) onlineMatch.setHandlers({
       onStatus: (status, detail) => this.updateOnlineStatus(status, detail),
       onMatchStart: info => this.startOnlineMatch(info),
@@ -235,6 +237,7 @@ export class UI {
     document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => {
       this.sound?.play('click');
       if (button.dataset.view === 'customize') { this.pendingMode = null; this.pendingCompetition = null; this.pendingTeamType = 'all'; this.pendingLeagueId = ''; this.openProfile(); }
+      else if (button.dataset.view === 'online') this.openOnline();
       else this.show(button.dataset.view);
     }));
     document.getElementById('account-open').addEventListener('click', () => { this.renderAccount(); this.show('account'); });
@@ -377,7 +380,7 @@ export class UI {
       }
       await this.activateAccount(user);
       this.setAccountMessage('Cuenta conectada. Tu progreso ya está sincronizado.', false, true);
-      this.account_email.value = ''; this.account_password.value = ''; this.show('account');
+      this.account_email.value = ''; this.account_password.value = ''; this.show(this.hub?.identity ? 'account' : 'online');
     } catch (error) {
       this.setAccountMessage(error?.message || 'No se pudo completar el acceso. Comprueba tus datos.', true);
     } finally { this.account_submit.disabled = false; }
@@ -416,6 +419,7 @@ export class UI {
     saveSettings(this.settings); this.game?.updateSettings(this.settings);
     this.fillInputs(); this.renderProgress(); this.renderAccount(); this.refreshContinueButton();
     await this.syncAccount(true);
+    await this.hub?.activate();
   }
 
   async syncAccount(force = false) {
@@ -439,9 +443,11 @@ export class UI {
   }
 
   async logOut() {
+    if (this.hub?.lobby) { await this.hub.action('leave'); if (this.hub.lobby) return; }
+    await this.onlineMatch?.leave(false); this.game?.stop(); this.currentMatchMode = null;
     try { await this.accountService?.signOut(); } catch { /* Local scope still switches even if the network is unavailable. */ }
     if (this.accountSyncTimer) clearTimeout(this.accountSyncTimer);
-    this.user = null; setSettingsScope('guest'); setCompetitionSaveScope('guest');
+    this.user = null; this.hub?.reset(); setSettingsScope('guest'); setCompetitionSaveScope('guest');
     this.progression.setScope('guest'); this.career.setScope('guest'); this.settings = loadSettings(); this.settings.cosmetics = { ...this.career.equipped };
     this.game?.updateSettings(this.settings); this.fillInputs(); this.renderProgress(); this.renderAccount(); this.refreshContinueButton();
     this.setAccountMessage('Has cerrado sesión. Tu guardado local sigue disponible.', false, true);
@@ -920,6 +926,7 @@ export class UI {
 
   show(view) {
     this.currentView = view;
+    document.querySelector('.rules-game-button')?.classList.toggle('hidden', this.currentMatchMode === 'online');
     if (this.game) {
       this.game.renderEnabled = view === 'game'; this.game.input.enabled = view === 'game' && !this.game.state.paused;
       if (view !== 'game') { this.game.input.down.clear(); this.game.input.pressed.clear(); }
@@ -1182,8 +1189,8 @@ export class UI {
     }
     if (!this.profileComplete()) { this.pendingMode = mode; this.openProfile(); return; }
     if (!preserveCompetition) { this.tournament = null; this.league = null; }
-    options = { ...options, modifiers: normalizeModifiers(snapshot?.modifiers || options.modifiers || this.settings.modifiers) };
-    this.currentMatchMode = mode; this.currentMatchOptions = options;
+    options = { ...options, modifiers: mode === 'online' ? DEFAULT_MODIFIERS : normalizeModifiers(snapshot?.modifiers || options.modifiers || this.settings.modifiers) };
+    this.currentMatchMode = mode; this.currentMatchOptions = options; this.result_finish.disabled = false;
     document.querySelector('.game-header').classList.toggle('online-game-header', mode === 'online');
     this.countdown_banner.classList.add('hidden'); this.goal_banner.classList.add('hidden');
     this.pause_overlay.classList.add('hidden'); this.result_overlay.classList.add('hidden');
@@ -1214,7 +1221,9 @@ export class UI {
     for (const [index, node] of [this.online_player_details, this.online_opponent_details].entries()) {
       node.classList.toggle('hidden', mode !== 'online');
       const profile = profiles[index];
-      node.textContent = `${profile.team?.name || 'EQUIPO'} · #${profile.player?.number ?? 10} · NIVEL ${profile.level}`;
+      const username = index === 0 ? this.hub?.identity?.username : options.opponentUsername;
+      const elo = index === 0 ? this.hub?.identity?.elo : options.opponentElo;
+      node.textContent = `${username ? '@' + username + ' · ' + (elo ?? 500) + ' ELO · ' : ''}${profile.team?.name || 'EQUIPO'} · #${profile.player?.number ?? 10} · NIVEL ${profile.level}`;
     }
     this.match_intro.replaceChildren(); this.match_intro.classList.add('hidden');
     if (!animate || mode === 'training') return;
@@ -1238,10 +1247,10 @@ export class UI {
     this.modifierReturnView = this.currentView || 'play';
     this.modifierResume = this.modifierReturnView === 'game' && this.currentMatchMode !== 'online' && !this.game.state.paused;
     if (this.modifierResume) this.game.setPaused(true);
-    this.modifierLocked = !!this.onlineMatch?.channel;
+    this.modifierLocked = this.currentMatchMode === 'online' || this.currentView === 'online';
     const shared = this.onlineMatch?.role === 'host' ? this.onlineMatch.profile?.modifiers : this.onlineMatch?.opponent?.modifiers || this.onlineMatch?.profile?.modifiers;
-    this.modifierValues = normalizeModifiers(this.modifierLocked ? shared : this.settings.modifiers);
-    this.modifiers_note.textContent = this.modifierLocked ? 'La sala ya tiene reglas compartidas. Para cambiarlas, sal de la sala y crea otra.' : this.modifierReturnView === 'game' ? 'La partida actual conserva sus reglas. Tus cambios se aplicarán al próximo partido.' : 'En online, el anfitrión elige las reglas y ambos jugadores usan los mismos valores.';
+    this.modifierValues = normalizeModifiers(this.modifierLocked ? DEFAULT_MODIFIERS : this.settings.modifiers);
+    this.modifiers_note.textContent = this.modifierLocked ? 'El online utiliza siempre las reglas por defecto. Los modificadores solo están disponibles en los modos sin conexión.' : this.modifierReturnView === 'game' ? 'La partida actual conserva sus reglas. Tus cambios se aplicarán al próximo partido.' : 'Los modificadores solo afectan a los modos sin conexión. El online siempre usa reglas por defecto.';
     this.renderModifiers(); this.show('modifiers');
   }
   renderModifiers() {
@@ -1294,49 +1303,14 @@ export class UI {
   }
 
   openOnline() {
-    this.autoMatchmaking = false;
-    this.online_room_panel.classList.add('hidden');
-    this.online_room_code_wrap.classList.add('hidden');
-    this.online_room_input.value = '';
-    this.updateOnlineStatus('idle');
-    this.show('online');
+    this.autoMatchmaking = false; this.show('online');
+    this.hub?.open().catch(error => this.hub.message(error.message, true));
   }
-
-  async createOnlineRoom() {
-    if (!this.profileComplete()) { this.pendingMode = 'online'; this.openProfile(); return; }
-    this.autoMatchmaking = false;
-    try {
-      this.online_room_panel.classList.remove('hidden');
-      this.updateOnlineStatus('connecting');
-      const code = await this.onlineMatch.createRoom(this.onlinePlayer());
-      this.online_room_code.textContent = code;
-      this.online_room_code_wrap.classList.remove('hidden');
-    } catch (error) { this.updateOnlineStatus('error', error?.message); }
-  }
-
-  async findOnlineMatch() {
-    if (!this.profileComplete()) { this.pendingMode = 'online'; this.openProfile(); return; }
-    this.autoMatchmaking = true;
-    try {
-      this.online_room_panel.classList.remove('hidden');
-      this.online_room_code_wrap.classList.add('hidden');
-      this.updateOnlineStatus('searching');
-      await this.onlineMatch.findMatch(this.onlinePlayer());
-    } catch (error) { this.updateOnlineStatus('error', error?.message); }
-  }
-
-  async joinOnlineRoom() {
-    if (!this.profileComplete()) { this.pendingMode = 'online'; this.openProfile(); return; }
-    this.autoMatchmaking = false;
-    try {
-      this.online_room_panel.classList.remove('hidden');
-      this.online_room_code_wrap.classList.add('hidden');
-      this.updateOnlineStatus('connecting');
-      await this.onlineMatch.joinRoom(this.online_room_input.value, this.onlinePlayer());
-    } catch (error) { this.updateOnlineStatus('error', error?.message); }
-  }
-
-  onlinePlayer() { return { name: this.settings.name, number: this.settings.number, teamId: this.settings.teamId, modifiers: normalizeModifiers(this.settings.modifiers), level: this.progression.level }; }
+  createOnlineRoom() { return this.hub.action('create', { kind: 'quick' }); }
+  findOnlineMatch() { return this.hub.action('queue', { kind: 'quick' }); }
+  joinOnlineRoom() { return this.hub.action('join', { kind: 'quick', code: this.online_room_input.value }); }
+  onlinePlayer() { return { name: this.settings.name, number: this.settings.number, teamId: this.settings.teamId, modifiers: DEFAULT_MODIFIERS, level: this.progression.level,
+    userId: this.user?.id || '', username: this.hub?.identity?.username || '', elo: this.hub?.identity?.elo ?? 500 }; }
 
   updateOnlineStatus(status, detail = '') {
     if (!this.online_status) return;
@@ -1370,9 +1344,11 @@ export class UI {
     this.result_rematch.disabled = false; this.result_rematch.innerHTML = 'Pedir revancha <span>↻</span>';
     this.result_online_status.classList.add('hidden');
     this.start('online', {
-      modifiers: normalizeModifiers(info.modifiers), localSide: info.localSide, opponentName: other.name || 'RIVAL', opponentNumber: other.number, opponentLevel: other.level || 1,
-      opponentTeam: team, roomCode: info.roomCode, label: `ONLINE · SALA ${info.roomCode}`,
+      modifiers: DEFAULT_MODIFIERS, localSide: info.localSide, opponentName: other.name || 'RIVAL', opponentNumber: other.number, opponentLevel: other.level || 1,
+      opponentTeam: team, opponentUsername: other.username, opponentElo: other.elo, roomCode: info.roomCode, label: this.hub?.lobby?.kind === 'ranked' ? 'ONLINE · RANKED' : this.hub?.lobby?.kind === 'tournament' ? 'ONLINE · TORNEO' : 'ONLINE · PARTIDO RÁPIDO',
     });
+    this.hud_player_name.textContent = `@${this.hub?.identity?.username || this.settings.name}`;
+    this.hud_opponent_name.textContent = `@${other.username || other.name || 'rival'}`;
   }
 
   handleOnlinePeerLeft() {
@@ -1381,6 +1357,7 @@ export class UI {
       this.game?.stop(); this.currentMatchMode = null; this.currentMatchOptions = null;
       this.show('online'); this.online_room_panel.classList.remove('hidden');
       this.updateOnlineStatus('peer-left');
+      this.hub?.message('Conexión perdida. Esperando la resolución de la sala; puedes salir o esperar la reconexión.', true);
     }
   }
 
@@ -1412,17 +1389,17 @@ export class UI {
     this.leaderboard_message.textContent = 'Cargando resultados…';
     this.leaderboard_list.replaceChildren();
     try {
-      const rows = await this.accountService?.listOnlineLeaderboard();
-      if (!rows) throw new Error('No se pudo conectar con la clasificación.');
+      const rows = await this.accountService?.onlineAction('leaderboard');
+      if (!Array.isArray(rows)) throw new Error('No se pudo conectar con la clasificación.');
       if (!rows.length) { this.leaderboard_message.textContent = 'Aún no hay resultados. Juega online e inicia sesión para aparecer aquí.'; return; }
       this.leaderboard_message.textContent = this.user
-        ? 'Clasificación amistosa · resultados declarados por los jugadores.'
-        : 'Puedes consultar la tabla. Inicia sesión para guardar tus resultados.';
+        ? 'Clasificación Ranked · resultados confirmados.'
+        : 'Inicia sesión para consultar la clasificación Ranked.';
       rows.forEach((row, index) => {
         const item = document.createElement('li'); item.className = 'leaderboard-row';
         const place = document.createElement('b'); place.className = 'leaderboard-place'; place.textContent = String(index + 1).padStart(2, '0');
-        const name = document.createElement('span'); name.className = 'leaderboard-name'; name.textContent = row.playerName;
-        const record = document.createElement('small'); record.textContent = `${row.winRate}% · ${row.wins}V · ${row.played}P · ${row.goals}G`;
+        const name = document.createElement('span'); name.className = 'leaderboard-name'; name.textContent = '@' + row.username;
+        const record = document.createElement('small'); record.textContent = `${row.elo} ELO · ${row.ranked_wins}V · ${row.ranked_played}P`;
         item.append(place, name, record); this.leaderboard_list.append(item);
       });
     } catch (error) {
@@ -1430,12 +1407,7 @@ export class UI {
     } finally { this.leaderboard_refresh.disabled = false; }
   }
 
-  async cancelOnlineRoom() {
-    this.autoMatchmaking = false;
-    await this.onlineMatch?.leave();
-    this.game?.stop(); this.currentMatchMode = null; this.currentMatchOptions = null;
-    this.openOnline();
-  }
+  async cancelOnlineRoom() { return this.hub.action('leave'); }
 
   saveCurrentCompetition(snapshot = null) {
     const mode = this.tournament ? 'tournament' : this.league ? 'league' : null;
@@ -1493,6 +1465,7 @@ export class UI {
   }
 
   saveAndQuit() {
+    if (this.currentMatchMode === 'online' && this.hub?.lobby) { this.hub.action('leave'); return; }
     if (this.currentMatchMode === 'online') this.onlineMatch?.leave();
     this.game?.setPaused(true); this.saveCurrentCompetition(); this.game?.stop();
     this.syncAccount(true);
@@ -1596,7 +1569,8 @@ export class UI {
     }
     if (cupFinal || leagueFinished) this.showCompetitionResultStats(result, cupChampion || leagueChampion, leagueFinished ? this.league : null, leagueChampion);
     else this.result_stats.classList.add('hidden');
-    if (result.mode === 'online') {
+    if (result.mode === 'online' && this.hub?.lobby) this.hub.record(result);
+    if (result.mode === 'online' && !this.hub?.lobby) {
       this.result_rematch.classList.remove('hidden');
       this.result_rematch.disabled = false; this.result_rematch.innerHTML = 'Pedir revancha <span>↻</span>';
       this.result_finish.textContent = 'Salir de la sala';
@@ -1707,10 +1681,12 @@ export class UI {
   }
 
   finishToMenu() {
+    if (this.currentMatchMode === 'online' && this.hub?.lobby) { this.hub.returnToLobby(); return; }
     if (this.league?.status === 'next' || this.tournament?.status === 'next') this.saveAndQuit(); else this.quit();
   }
 
   quit() {
+    if (this.currentMatchMode === 'online' && this.hub?.lobby) { this.hub.action('leave'); return; }
     if (this.currentMatchMode === 'online') this.onlineMatch?.leave();
     if (this.league || this.tournament) { clearCompetitionSave(); this.refreshContinueButton(null); }
     this.game.stop(); this.tournament = null; this.league = null;

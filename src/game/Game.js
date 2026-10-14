@@ -25,7 +25,7 @@ export class Game {
   }
   start(mode = 'bot', difficulty = this.settings.difficulty, options = {}) {
     this.state.start(mode); if (mode !== 'legends') this.settings.difficulty = difficulty; this.botAI.setDifficulty(mode === 'legends' ? 'legend' : difficulty);
-    this.modifiers = normalizeModifiers(options.modifiers || this.settings.modifiers);
+    this.modifiers = normalizeModifiers(mode === 'online' ? {} : options.modifiers || this.settings.modifiers);
     this.world = modifierWorld(this.modifiers);
     const team = getTeamById(this.settings.teamId);
     this.fieldTheme = options.fieldTheme || (mode === 'training' ? 'training' : mode === 'tournament' ? 'champions' : 'arcade');
@@ -253,7 +253,7 @@ export class Game {
   }
   restoreSnapshot(snapshot, notify = true, resetRender = true) {
     if (!snapshot || snapshot.mode !== this.state.mode || !snapshot.player || !snapshot.ball) return false;
-    if (snapshot.modifiers) { this.modifiers = normalizeModifiers(snapshot.modifiers); this.applyModifiers(); }
+    if (snapshot.modifiers && this.state.mode !== 'online') { this.modifiers = normalizeModifiers(snapshot.modifiers); this.applyModifiers(); }
     const restoreBody = (body, saved) => {
       if (!body || !saved) return;
       for (const key of ['x', 'y', 'vx', 'vy', 'faceX', 'faceY', 'shotCooldown', 'powerCooldown', 'powerFlash', 'kickScale', 'boost', 'spin']) if (Number.isFinite(saved[key])) body[key] = saved[key];
@@ -263,7 +263,7 @@ export class Game {
     this.state.scoreBot = Number(snapshot.scoreBot) || 0; this.state.goalTimer = Number(snapshot.goalTimer) || 0;
     this.state.goalSide = [-1, 1].includes(Number(snapshot.goalSide)) ? Number(snapshot.goalSide) : 0;
     this.state.matchOver = !!snapshot.matchOver; this.state.paused = false;
-    this.goalTarget = Number(snapshot.goalTarget) || this.goalTarget; this.countdown = Number(snapshot.countdown) || 0;
+    this.goalTarget = this.state.mode === 'online' ? 5 : Number(snapshot.goalTarget) || this.goalTarget; this.countdown = Number(snapshot.countdown) || 0;
     this.countdownClock = Number(snapshot.countdownClock) || 0; this.trajectory = !!this.settings?.trajectory;
     this.fieldTheme = snapshot.fieldTheme || this.fieldTheme; this.competitionRound = Number(snapshot.competitionRound) || this.competitionRound;
     const savedStats = snapshot.matchStats;

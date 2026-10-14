@@ -128,7 +128,7 @@ app.whenReady().then(async () => {
           await window.webContents.executeJavaScript(`(async () => {
             for (let attempt = 0; attempt < 100 && !document.querySelector('#league-competition').options.length; attempt++) await new Promise(resolve => setTimeout(resolve, 50));
             await new Promise(resolve => setTimeout(resolve, 200));
-            for (const view of ['play', 'store', 'profile', 'customize', 'settings']) {
+            for (const view of ['play', 'store', 'profile', 'customize', 'settings', 'online']) {
               document.querySelector('[data-view="' + view + '"]').click();
               await new Promise(resolve => setTimeout(resolve, 80));
               const screen = document.querySelector('#' + view + '-screen');

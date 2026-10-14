@@ -42,7 +42,7 @@ class FakeChannel {
 }
 
 const client = {
-  channel: topic => new FakeChannel(topic),
+  channel: (topic, options) => { const channel = new FakeChannel(topic); channel.options = options; return channel; },
   removeChannel: async channel => {
     rooms.get(channel.topic)?.delete(channel);
     const topicPresences = presences.get(channel.topic);
@@ -138,7 +138,7 @@ test('empareja automáticamente a dos jugadores que buscan partida', async () =>
 });
 
 
-test('online peers share host modifiers, preserve them for rematches and reject old match packets', async () => {
+test('online ignores host and guest modifiers and rejects old match packets', async () => {
   sessionValues = new Map(); const host = new OnlineMatch(client);
   sessionValues = new Map(); const guest = new OnlineMatch(client);
   let hostInfo, guestInfo, snapshots = 0;
@@ -148,7 +148,8 @@ test('online peers share host modifiers, preserve them for rematches and reject 
   await guest.joinRoom(code, { name: 'Luis', modifiers: { ballSize: .5, playerSpeed: .6 } });
   await new Promise(resolve => setTimeout(resolve, 10));
   assert.deepEqual(hostInfo.modifiers, guestInfo.modifiers);
-  assert.equal(guestInfo.modifiers.ballSize, 1.7);
+  assert.equal(guestInfo.modifiers.ballSize, 1);
+  assert.equal(guestInfo.modifiers.powerCooldown, 20);
   const oldMatch = host.matchId;
   guest.requestRematch(); host.requestRematch();
   assert.notEqual(host.matchId, oldMatch);
@@ -160,4 +161,27 @@ test('online peers share host modifiers, preserve them for rematches and reject 
   assert.equal(host.getRemoteInput().x, .4);
   host.sendSnapshot({ mode: 'online' }); assert.equal(snapshots, 1);
   await guest.leave(); await host.leave();
+});
+
+
+test('server-assigned matches use authorized private topics, authenticated peer ids and fixed match ids', async () => {
+  sessionValues = new Map(); const host = new OnlineMatch(client);
+  sessionValues = new Map(); const guest = new OnlineMatch(client);
+  const match = { id: 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa', p1: '11111111-1111-4111-8111-111111111111', p2: '22222222-2222-4222-8222-222222222222' };
+  const first = { userId: match.p1, username: 'first', name: 'Ana', modifiers: { ballSize: 2 } };
+  const second = { userId: match.p2, username: 'second', name: 'Luis' };
+  let started = 0, received = 0;
+  host.setHandlers({ onMatchStart: () => started++ }); guest.setHandlers({ onMatchStart: () => started++, onSnapshot: () => received++ });
+  try {
+    await host.connectAssigned(match, first, second);
+    host.handleSignal({ kind: 'hello', role: 'guest', version: 3, clientId: 'outsider', profile: { userId: 'uninvited' } });
+    assert.equal(host.matched, false);
+    await guest.connectAssigned(match, second, first); await new Promise(resolve => setTimeout(resolve, 10));
+    assert.equal(started, 2); assert.equal(host.matchId, match.id); assert.equal(guest.matchId, match.id);
+    assert.equal(host.channel.topic, `field-v3-match-${match.id}`); assert.equal(host.channel.options.config.private, true);
+    host.send('snapshot', { clientId: host.clientId, snapshot: { mode: 'online' } }); assert.equal(received, 0);
+    host.sendSnapshot({ mode: 'online' }); assert.equal(received, 1);
+    guest.requestRematch(); host.requestRematch(); assert.equal(started, 2);
+    assert.equal(host.profile.modifiers.ballSize, 1);
+  } finally { await guest.leave(false); await host.leave(false); }
 });

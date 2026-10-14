@@ -77,3 +77,19 @@ La descarga se verifica con el SHA-256 publicado por GitHub y el de cada archivo
 Las versiones 1.1.1 y anteriores requieren descargar una vez Portable 1.2.0. Este sistema actualiza el juego; una actualización futura de Electron o del propio lanzador requiere descargar un nuevo ejecutable. En Portable, la actualización se guarda en el perfil de Windows de ese ordenador, por lo que al llevar el EXE a otro equipo se descargará allí de nuevo.
 
 Por el momento solo se genera y publica Portable; no se distribuye una versión instalable.
+
+
+## Online con identidad, amigos y modos de juego
+
+Se requiere una cuenta y un nombre de usuario único (3–20 letras, números o guiones bajos, sin distinguir mayúsculas). Las cuentas anteriores conservan su progreso y deben reservar un usuario disponible para entrar al nuevo online. El usuario se muestra junto al equipo, dorsal y nivel.
+
+- Ranked: búsqueda pública de rival, 500 ELO iniciales, K=32 y resultado confirmado por ambos participantes. Abandonar cuenta como derrota. La base de datos actualiza los dos ELO una sola vez; los clientes no pueden escribirlos directamente.
+- Partido rápido: público por búsqueda o privado por código, sin ELO.
+- Torneo: público o privado por código, cuatro participantes, dos semifinales y una final; sin ELO.
+- Amigos: añadir por usuario, aceptar/declinar amistad, invitar a partido privado y aceptar/declinar invitaciones. Las invitaciones caducan a los cinco minutos.
+
+Todos los modos online usan las reglas por defecto, a cinco goles. Los modificadores de preferencias y de mensajes recibidos no cambian estas reglas. Los canales de partida son privados y se autorizan solo para sus dos participantes.
+
+`supabase/online.sql` añade el esquema privado y el RPC autenticado. Las tablas no están expuestas al cliente. `supabase/online-test.sql` prueba los flujos con cuentas temporales dentro de una transacción que se revierte. No se asignan usuarios a cuentas existentes automáticamente.
+
+La simulación sigue siendo entre pares con uno de los jugadores como anfitrión; la confirmación de resultados y ELO evita cambios unilaterales, pero no sustituye un servidor de simulación con protección contra trampas. Una pérdida de presencia superior a 90 segundos puede resolverse como abandono. Para entrar a esta versión del online, todos los participantes deben tener el juego actualizado.

@@ -1,24 +1,18 @@
-# Fútbol arcade para Windows
+# Fútbol arcade Portable para Windows
 
-Descarga el instalador o la versión portable en:
+Solo se distribuye Portable, para Windows de 64 bits. Descarga la última versión en:
 https://github.com/alecola1991-stack/FIELD/releases/tag/windows-latest
 
-- `Futbol-Arcade-Setup-1.1.0.exe`: instala el juego y crea un acceso directo.
-- `Futbol-Arcade-Portable-1.1.0.exe`: abre el juego sin instalar.
-- Windows de 64 bits. Pantalla completa: F11.
-- El juego está incluido, con modos contra la IA disponibles sin internet.
-- Online y sincronización de cuenta requieren internet.
-- El progreso local es independiente del navegador. Inicia sesión con la misma cuenta para sincronizar tu progreso.
-- Los ejecutables no tienen firma digital; Windows puede mostrar una advertencia de editor desconocido.
+Desde Portable 1.2.1 se muestra «Buscando actualizaciones» antes de iniciar. Descarga y verifica el paquete de juego publicado por GitHub; aplica las novedades en ese mismo inicio. Si falla la comprobación, muestra un aviso y abre la copia local. El menú Juego → Buscar actualizaciones permite volver a comprobarlo.
 
-Cada cambio del juego en `main` genera una nueva compilación para Windows. Para actualizar, descarga de nuevo el instalador o portable. Las partidas se guardan en los datos de usuario de la aplicación, fuera del directorio de instalación.
+Se conservan los datos de usuario y las competiciones guardadas. La copia actualizada funciona sin internet en modos contra la IA. Online y cuentas requieren conexión. El progreso local es independiente del navegador; la misma cuenta permite sincronizarlo.
+
+El juego se actualiza automáticamente; una actualización de Electron o del propio lanzador requiere un nuevo EXE. Pantalla completa: F11. El EXE no tiene firma digital.
 
 ## Desarrollo
 
 Desde la raíz: `npm ci` y `npm run build -- --mode desktop`.
-Luego: `npm ci --prefix desktop` y `npm run start --prefix desktop`.
-Para generar los dos `.exe`: `npm run package:win --prefix desktop`.
+Después: `npm ci --prefix desktop` y `npm run start --prefix desktop`.
+Genera Portable con `npm run package:win --prefix desktop`.
 
-La acción `Windows executable` construye y prueba la aplicación empaquetada con las conexiones externas bloqueadas antes de publicar los archivos.
-
-La versión 1.1 añade Modificadores en todos los modos, menús más legibles y correcciones de guardado y sincronización. Las reglas de una sala online son compartidas y no se cambian durante la partida.
+La acción Windows executable prueba los menús y el juego empaquetado sin internet y comprueba la descarga real del paquete publicado. Las reglas online son fijas; los modificadores se reservan a los modos sin conexión.

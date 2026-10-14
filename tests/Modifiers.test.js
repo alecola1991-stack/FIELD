@@ -34,7 +34,7 @@ test('modifiers normalize malformed values, limits and defaults without mutating
 
 test('every game mode applies size, shared geometry, player speed and goals at match start', () => {
   const rules = { ballSize: 1.8, playerSize: 1.2, goalSize: 1.3, playerSpeed: 1.4, shotPower: 1.5, goalTarget: 6 };
-  for (const mode of ['bot', 'training', 'league', 'tournament', 'legends', 'online']) {
+  for (const mode of ['bot', 'training', 'league', 'tournament', 'legends']) {
     const game = fixture(mode, rules);
     assert.equal(game.ball.radius, 21.6); assert.equal(game.player.radius, 26.4);
     assert.equal(game.player.maxSpeed, 427); assert.equal(game.goalTarget, 6);
@@ -177,4 +177,13 @@ test('continue accepts complete checkpoints and ignores incomplete or incompatib
     }
     value = '{bad json'; assert.equal(loadCompetitionSave(), null);
   } finally { globalThis.localStorage = previous; }
+});
+
+
+test('online ignores modifiers in preferences, start options and restored snapshots', () => {
+  const game = fixture('online', { ballSize: 2, shotPower: 1.8, powerCooldown: 3, goalTarget: 1 });
+  assert.deepEqual(game.modifiers, DEFAULT_MODIFIERS);
+  assert.equal(game.goalTarget, 5); assert.equal(game.player.radius, 22); assert.equal(game.ball.radius, 12);
+  const saved = game.captureSnapshot(); saved.modifiers = { ballSize: 2, goalTarget: 1 }; saved.goalTarget = 1;
+  game.restoreSnapshot(saved); assert.equal(game.goalTarget, 5); assert.deepEqual(game.modifiers, DEFAULT_MODIFIERS);
 });

@@ -320,3 +320,6 @@ body.blue-theme{--bg:#070f25;--panel:#101e3b;--green:#81baff;--muted:#b1c3de;--l
 .blue-theme .level-badge{background:#1d3963;color:#cce5ff;border-color:#81baff44}
 .blue-theme :is(.xp-track i,.career-xp-fill){background:#8dc3ff}
 .blue-theme :is(.store-item-tag,.difficulty-row label,.level-cap){color:#a9c3e5}
+.hub-tile strong{font-family:Arial,Helvetica,sans-serif;font-style:italic}
+.blue-theme :is(.xp-track,.result-xp-track){background:#243b60}
+.blue-theme :is(.xp-info,.xp-info span,.level-badge small,.home-footer){color:#adc2df}

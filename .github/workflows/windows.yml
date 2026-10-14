@@ -45,14 +45,18 @@ jobs:
         shell: pwsh
         run: |
           $exe = Resolve-Path 'desktop/release/win-unpacked/Futbol Arcade.exe'
-          $process = Start-Process -FilePath $exe -ArgumentList '--smoke-test' -Wait -PassThru
+          $process = Start-Process -FilePath $exe -ArgumentList '--smoke-test' -Wait -PassThru -RedirectStandardOutput "$env:RUNNER_TEMP/bundled-stdout.log" -RedirectStandardError "$env:RUNNER_TEMP/bundled-stderr.log"
+          Get-Content "$env:RUNNER_TEMP/bundled-stdout.log" -ErrorAction SilentlyContinue
+          Get-Content "$env:RUNNER_TEMP/bundled-stderr.log" -ErrorAction SilentlyContinue
           if ($process.ExitCode -ne 0) { throw "Offline game test failed: $($process.ExitCode)" }
       - name: Test downloaded update without internet
         shell: pwsh
         run: |
           $exe = Resolve-Path 'desktop/release/win-unpacked/Futbol Arcade.exe'
           $bundle = Resolve-Path 'desktop/release/game-update.json'
-          $process = Start-Process -FilePath $exe -ArgumentList "--smoke-test --update-package=$bundle" -Wait -PassThru
+          $process = Start-Process -FilePath $exe -ArgumentList "--smoke-test --update-package=$bundle" -Wait -PassThru -RedirectStandardOutput "$env:RUNNER_TEMP/updated-stdout.log" -RedirectStandardError "$env:RUNNER_TEMP/updated-stderr.log"
+          Get-Content "$env:RUNNER_TEMP/updated-stdout.log" -ErrorAction SilentlyContinue
+          Get-Content "$env:RUNNER_TEMP/updated-stderr.log" -ErrorAction SilentlyContinue
           if ($process.ExitCode -ne 0) { throw "Updated offline game test failed: $($process.ExitCode)" }
       - name: Save Windows executables
         uses: actions/upload-artifact@v4
@@ -95,5 +99,7 @@ jobs:
         shell: pwsh
         run: |
           $exe = Resolve-Path 'desktop/release/win-unpacked/Futbol Arcade.exe'
-          $process = Start-Process -FilePath $exe -ArgumentList '--update-check-test' -Wait -PassThru
+          $process = Start-Process -FilePath $exe -ArgumentList '--update-check-test' -Wait -PassThru -RedirectStandardOutput "$env:RUNNER_TEMP/published-stdout.log" -RedirectStandardError "$env:RUNNER_TEMP/published-stderr.log"
+          Get-Content "$env:RUNNER_TEMP/published-stdout.log" -ErrorAction SilentlyContinue
+          Get-Content "$env:RUNNER_TEMP/published-stderr.log" -ErrorAction SilentlyContinue
           if ($process.ExitCode -ne 0) { throw "Published GitHub update test failed: $($process.ExitCode)" }

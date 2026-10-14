@@ -119,7 +119,7 @@ export class Game {
       if (this.countdownClock <= 0) {
         this.countdown--;
         if (this.countdown > 0) { this.countdownClock += 1; this.hooks.onCountdown?.(this.countdown); }
-        else this.hooks.onCountdown?.(null);
+        else { this.countdownClock = 0; this.hooks.onCountdown?.(null); }
       }
       return;
     }
@@ -130,10 +130,12 @@ export class Game {
     if (this.powerHudClock <= 0) { this.powerHudClock = .1; this.hooks.onPowerCooldown?.(this.player.powerCooldown); }
     this.state.elapsed += dt; this.hooks.onTime?.(this.state.formatTime());
     if (this.state.goalTimer > 0) {
-      this.state.goalTimer -= dt;
+      this.state.goalTimer = Math.max(0, this.state.goalTimer - dt);
       if (this.state.goalTimer <= 0) {
         if (this.state.matchOver) {
           this.state.paused = true; this.input.enabled = false;
+          // The normal network tick stops while paused: deliver the terminal state first.
+          if (this.state.mode === 'online' && this.onlineAuthority) this.hooks.onOnlineSnapshot?.(this.captureSnapshot(true));
           this.hooks.onMatchEnd?.({ mode: this.state.mode, elapsedSeconds: this.state.elapsed, playerScore: this.state.scorePlayer, botScore: this.state.scoreBot, winner: this.state.scorePlayer > this.state.scoreBot ? 'player' : 'opponent', stats: this.matchSummary() });
         } else { this.resetPositions(); this.beginCountdown(); }
       }
@@ -291,11 +293,18 @@ export class Game {
       if (!body || !Number.isFinite(body.x) || !Number.isFinite(body.y)) return false;
       if (['vx', 'vy'].some(key => body[key] !== undefined && !Number.isFinite(body[key]))) return false;
     }
-    for (const key of ['elapsed', 'goalTimer', 'countdown', 'countdownClock', 'scorePlayer', 'scoreBot']) {
+    // Older hosts can leave a timer negative by one frame after it expires.
+    // Accept that bounded overshoot, while keeping invalid network values rejected.
+    for (const key of ['goalTimer', 'countdownClock']) {
+      if (snapshot[key] !== undefined && (!Number.isFinite(snapshot[key]) || snapshot[key] < -.033)) return false;
+    }
+    for (const key of ['elapsed', 'countdown', 'scorePlayer', 'scoreBot']) {
       if (snapshot[key] !== undefined && (!Number.isFinite(snapshot[key]) || snapshot[key] < 0)) return false;
     }
     const mapped = {
       ...snapshot,
+      goalTimer: Math.max(0, snapshot.goalTimer || 0),
+      countdownClock: Math.max(0, snapshot.countdownClock || 0),
       player: snapshot.bot,
       bot: snapshot.player,
       scorePlayer: snapshot.scoreBot,

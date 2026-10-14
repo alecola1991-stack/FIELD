@@ -148,8 +148,17 @@ app.whenReady().then(async () => {
                 if (document.getElementById('music-track-name').textContent === track) throw new Error('Playlist did not advance');
                 const recording = document.getElementById('menu-recording-audio');
                 if (!recording) throw new Error('Recorded music player was not created');
-                for (let attempt = 0; attempt < 100 && recording.readyState < 1; attempt++) await new Promise(resolve => setTimeout(resolve, 50));
-                if (recording.readyState < 1 || !Number.isFinite(recording.duration) || recording.duration < 20 || recording.error) throw new Error('Bundled MP3 did not decode offline');
+                const soundToggle = document.getElementById('sound-enabled');
+                if (!soundToggle.checked) soundToggle.click();
+                for (let song = 0; song < 4; song++) {
+                  for (let attempt = 0; attempt < 100 && recording.readyState < 1; attempt++) await new Promise(resolve => setTimeout(resolve, 50));
+                  if (recording.readyState < 1 || !Number.isFinite(recording.duration) || recording.duration < 20 || recording.error) throw new Error('Bundled MP3 did not decode offline: ' + document.getElementById('music-track-name').textContent);
+                  const previousSource = recording.getAttribute('src');
+                  document.getElementById('music-next').click();
+                  for (let attempt = 0; attempt < 100 && recording.getAttribute('src') === previousSource; attempt++) await new Promise(resolve => setTimeout(resolve, 50));
+                  if (recording.getAttribute('src') === previousSource) throw new Error('Recorded track source did not change');
+                }
+                if (soundToggle.checked) soundToggle.click();
                 document.getElementById('controller-reset').click();
                 const saved = JSON.parse(localStorage.getItem('field-settings'));
                 if (saved.musicVolume !== 25 || saved.ambienceVolume !== 25 || saved.effectsVolume !== 25 || saved.controllerMap.shoot !== 0) throw new Error('Audio/controller preferences did not save');

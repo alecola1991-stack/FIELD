@@ -29,7 +29,7 @@ test('large recording parts are joined intact and an old download cannot replace
  const {audio}=fixture();let created=0,revoked=0;
  const blobs=[];const urls={createObjectURL(blob){blobs.push(blob);return 'blob:recording-'+(++created);},revokeObjectURL(){revoked++;}};
  const music=new MenuMusic({createMediaElementSource:()=>({connect(){}})},{},()=>{},audio,
- async url=>({ok:true,arrayBuffer:async()=>readFileSync(new URL(url))}),urls);
+ async function(url){assert.equal(this,globalThis,'native browser fetch requires the window receiver');return {ok:true,arrayBuffer:async()=>readFileSync(new URL(url))};},urls);
  music.sync(true,MENU_PLAYLIST[0]);await flush();await flush();
  assert.equal(created,1);assert.equal(audio.paused,false);
  const data=Buffer.from(await blobs[0].arrayBuffer());

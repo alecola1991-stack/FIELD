@@ -2,7 +2,7 @@
 // to remain compatible with the integrity validator in older portable launchers.
 export class MenuMusic {
   constructor(context, destination, onEnded, audio = new Audio(), fetcher = fetch, urls = URL) {
-    this.audio = audio; this.fetcher = fetcher; this.urls = urls; this.active = false; this.pending = false;
+    this.audio = audio; this.fetcher = fetcher.bind(globalThis); this.urls = urls; this.active = false; this.pending = false;
     this.blocked = false; this.failed = false; this.loading = false; this.revision = 0;
     audio.preload = 'metadata';
     this.source = context.createMediaElementSource(audio); this.source.connect(destination);

@@ -1,6 +1,6 @@
 {
   "name": "futbol-arcade-desktop",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Fútbol arcade para Windows",
   "author": "Fútbol arcade",
   "private": true,
@@ -25,7 +25,8 @@
       "package.json",
       "icon.png",
       "updates.cjs",
-      "build-info.json"
+      "build-info.json",
+      "startup.html"
     ],
     "win": {
       "target": [

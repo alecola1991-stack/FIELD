@@ -76,3 +76,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Could not publish executables' }
           gh release upload windows-latest desktop/release/game-update.json --repo $env:GITHUB_REPOSITORY --clobber
           if ($LASTEXITCODE -ne 0) { throw 'Could not publish game update' }
+      - name: Verify published update download with Electron
+        shell: pwsh
+        run: |
+          $exe = Resolve-Path 'desktop/release/win-unpacked/Futbol Arcade.exe'
+          $process = Start-Process -FilePath $exe -ArgumentList '--update-check-test' -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Published GitHub update test failed: $($process.ExitCode)" }

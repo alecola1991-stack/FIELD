@@ -251,3 +251,72 @@ button,a,select,input{font:inherit}button{ -webkit-tap-highlight-color:transpare
 .online-hub-layout{grid-template-columns:minmax(210px,.75fr) minmax(0,1.5fr);align-items:start}.online-hub-card{min-width:0;max-width:850px}.online-hub-card h3{font-size:22px;margin:12px 0}.online-hub-card p{font-size:15px;line-height:1.55}.online-identity{font-size:18px!important;font-weight:800;color:var(--green);overflow-wrap:anywhere}.online-mode-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}.online-mode-tabs button{border:1px solid #ffffff25;border-radius:10px;padding:11px 14px;color:#ecf3ef;background:#ffffff07;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}.online-mode-tabs button.active{background:var(--green);color:#10251b;border-color:var(--green)}.ranked-elo{display:block;font-size:30px;color:var(--green);margin:15px 0}.social-list{display:grid;gap:12px;margin:20px 0}.social-row{border:1px solid #ffffff20;border-radius:12px;padding:14px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}.social-person{display:grid;gap:6px;min-width:0;overflow-wrap:anywhere}.social-person b{font-size:16px}.social-person small{font-size:13px;color:var(--muted)}.social-actions{display:flex;gap:8px;flex-wrap:wrap}.social-actions .tiny-button{font-size:14px;padding:10px 12px}.friend-search{display:grid;gap:10px;margin:18px 0}.online-lobby-roster{display:flex;gap:8px;flex-wrap:wrap;margin:15px 0}.lobby-player{border:1px solid #65e6a530;border-radius:8px;padding:8px;font-size:14px;overflow-wrap:anywhere}.online-bracket{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:15px 0}.bracket-match{display:grid;gap:9px;background:#ffffff06;border:1px solid #ffffff18;border-radius:10px;padding:12px;overflow-wrap:anywhere}.bracket-match small{font-size:13px;color:var(--green)}.bracket-match b{font-size:15px}.bracket-match span{font-size:14px}.online-hub-card .text-input{width:100%;min-width:0}.online-hub-card button{max-width:100%}#online-hub-message:empty{display:none}@media(max-width:800px){.online-hub-layout{grid-template-columns:1fr}.online-hub-layout .editor-copy h2{font-size:36px}.online-hub-card{padding:20px}.online-mode-tabs button{flex:1;min-width:110px}.online-bracket{grid-template-columns:1fr}}
 
 .controller-settings{border:1px solid var(--line);border-radius:12px;padding:18px;margin:18px 0}.controller-settings h3{font-size:19px;margin:0 0 12px}.controller-settings p{font-size:14px;line-height:1.6;overflow-wrap:anywhere}.controller-settings .social-actions{margin:14px 0}#controller-status{color:var(--green)}:focus-visible{outline:3px solid var(--green)!important;outline-offset:4px}.controller-keyboard{position:fixed;inset:50% auto auto 50%;transform:translate(-50%,-50%);width:min(600px,94vw);max-height:90dvh;overflow:auto;z-index:100;background:#142027;border:2px solid var(--green);border-radius:20px;padding:22px;box-shadow:0 0 0 100vmax #000c}.controller-keyboard h3{margin:0 0 16px}.controller-keyboard p{font-size:18px;overflow-wrap:anywhere;min-height:28px}.controller-keyboard-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-bottom:18px}.controller-keyboard button{background:#233930;color:#ecf3ef;border:1px solid #65e6a540;border-radius:8px;min-height:40px;font-size:16px;padding:8px;cursor:pointer}.controller-keyboard .social-actions button{flex:1}@media(max-width:500px){.controller-keyboard-grid{grid-template-columns:repeat(6,1fr)}.controller-settings{padding:14px}.setting-line>div{min-width:0}.setting-line b,.setting-line small{overflow-wrap:anywhere}}
+
+/* Stadium-blue club hub. Online keeps its original palette. */
+body.blue-theme{--bg:#070f25;--panel:#101e3b;--green:#81baff;--muted:#b1c3de;--line:#91b9ff30;color:#edf3ff;background:radial-gradient(ellipse at 88% 18%,#13518a66,transparent 48%),radial-gradient(ellipse at 12% 82%,#27367766,transparent 50%),#070f25;background-attachment:fixed}
+.blue-theme .app-shell{width:min(1440px,100%)}
+.blue-theme .screen:not(.game-screen){position:relative}
+.blue-theme :is(.editor-card,.settings-card,.account-card,.competition-card,.competition-picker-card,.store-item,.loadout-slot,.career-card,.profile-card,.mission-card,.result-panel,.pause-panel,.modifiers-card,.match-picker-card,.play-mode-card){background:linear-gradient(145deg,#182b4beF,#0c1833f5);border-color:#91b9ff30;box-shadow:0 16px 50px #02091840;border-radius:8px}
+.blue-theme :is(.primary-button,.store-item-action){background:#91c3ff;color:#08172f;border-radius:5px}
+.blue-theme :is(.primary-button,.store-item-action):hover{background:#c8e2ff;color:#08172f}
+.blue-theme :is(.text-input,select,.color-picker,.loadout-slot,.rules-entry){background-color:#0b1831;color:#e2edff;border-color:#91b9ff40}
+.blue-theme :is(.text-input,select):focus{border-color:#98caff}
+.blue-theme :focus-visible{outline-color:#d4e9ff!important;box-shadow:0 0 0 4px #438dff55!important}
+.blue-theme :is(.section-nav,.store-categories){gap:8px;flex-wrap:wrap}
+.blue-theme :is(.section-nav button,.store-category){border-radius:4px;color:#b9cce9}
+.blue-theme :is(.section-nav button.active,.store-category.active){background:#315a94;color:#fff;border-color:#91c3ff}
+.blue-theme :is(.editor-copy>p,.store-heading p,.settings-note,.store-message,.card-kicker,.field-label,.version,.home-footer,.hero-sub){color:#b1c3de}
+.blue-theme :is(.preview-stage,.profile-identity,.account-stats>div,.store-wallet,.level-card){background-color:#101e3b;border-color:#91b9ff30}
+.blue-theme .preview-stage{background:radial-gradient(ellipse,#25548a66,transparent 65%),#101e3b}
+.blue-theme .brand-mark{background:#a5ceff;color:#0a1b36;border-radius:4px}
+.blue-theme :is(.back-button,.tiny-button,.plain-button){color:#c5d7f1}
+.blue-theme :is(.back-button,.tiny-button,.plain-button):hover{color:#fff}
+.blue-theme .account-shortcut{background:#112345;color:#c6d7ee;border-color:#85b3ff44}
+.blue-theme .hub-content{display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:26px;padding:18px 0 26px;flex:1}
+.hub-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:24px}
+.hub-heading h1{font-size:clamp(32px,4.5vw,58px);line-height:1.05;letter-spacing:-.055em;margin:0;font-weight:800}
+.hub-heading h1 em{font-style:normal;color:#9dcaff}
+.hub-heading .eyebrow{margin:0 0 10px;font-size:12px;letter-spacing:.14em}
+.hub-heading p:last-child{font-size:15px;color:#adc2df;margin:12px 0 0}
+.hub-heading .home-club-chip{width:auto;max-width:350px;margin:0;padding:12px 15px;background:#102345b0;border:1px solid #83b7ff38;border-radius:4px;color:#d1e4ff;min-height:48px;flex-shrink:0}
+.hub-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.hub-tile{position:relative;isolation:isolate;min-height:200px;display:flex;align-items:flex-start;flex-direction:column;text-align:left;padding:20px 18px 92px;border:1px solid #77a8e638;border-radius:3px;background:linear-gradient(135deg,#172749ee,#101b35ee);color:#e6efff;cursor:pointer;overflow:hidden;transition:background .16s,transform .16s,border-color .16s,box-shadow .16s}
+.hub-tile strong{font-size:clamp(20px,2.3vw,30px);font-style:italic;text-transform:uppercase;letter-spacing:-.045em;line-height:1.08;max-width:100%;font-weight:800}
+.tile-index{font:10px var(--mono);letter-spacing:.1em;color:#91abd1;margin-bottom:12px}
+.hub-tile small{font-size:13px;line-height:1.45;max-width:210px;color:#b6c7e2;margin-top:10px}
+.tile-art{position:absolute;right:22px;bottom:20px;width:62px;height:62px;color:#a6c5f1;opacity:.9}
+.tile-enter{position:absolute;left:19px;bottom:18px;font-size:22px;opacity:.6}
+.hub-play{background:linear-gradient(125deg,#dcecff,#a9cfff);color:#0b1c38;border-color:#dbecff;box-shadow:0 8px 32px #4895ff25}
+.hub-play :is(small,.tile-index,.tile-art){color:#203d64}
+.hub-online{background:linear-gradient(135deg,#183b36ee,#102a2bee);border-color:#65e6a53d}
+.hub-online :is(.tile-art,.tile-index){color:#80dcb3}
+.hub-tile:hover,.hub-tile:focus-visible{transform:translateY(-3px);background:#e7f1ff;color:#0b1d39;border-color:#fff;box-shadow:0 10px 32px #3b8dff35;z-index:2}
+.hub-tile:is(:hover,:focus-visible) :is(small,.tile-art,.tile-index){color:#254568}
+.tile-wallet{position:absolute;bottom:25px;left:46px;font:14px var(--mono);color:inherit}
+.hub-progress{display:grid;grid-template-columns:1fr 1fr;gap:35px;align-items:center;border-top:1px solid #91b9ff30;padding-top:16px}
+.hub-progress .difficulty-row,.hub-progress .level-card{margin:0;border:0;padding:0;background:none}
+.hub-progress .difficulty-row{justify-content:flex-start;gap:18px}
+.hub-progress .difficulty-row label{color:#adc2df}
+.hub-progress .level-card{display:flex}
+.blue-theme .home-footer{border-top:1px solid #91b9ff20;font-size:11px}
+.blue-theme .home-screen:before{content:"";position:absolute;pointer-events:none;z-index:0;width:100%;height:80%;bottom:0;left:0;background:linear-gradient(122deg,transparent 44%,#258aff1a 44.2%,#258aff00 45%),linear-gradient(57deg,transparent 65%,#438dff24 65.3%,transparent 66%),radial-gradient(ellipse at 50% 100%,#2678d93b,transparent 60%)}
+.blue-theme .menu-backdrop{opacity:.35}
+.collection-browser{padding-bottom:36px;min-width:0}
+.collection-empty{grid-column:1/-1;padding:35px;border:1px dashed #81baff55;background:#101e3b;color:#c4d9f5;text-align:center;font-size:16px}
+#inventory-screen .store-heading{margin-bottom:22px}
+.blue-theme .store-wallet{border-radius:5px}
+.blue-theme .store-wallet .tiny-button{margin-top:10px;min-height:44px}
+.blue-theme .store-item-action:disabled{background:#233757;color:#b4c8e7;opacity:.8}
+.blue-theme .store-loadout{margin-bottom:24px}
+@media(min-width:1100px) and (min-height:800px){.hub-tile{min-height:230px}.blue-theme .hub-content{gap:32px}}
+@media(max-width:900px){.hub-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hub-tile{min-height:180px}.hub-heading .home-club-chip{max-width:260px}.hub-progress{gap:18px}.hub-progress .difficulty-row{flex-wrap:wrap;gap:8px}}
+@media(max-width:600px){.blue-theme .app-shell{padding:0 16px}.blue-theme .hub-content{gap:20px;padding:12px 0 24px}.hub-heading{align-items:flex-start;flex-direction:column;gap:16px}.hub-heading h1{font-size:38px}.hub-heading p:last-child{font-size:14px;margin-top:8px}.hub-heading .home-club-chip{max-width:none;width:100%;padding:10px 12px}.hub-tile{padding:14px 12px 72px;min-height:190px}.hub-tile strong{font-size:23px}.hub-tile small{font-size:13px}.tile-index{font-size:9px;letter-spacing:0;margin-bottom:10px}.tile-art{width:45px;height:45px;right:14px;bottom:14px}.tile-enter{left:12px;bottom:12px}.tile-wallet{left:34px;bottom:18px;font-size:12px}.hub-progress{grid-template-columns:1fr;gap:18px}.blue-theme .home-footer{line-height:1.6;height:auto;min-height:58px}.blue-theme .brand-row{gap:10px}.blue-theme .brand-row>.brand{font-size:12px;letter-spacing:.03em}.blue-theme .section-nav{gap:5px}.blue-theme .section-nav button{padding:9px 10px;min-height:42px}.blue-theme .store-heading{gap:18px}.blue-theme .store-heading h2{font-size:42px}.blue-theme .store-heading p{font-size:15px}}
+@media(prefers-reduced-motion:reduce){.hub-tile{transition:none}.hub-tile:hover,.hub-tile:focus-visible{transform:none}}
+.blue-theme :is(.club-config-panel,.champions-card,.league-card,.match-team-panel,.profile-preview-card,.single-team-card,.team-card,.trophy-card,.league-standings-panel){background:linear-gradient(135deg,#152746,#0c1932);border-color:#91b9ff30}
+.blue-theme :is(.team-card.selected,.trophy-card.unlocked,.play-mode-featured){border-color:#85baff;background:linear-gradient(135deg,#203f68,#122440)}
+.blue-theme :is(.store-item>p,.play-mode-card small,.loadout-slot small,.settings-row>div>small,.mission-card p){color:#b2c7e4}
+.blue-theme :is(.store-item>b,.play-mode-card b,.mission-card h3,.loadout-slot b){color:#edf4ff}
+.blue-theme .play-mode-card i{color:#aad3ff}
+.blue-theme .level-badge{background:#1d3963;color:#cce5ff;border-color:#81baff44}
+.blue-theme :is(.xp-track i,.career-xp-fill){background:#8dc3ff}
+.blue-theme :is(.store-item-tag,.difficulty-row label,.level-cap){color:#a9c3e5}

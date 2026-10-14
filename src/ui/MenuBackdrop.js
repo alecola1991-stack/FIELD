@@ -5,13 +5,13 @@ export class MenuBackdrop {
     this.width = 0; this.height = 0; this.dpr = 1; this.active = false; this.lastTime = 0; this.raf = 0;
     this.reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || false;
     this.entities = [
-      { type: 'player', x: .075, y: .24, vx: .018, vy: .008, color: '#65e6a5', secondary: '#dcece2', phase: .2 },
+      { type: 'player', x: .075, y: .24, vx: .018, vy: .008, color: '#58acff', secondary: '#dcece2', phase: .2 },
       { type: 'ball', x: .19, y: .77, vx: .014, vy: -.009, spin: .1 },
       { type: 'player', x: .88, y: .19, vx: -.013, vy: .012, color: '#9baeff', secondary: '#e9ecff', phase: 1.3 },
       { type: 'ball', x: .94, y: .65, vx: -.018, vy: .006, spin: .7 },
-      { type: 'player', x: .13, y: .9, vx: .011, vy: -.008, color: '#f19676', secondary: '#ffe0d4', phase: 2.1 },
+      { type: 'player', x: .13, y: .9, vx: .011, vy: -.008, color: '#4876d9', secondary: '#ffe0d4', phase: 2.1 },
       { type: 'ball', x: .78, y: .86, vx: -.012, vy: -.011, spin: 1.4 },
-      { type: 'player', x: .96, y: .92, vx: -.01, vy: -.007, color: '#d5bf78', secondary: '#f3e5b2', phase: 2.8 },
+      { type: 'player', x: .96, y: .92, vx: -.01, vy: -.007, color: '#7698ed', secondary: '#f3e5b2', phase: 2.8 },
     ];
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(canvas);

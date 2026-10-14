@@ -71,7 +71,7 @@ export class UI {
     this.quickChoices = { player: '', rival: 'laliga-real-madrid' }; this.quickCountries = {}; this.quickDifficulty = this.settings.difficulty;
     this.legendIndex = 0; this.legendTeamId = '';
     this.screens = {
-      home: document.querySelector('#home-screen'), play: document.querySelector('#play-screen'), store: document.querySelector('#store-screen'), customize: document.querySelector('#customize-screen'),
+      home: document.querySelector('#home-screen'), play: document.querySelector('#play-screen'), store: document.querySelector('#store-screen'), inventory: document.querySelector('#inventory-screen'), customize: document.querySelector('#customize-screen'),
       settings: document.querySelector('#settings-screen'), account: document.querySelector('#account-screen'), online: document.querySelector('#online-screen'), leaderboard: document.querySelector('#leaderboard-screen'), competitions: document.querySelector('#competition-screen'), tournament: document.querySelector('#tournament-screen'),
       league: document.querySelector('#league-screen'), game: document.querySelector('#game-screen'), profile: document.querySelector('#profile-screen'),
       missions: document.querySelector('#missions-screen'),
@@ -251,10 +251,6 @@ export class UI {
       const button = event.target.closest('[data-store-item], [data-clear-slot]'); if (!button) return;
       if (button.hasAttribute('data-clear-slot')) this.unequipCosmetic(button.dataset.clearSlot);
       else this.handleStoreItem(button.dataset.storeItem);
-    });
-    document.getElementById('store-tabs').addEventListener('click', event => {
-      const button = event.target.closest('[data-store-tab]'); if (!button) return;
-      this.storeTab = button.dataset.storeTab; this.storeCategory = 'all'; this.renderStore(); this.sound?.play('click');
     });
     this.store_categories.addEventListener('click', event => {
       const button = event.target.closest('[data-store-category]'); if (!button) return;
@@ -936,6 +932,13 @@ export class UI {
 
   show(view) {
     this.currentView = view;
+    const onlineTheme = ['online', 'leaderboard'].includes(view) || view === 'game' && this.currentMatchMode === 'online';
+    document.body.classList.toggle('blue-theme', !onlineTheme);
+    if (view === 'store' || view === 'inventory') {
+      this.storeTab = view === 'inventory' ? 'inventory' : 'shop';
+      this.storeCategory = 'all';
+      this.screens[view].append(document.getElementById('store-browser'));
+    }
     this.sound?.setScene?.(view === 'game' && !this.game?.state.paused ? 'game' : 'menu');
     document.querySelector('.rules-game-button')?.classList.toggle('hidden', this.currentMatchMode === 'online');
     if (this.game) {
@@ -950,7 +953,7 @@ export class UI {
     this.menuBackdrop?.setActive(view === 'home');
     if (view === 'profile') this.renderProfile();
     if (view === 'missions') this.renderMissions();
-    if (view === 'store') this.renderStore();
+    if (view === 'store' || view === 'inventory') this.renderStore();
     if (view === 'play') this.refreshContinueButton();
     if (view === 'game') requestAnimationFrame(() => this.game?.renderer.resize());
   }
@@ -976,9 +979,8 @@ export class UI {
     if (storeKey === this.lastStoreKey) return; this.lastStoreKey = storeKey;
     this.home_coins.textContent = String(balance);
     this.store_coins.innerHTML = `${balance} <i>◈</i>`;
-    document.querySelectorAll('[data-store-tab]').forEach(button => { const active = button.dataset.storeTab === this.storeTab; button.classList.toggle('active', active); button.setAttribute('aria-selected', String(active)); });
     this.inventory_count.textContent = String(this.career.ownedItems.filter(id => STORE_ITEMS.some(item => item.id === id)).length);
-    this.store_categories.classList.toggle('hidden', this.storeTab !== 'shop');
+    this.store_categories.classList.remove('hidden');
     this.store_loadout.classList.toggle('hidden', this.storeTab !== 'inventory');
     this.store_loadout.replaceChildren(...Object.entries(SLOT_LABELS).map(([slot, label]) => {
       const value = this.career.equipped[slot], item = STORE_ITEMS.find(entry => entry.slot === slot && entry.value === value);
@@ -993,7 +995,7 @@ export class UI {
     }));
     const visibleItems = STORE_ITEMS.filter(item => {
       if (this.storeTab === 'inventory' && !this.career.ownedItems.includes(item.id)) return false;
-      if (this.storeCategory === 'all' || this.storeTab === 'inventory') return true;
+      if (this.storeCategory === 'all') return true;
       const category = item.slot === 'ballSkin' ? 'ball' : ['shotEffect', 'playerTrail'].includes(item.slot) ? 'trail' : ['playerEffect', 'circleRelief'].includes(item.slot) ? 'player' : item.slot === 'goalEffect' ? 'goal' : 'field';
       return category === this.storeCategory;
     });
@@ -1007,10 +1009,16 @@ export class UI {
       const title = document.createElement('b'); title.textContent = item.name;
       const description = document.createElement('p'); description.textContent = item.description;
       const button = document.createElement('button'); button.type = 'button'; button.className = equipped ? 'store-item-action equipped' : 'store-item-action';
-      if (equipped) { button.dataset.clearSlot = item.slot; button.textContent = 'Quitar'; }
+      if (this.storeTab === 'shop' && owned) { button.disabled = true; button.textContent = 'En tu inventario'; }
+      else if (equipped) { button.dataset.clearSlot = item.slot; button.textContent = 'Quitar'; }
       else { button.dataset.storeItem = item.id; button.disabled = !owned && balance < item.price; button.textContent = owned ? 'Equipar' : `Desbloquear · ${item.price} ◈`; }
       card.append(preview, icon, tag, title, description, button); return card;
     }));
+    if (!visibleItems.length) {
+      const empty = document.createElement('p'); empty.className = 'collection-empty';
+      empty.textContent = 'Aún no tienes objetos en esta categoría. Descúbrelos en la tienda.';
+      this.store_grid.append(empty);
+    }
     this.store_message.textContent = this.storeTab === 'inventory' ? (this.career.ownedItems.length ? 'Elige un objeto para equiparlo. Cada ranura admite un objeto activo.' : 'Tu inventario está vacío. Desbloquea artículos en la tienda.') : 'Gana monedas jugando y equipa tus artículos desde el inventario.';
   }
 
@@ -1020,7 +1028,7 @@ export class UI {
       if (!this.career.buyItem(id, item.price)) { this.store_message.textContent = 'Te faltan monedas. Completa partidos para ganar más.'; return; }
       this.store_message.textContent = `${item.name} desbloqueado.`;
     } else this.store_message.textContent = `${item.name} equipado. Puedes cambiarlo cuando quieras.`;
-    this.career.equipItem(id, item.slot, item.value);
+    if (this.storeTab === 'inventory') this.career.equipItem(id, item.slot, item.value);
     this.settings.cosmetics = { ...this.career.equipped };
     this.game?.updateSettings(this.settings); this.career.save(); this.syncAccount(false); this.renderProgress(); this.renderStore(); this.sound?.play('select');
   }

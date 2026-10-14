@@ -4,7 +4,7 @@ const element = (tag, text, className = '') => { const node = document.createEle
 export class OnlineHub {
   constructor(ui) {
     this.ui = ui; this.identity = null; this.lobby = null; this.mode = 'ranked'; this.friends = []; this.invites = [];
-    this.connectedMatchId = null; this.busy = false; this.polling = false; this.lastPoll = 0; this.nameSequence = 0;
+    this.revision = 0; this.connectedMatchId = null; this.busy = false; this.polling = false; this.lastPoll = 0; this.nameSequence = 0;
     this.screen = document.getElementById('online-screen');
     this.screen.addEventListener('click', event => {
       const tab = event.target.closest('[data-online-tab]');
@@ -40,10 +40,10 @@ export class OnlineHub {
   async open() { this.render(); if (this.ui.user) await this.refresh(); }
   async refresh() {
     if (!this.ui.user || this.polling || this.busy) return;
-    this.polling = true; const userId = this.ui.user.id;
+    this.polling = true; const userId = this.ui.user.id, revision = this.revision || 0;
     try {
       const data = await this.rpc(this.lobby ? 'poll' : 'state', this.lobby ? { lobbyId: this.lobby.id } : {});
-      if (this.ui.user?.id === userId) await this.consume(data);
+      if (this.ui.user?.id === userId && (this.revision || 0) === revision) await this.consume(data);
       this.lastPoll = Date.now();
     } catch (error) { if (this.ui.currentView === 'online') this.message(error.message || 'No se pudo conectar.', true); }
     finally { this.polling = false; }
@@ -70,6 +70,7 @@ export class OnlineHub {
     }
     if (command === 'friend_remove' && !confirm('¿Eliminar a este amigo?')) return;
     const userId = this.ui.user.id;
+    this.revision = (this.revision || 0) + 1;
     this.busy = true; this.render(); this.message('Conectando…');
     try {
       if (['queue','create','join','invite','invite_accept'].includes(command)) payload.profile = this.ui.onlinePlayer();
@@ -77,6 +78,7 @@ export class OnlineHub {
       const data = await this.rpc(command, payload);
       if (this.ui.user?.id !== userId) return;
       if (command === 'leave') {
+        this.pendingResult = null;
         await this.ui.onlineMatch.leave(); this.ui.game.stop(); this.ui.currentMatchMode = null; this.connectedMatchId = null;
         this.ui.result_overlay.classList.add('hidden'); this.ui.pause_overlay.classList.add('hidden'); this.ui.show('online');
       }
@@ -123,7 +125,10 @@ export class OnlineHub {
   async sendResult() {
     if (!this.pendingResult || this.reporting) return;
     this.reporting = true;
-    try { const data = await this.rpc('report', this.pendingResult); this.pendingResult = null; await this.consume(data); }
+    const userId = this.ui.user?.id, revision = this.revision = (this.revision || 0) + 1;
+    try { const data = await this.rpc('report', this.pendingResult);
+      if (this.ui.user?.id !== userId || this.revision !== revision) return;
+      this.pendingResult = null; await this.consume(data); }
     catch (error) { this.ui.result_online_status.textContent = `${error.message}. Reintentando…`; }
     finally { this.reporting = false; }
   }
@@ -142,7 +147,7 @@ export class OnlineHub {
     this.ui.result_overlay.classList.add('hidden'); this.ui.goal_banner.classList.add('hidden'); this.ui.countdown_banner.classList.add('hidden'); this.ui.hideConnectionStatus();
     this.ui.show('online'); await this.refresh();
   }
-  reset() { this.identity = null; this.lobby = null; this.friends = []; this.invites = []; this.connectedMatchId = null; this.pendingResult = null; this.render(); }
+  reset() { this.revision = (this.revision || 0) + 1; this.identity = null; this.lobby = null; this.friends = []; this.invites = []; this.connectedMatchId = null; this.pendingResult = null; this.render(); }
   render() {
     const signedIn = Boolean(this.ui.user), registered = Boolean(this.identity);
     document.getElementById('online-login-needed').classList.toggle('hidden', signedIn);

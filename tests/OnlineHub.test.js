@@ -52,3 +52,12 @@ test('failed result reports remain queued and are retried without duplicating th
   await hub.sendResult(); assert.equal(attempts, 2); assert.equal(hub.pendingResult, null);
   await hub.sendResult(); assert.equal(attempts, 2);
 });
+
+
+test('an old polling response cannot restore a room after cancellation or an account change', async () => {
+  const hub = fixture(); let resolve, applied = 0;
+  hub.rpc = () => new Promise(done => { resolve = done; }); hub.consume = async () => applied++;
+  const refresh = hub.refresh(); hub.revision = 1;
+  resolve({ identity: hub.identity, lobby }); await refresh;
+  assert.equal(applied, 0); assert.equal(hub.lobby, null);
+});

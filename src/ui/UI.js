@@ -1493,6 +1493,7 @@ export class UI {
   }
 
   saveAndQuit() {
+    if (this.currentMatchMode === 'online') this.onlineMatch?.leave();
     this.game?.setPaused(true); this.saveCurrentCompetition(); this.game?.stop();
     this.syncAccount(true);
     this.currentMatchMode = null; this.currentMatchOptions = null;

@@ -10,10 +10,10 @@ export class Player {
       dx /= len; dy /= len;
       this.faceX = dx; this.faceY = dy;
       const accel = 1850 * (this.speedScale || 1);
-      this.vx += dx * accel * dt; this.vy += dy * accel * dt;
+      this.vx += dx * accel * dt * Math.min(1,len); this.vy += dy * accel * dt * Math.min(1,len);
     }
     const speed = Math.hypot(this.vx, this.vy);
-    const cap = this.maxSpeed * speedMultiplier;
+    const cap = this.maxSpeed * speedMultiplier * (len ? Math.min(1,len) : 1);
     if (speed > cap) { this.vx = this.vx / speed * cap; this.vy = this.vy / speed * cap; }
     const drag = Math.exp(-(len ? 2.2 : 5.5) * dt);
     this.vx *= drag; this.vy *= drag;

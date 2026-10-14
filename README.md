@@ -93,3 +93,12 @@ Todos los modos online usan las reglas por defecto, a cinco goles. Los modificad
 `supabase/online.sql` añade el esquema privado y el RPC autenticado. Las tablas no están expuestas al cliente. `supabase/online-test.sql` prueba los flujos con cuentas temporales dentro de una transacción que se revierte. No se asignan usuarios a cuentas existentes automáticamente.
 
 La simulación sigue siendo entre pares con uno de los jugadores como anfitrión; la confirmación de resultados y ELO evita cambios unilaterales, pero no sustituye un servidor de simulación con protección contra trampas. Una pérdida de presencia superior a 90 segundos puede resolverse como abandono. Para entrar a esta versión del online, todos los participantes deben tener el juego actualizado.
+
+
+## Mandos y audio
+
+DualShock 4 (PS4), DualSense (PS5) y Xbox con el mapeo estándar de Gamepad API: USB o Bluetooth según el sistema. Pulsa un botón tras conectarlo. Stick izquierdo y cruceta mueven al jugador y recorren menús; ✕/A dispara o acepta, R1/R2/RB/RT dispara, ○/B vuelve y Options/Menu pausa en los modos sin conexión. La velocidad del stick es analógica, con zona muerta. Los disparos se activan al pulsar, sin repetirse al mantener el botón. El online transmite los cambios analógicos con frecuencia limitada; tiros y paradas se envían inmediatamente.
+
+Ajustes permite configurar disparar/aceptar/volver/pausa, restablecer los botones y activar la vibración cuando esté disponible. Los campos de texto abren un teclado en pantalla con el botón de aceptar. Cambiar de ventana o desconectar el mando deja de introducir movimiento. No se requieren controladores especiales del juego; el sistema operativo y el navegador deben reconocer el mando. Las pruebas automatizadas simulan los layouts; no sustituyen pruebas físicas con cada modelo.
+
+La playlist original de cuatro temas se sintetiza con Web Audio y funciona sin conexión: Neon Kickoff, City Lights, Stadium Dreams y Final Pulse. Suena en menús, pausa y resultados. El ambiente de estadio aumenta suavemente según la distancia del balón a cualquiera de las porterías y celebra los goles. Ajustes permite controlar audio general, música, efectos y ambiente por separado, cambiar de tema y desactivar música o ambiente. Algunos navegadores requieren un clic o una pulsación de teclado para habilitar el audio.

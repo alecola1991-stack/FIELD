@@ -1,7 +1,7 @@
 const MOVE = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 export class Input {
   constructor() {
-    this.enabled = true; this.down = new Set(); this.pressed = new Set();
+    this.enabled = true; this.padAxes = { x: 0, y: 0 }; this.down = new Set(); this.pressed = new Set();
     this.onKeyDown = e => {
       if (!this.enabled) return;
       // Keep gameplay shortcuts out of form fields and native controls. In
@@ -37,7 +37,8 @@ export class Input {
     if (!this.enabled) return { x: 0, y: 0 };
     const left = this.down.has('KeyA') || this.down.has('ArrowLeft'); const right = this.down.has('KeyD') || this.down.has('ArrowRight');
     const up = this.down.has('KeyW') || this.down.has('ArrowUp'); const down = this.down.has('KeyS') || this.down.has('ArrowDown');
-    return { x: Number(right) - Number(left), y: Number(down) - Number(up) };
+    const keyboard = { x: Number(right) - Number(left), y: Number(down) - Number(up) };
+    return keyboard.x || keyboard.y ? keyboard : (this.padAxes || { x: 0, y: 0 });
   }
   consume(code) { const hit = this.pressed.has(code); this.pressed.delete(code); return hit; }
   press(code) { if (!this.down.has(code)) this.pressed.add(code); this.down.add(code); }

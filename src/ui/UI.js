@@ -1,3 +1,4 @@
+import { GamepadController } from '../game/GamepadController.js';
 import { OnlineHub } from './OnlineHub.js';
 import { MODIFIER_OPTIONS, DEFAULT_MODIFIERS, normalizeModifiers, modifiersAreDefault, formatModifier } from '../config/modifiers.js';
 import { loadSettings, saveSettings, setSettingsScope } from '../config/settings.js';
@@ -106,6 +107,8 @@ export class UI {
     this.game = game; this.game.input.enabled = this.currentView === 'game' && !game.state.paused; this.sound = sound; this.accountService = accountService;
     this.onlineMatch = onlineMatch;
     this.hub = new OnlineHub(this);
+    this.controller = new GamepadController(this);
+    this.sound.setScene?.(this.currentView === 'game' ? 'game' : 'menu');
     if (onlineMatch) onlineMatch.setHandlers({
       onStatus: (status, detail) => this.updateOnlineStatus(status, detail),
       onMatchStart: info => this.startOnlineMatch(info),
@@ -225,6 +228,8 @@ export class UI {
     this.play_difficulty.value = this.settings.difficulty;
     this.trajectory_enabled.checked = !!this.settings.trajectory;
     this.shot_preview_enabled.checked = !!this.settings.shotPreview;
+    for(const [id,key,value] of [['music-enabled','musicEnabled',true],['ambience-enabled','ambienceEnabled',true],['controller-vibration','controllerVibration',true]]) document.getElementById(id).checked=this.settings[key]??value;
+    for(const [id,key,value] of [['music-volume','musicVolume',35],['ambience-volume','ambienceVolume',50],['effects-volume','effectsVolume',100]]) { document.getElementById(id).value=this.settings[key]??value;document.getElementById(id+'-value').textContent=(this.settings[key]??value)+'%'; }
     this.league_goal_target.value = String([2, 3, 5].includes(Number(this.settings.leagueGoalTarget)) ? this.settings.leagueGoalTarget : 2);
     this.renderTeamNavigation(); this.renderTeamCarousel(); this.updateProfilePreview(); this.updateHomeClub(); this.updateProfileValidity();
   }
@@ -321,6 +326,11 @@ export class UI {
       this.persist();
     });
     this.promo_code_form.addEventListener('submit', event => { event.preventDefault(); this.redeemPromoCode(); });
+    for(const [id,key] of [['music-enabled','musicEnabled'],['ambience-enabled','ambienceEnabled'],['controller-vibration','controllerVibration']]) document.getElementById(id).addEventListener('change',event=>{this.settings[key]=event.target.checked;this.persist();this.sound?.tick?.();});
+    for(const [id,key] of [['music-volume','musicVolume'],['ambience-volume','ambienceVolume'],['effects-volume','effectsVolume']]) document.getElementById(id).addEventListener('input',event=>{this.settings[key]=Number(event.target.value);document.getElementById(id+'-value').textContent=event.target.value+'%';this.persist();this.sound?.tick?.();});
+    document.getElementById('music-next').addEventListener('click',()=>{this.sound?.unlock?.();this.sound?.nextTrack?.();});
+    document.getElementById('controller-remap').addEventListener('click',()=>this.controller?.startMapping());
+    document.getElementById('controller-reset').addEventListener('click',()=>this.controller?.resetMapping());
     this.sound_enabled.addEventListener('change', () => { this.settings.sound = this.sound_enabled.checked; this.persist(); });
     this.volume.addEventListener('input', () => { this.settings.volume = Number(this.volume.value); this.volume_value.textContent = `${this.settings.volume}%`; this.persist(); });
     this.league_competition.addEventListener('change', () => {
@@ -926,6 +936,7 @@ export class UI {
 
   show(view) {
     this.currentView = view;
+    this.sound?.setScene?.(view === 'game' && !this.game?.state.paused ? 'game' : 'menu');
     document.querySelector('.rules-game-button')?.classList.toggle('hidden', this.currentMatchMode === 'online');
     if (this.game) {
       this.game.renderEnabled = view === 'game'; this.game.input.enabled = view === 'game' && !this.game.state.paused;
@@ -1480,7 +1491,7 @@ export class UI {
     this.countdown_banner.textContent = String(value); this.countdown_banner.classList.remove('hidden');
     this.countdown_banner.classList.remove('countdown-tick'); void this.countdown_banner.offsetWidth; this.countdown_banner.classList.add('countdown-tick');
   }
-  goal() { this.goal_banner.classList.remove('hidden'); setTimeout(() => this.goal_banner.classList.add('hidden'), 1500); }
+  goal() { this.controller?.rumble(.5,240); this.goal_banner.classList.remove('hidden'); setTimeout(() => this.goal_banner.classList.add('hidden'), 1500); }
 
   handleMatchEnd(result) {
     const won = result.winner === 'player';
@@ -1590,7 +1601,7 @@ export class UI {
         }).catch(error => { this.result_online_status.textContent = error?.message || 'No se pudo guardar el resultado.'; });
       }
     }
-    this.pause_overlay.classList.add('hidden'); this.result_overlay.classList.remove('hidden');
+    this.sound?.setScene?.('menu'); this.pause_overlay.classList.add('hidden'); this.result_overlay.classList.remove('hidden');
     this.renderAccount();
     if ((this.league?.status === 'next') || (this.tournament?.status === 'next')) this.saveCurrentCompetition();
     else if (result.mode === 'league' || result.mode === 'tournament') { clearCompetitionSave(); this.refreshContinueButton(null); }
@@ -1675,7 +1686,7 @@ export class UI {
 
   pause(paused) {
     if (!this.game?.state.running || this.currentMatchMode === 'online' || !this.result_overlay.classList.contains('hidden')) return;
-    this.game.setPaused(paused); this.pause_overlay.classList.toggle('hidden', !paused);
+    this.sound?.setScene?.(paused ? 'menu' : 'game'); this.game.setPaused(paused); this.pause_overlay.classList.toggle('hidden', !paused);
     if (paused) this.saveCurrentCompetition();
     document.getElementById('pause-button').textContent = paused ? '▶' : 'Ⅱ';
   }

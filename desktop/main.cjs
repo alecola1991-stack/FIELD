@@ -138,6 +138,18 @@ app.whenReady().then(async () => {
                 return box.width > 0 && !element.closest('.section-nav, .league-tabs, .country-tabs') && (box.left < -3 || box.right > innerWidth + 3);
               });
               if (overflow.length) throw new Error('Layout overflow: ' + view + ' ' + overflow.map(element => element.id || element.className).join(','));
+              if (view === 'settings') {
+                for (const id of ['music-volume', 'ambience-volume', 'effects-volume']) {
+                  const slider = document.getElementById(id); slider.value = '25'; slider.dispatchEvent(new Event('input', { bubbles: true }));
+                  if (document.getElementById(id + '-value').textContent !== '25%') throw new Error('Audio slider failed: ' + id);
+                }
+                const track = document.getElementById('music-track-name').textContent;
+                document.getElementById('music-next').click();
+                if (document.getElementById('music-track-name').textContent === track) throw new Error('Playlist did not advance');
+                document.getElementById('controller-reset').click();
+                const saved = JSON.parse(localStorage.getItem('field-settings'));
+                if (saved.musicVolume !== 25 || saved.ambienceVolume !== 25 || saved.effectsVolume !== 25 || saved.controllerMap.shoot !== 0) throw new Error('Audio/controller preferences did not save');
+              }
             }
             for (let attempt = 0; attempt < 100 && document.querySelector('#quick-screen').classList.contains('hidden'); attempt++) {
               document.querySelector('[data-action="bot"]').click();

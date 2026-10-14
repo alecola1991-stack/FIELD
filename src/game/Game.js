@@ -75,12 +75,13 @@ export class Game {
     this.botAI.setDifficulty(this.state.mode === 'legends' ? 'legend' : settings.difficulty); this.trajectory = !!settings.trajectory;
   }
   setPaused(paused) { this.state.paused = paused; this.input.enabled = !paused; this.last = 0; this.input.down.clear(); this.input.pressed.clear(); }
-  stop() { this.input.enabled = false; this.state.running = false; this.state.paused = false; this.trajectory = false; if (this.raf) cancelAnimationFrame(this.raf); this.raf = 0; this.last = 0; }
+  stop() { this.sound?.updateAmbience?.(null,null,false); this.input.enabled = false; this.state.running = false; this.state.paused = false; this.trajectory = false; if (this.raf) cancelAnimationFrame(this.raf); this.raf = 0; this.last = 0; }
   resetBall() { this.ball.reset(WORLD.width / 2, WORLD.height / 2); }
   resetPlayer() { if (this.player) { this.player.x = WORLD.width * .31; this.player.y = WORLD.height / 2; this.player.stop(); } }
   loop(time) {
     this.raf = requestAnimationFrame(this.boundLoop);
     if (!this.state.running) return;
+    this.sound?.updateAmbience?.(this.ball,this.world || WORLD,!this.state.paused && !this.state.matchOver && this.renderEnabled !== false);
     if (this.state.paused) { if (time - (this.pausedPaintAt || 0) < 100) return; this.pausedPaintAt = time; }
     const dt = this.last ? Math.min((time - this.last) / 1000, .033) : 0; this.last = time;
     if (!this.state.paused) {
@@ -89,7 +90,8 @@ export class Game {
         this.onlineInputClock += dt;
         const axes = this.input.axes();
         const changed = !this.lastOnlineAxes || axes.x !== this.lastOnlineAxes.x || axes.y !== this.lastOnlineAxes.y;
-        if (changed || this.onlinePendingKick || this.onlineInputClock >= .2) {
+        const discrete = [axes.x, axes.y].every(value => [-1, 0, 1].includes(value));
+        if (!this.lastOnlineAxes || (changed && (discrete || this.onlineInputClock >= ONLINE_PACKET_INTERVAL)) || this.onlinePendingKick || this.onlineInputClock >= .2) {
           this.onlineInputClock = 0; this.lastOnlineAxes = axes;
           this.hooks.onOnlineInput?.({ x: axes.x, y: axes.y, kick: this.onlinePendingKick });
           this.onlinePendingKick = false;

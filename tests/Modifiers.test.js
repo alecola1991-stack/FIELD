@@ -148,3 +148,33 @@ test('guest career goals use local scoring direction rather than the physical go
   ui.game.localSide = 'left'; ui.recordGoal(1);
   assert.equal(recorded[2], 1);
 });
+
+
+test('returning from an online match releases the room before stopping the game', () => {
+  const events = [];
+  const ui = Object.create(UI.prototype);
+  const overlay = { classList: { add() {} } };
+  Object.assign(ui, { currentMatchMode: 'online', onlineMatch: { leave: () => events.push('leave') },
+    game: { setPaused() {}, stop: () => events.push('stop') }, saveCurrentCompetition() {}, syncAccount() {}, show() {}, refreshContinueButton() {},
+    goal_banner: overlay, countdown_banner: overlay, pause_overlay: overlay, result_overlay: overlay });
+  ui.saveAndQuit();
+  assert.deepEqual(events, ['leave', 'stop']); assert.equal(ui.currentMatchMode, null);
+});
+
+test('continue accepts complete checkpoints and ignores incomplete or incompatible saves', async () => {
+  const { loadCompetitionSave, storeCompetitionSave } = await import('../src/game/CompetitionSave.js');
+  const previous = globalThis.localStorage;
+  let value = null;
+  globalThis.localStorage = { getItem: () => value, setItem: (_key, data) => { value = data; } };
+  try {
+    const game = fixture('league').captureSnapshot();
+    const save = { version: 1, competition: { mode: 'league', league: { status: 'playing', jornada: 1, opponents: [{}] } }, match: { mode: 'league' }, game };
+    storeCompetitionSave(save); assert.ok(loadCompetitionSave());
+    for (const damaged of [ { ...save, game: {} }, { ...save, match: { mode: 'bot' } },
+      { ...save, game: { ...game, ball: { x: null, y: 10 } } },
+      { ...save, competition: { mode: 'league', league: { status: 'complete', jornada: 1, opponents: [{}] } } } ]) {
+      storeCompetitionSave(damaged); assert.equal(loadCompetitionSave(), null);
+    }
+    value = '{bad json'; assert.equal(loadCompetitionSave(), null);
+  } finally { globalThis.localStorage = previous; }
+});

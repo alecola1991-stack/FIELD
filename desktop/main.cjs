@@ -1,8 +1,10 @@
-const { app, BrowserWindow, Menu, protocol, net, shell, session } = require('electron');
+const { app, BrowserWindow, Menu, protocol, net, shell, session, dialog } = require('electron');
 const { join, resolve, sep } = require('node:path');
 const { pathToFileURL } = require('node:url');
-const { mkdtempSync } = require('node:fs');
+const { mkdtempSync, readFileSync } = require('node:fs');
 const { tmpdir } = require('node:os');
+const { readCached, checkForUpdate, stageBundle } = require('./updates.cjs');
+const bundledBuild = require('./build-info.json');
 
 const smokeTest = process.argv.includes('--smoke-test');
 protocol.registerSchemesAsPrivileged([{ scheme: 'arcade', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
@@ -16,7 +18,36 @@ function external(url) {
 }
 
 app.whenReady().then(() => {
-  const root = resolve(__dirname, 'game');
+  const updateBase = join(app.getPath('userData'), 'game-updates');
+  const updatePackage = smokeTest && process.argv.find(argument => argument.startsWith('--update-package='));
+  if (updatePackage) stageBundle(updateBase, JSON.parse(readFileSync(updatePackage.slice('--update-package='.length), 'utf8')));
+  const cached = smokeTest && !updatePackage ? null : readCached(updateBase);
+  const current = cached && (updatePackage || cached.builtAt > bundledBuild.builtAt) ? cached : { ...bundledBuild, root: resolve(__dirname, 'game') };
+  const root = current.root;
+  let checking = false, pending = null;
+  async function updates(manual = false) {
+    if (checking || smokeTest) return;
+    checking = true;
+    try {
+      if (!pending) pending = await checkForUpdate({ fetch: (...args) => net.fetch(...args), current, base: updateBase });
+      if (pending) {
+        updateItem.label = 'Actualización lista · reiniciar juego';
+        if (manual) {
+          const { response } = await dialog.showMessageBox(window, { type: 'info', title: 'Actualización preparada',
+            message: 'La última versión del juego está descargada.', detail: 'Se aplicará al próximo inicio. Reiniciar cierra el partido actual; las competiciones se guardan y tu progreso se conserva.',
+            buttons: ['Más tarde', 'Reiniciar ahora'], defaultId: 0, cancelId: 0 });
+          if (response === 1) {
+            await window.webContents.executeJavaScript("window.dispatchEvent(new Event('pagehide'))");
+            app.relaunch({ execPath: process.env.PORTABLE_EXECUTABLE_FILE || process.execPath, args: process.argv.slice(1) }); app.quit();
+          }
+        }
+      } else if (manual) await dialog.showMessageBox(window, { type: 'info', title: 'Fútbol arcade', message: 'Ya tienes la última versión publicada del juego.' });
+    } catch (error) {
+      console.warn('Game update:', error.message);
+      if (manual) await dialog.showMessageBox(window, { type: 'info', title: 'Actualizaciones',
+        message: 'No se pudo comprobar la actualización.', detail: 'Puedes seguir jugando con tu copia local y volver a intentarlo cuando tengas conexión.' });
+    } finally { checking = false; }
+  }
   protocol.handle('arcade', request => {
     try {
       const url = new URL(request.url);
@@ -39,9 +70,11 @@ app.whenReady().then(() => {
     webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true },
   });
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    { label: 'Juego', submenu: [{ label: 'Salir', role: 'quit' }] },
+    { label: 'Juego', submenu: [{ id: 'game-update', label: 'Buscar actualizaciones', click: () => updates(true) }, { label: 'Salir', role: 'quit' }] },
     { label: 'Vista', submenu: [{ label: 'Pantalla completa', role: 'togglefullscreen' }, { label: 'Restablecer zoom', role: 'resetZoom' }] },
   ]));
+  const updateItem = Menu.getApplicationMenu().getMenuItemById('game-update');
+  if (!smokeTest && app.isPackaged) window.webContents.once('did-finish-load', () => { updates(); });
   window.webContents.setWindowOpenHandler(({ url }) => { external(url); return { action: 'deny' }; });
   window.webContents.on('will-navigate', (event, url) => {
     if (!url.startsWith('arcade://game/')) { event.preventDefault(); external(url); }

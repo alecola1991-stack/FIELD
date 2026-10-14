@@ -1,8 +1,8 @@
 export const MENU_PLAYLIST = Object.freeze([
- { name:'Neon Kickoff', bpm:112, roots:[48,53,55,50], melody:[72,76,79,76,74,72,69,72,74,79,77,74,72,69,67,69] },
- { name:'City Lights', bpm:104, roots:[45,48,53,52], melody:[69,72,76,79,76,72,74,76,77,76,72,69,67,69,72,74] },
- { name:'Stadium Dreams', bpm:96, roots:[50,55,48,53], melody:[74,77,81,79,77,74,72,69,72,74,77,76,74,72,69,72] },
- { name:'Final Pulse', bpm:124, roots:[43,48,50,46], melody:[67,70,74,77,74,70,67,65,67,70,72,74,77,74,70,67] },
+ { name: 'The Charm 68', artist: 'The Cynic Project', license: 'CC0-1.0', src: new URL('../assets/music/the-charm-68-01.mp3', import.meta.url).href, parts: [new URL('../assets/music/the-charm-68-01.mp3', import.meta.url).href, new URL('../assets/music/the-charm-68-02.mp3', import.meta.url).href, new URL('../assets/music/the-charm-68-03.mp3', import.meta.url).href, new URL('../assets/music/the-charm-68-04.mp3', import.meta.url).href, new URL('../assets/music/the-charm-68-05.mp3', import.meta.url).href, new URL('../assets/music/the-charm-68-06.mp3', import.meta.url).href] },
+ { name: 'Awake! (Megawall-10)', artist: 'The Cynic Project', license: 'CC0-1.0', src: new URL('../assets/music/awake.mp3', import.meta.url).href },
+ { name: 'Hyperflight Racing', artist: 'The Cynic Project', license: 'CC0-1.0', src: new URL('../assets/music/hyperflight-racing.mp3', import.meta.url).href },
+ { name: 'Hyper Ultra-Racing', artist: 'The Cynic Project', license: 'CC0-1.0', src: new URL('../assets/music/hyper-ultra-racing.mp3', import.meta.url).href },
 ]);
 export function goalExcitement(ball,world) {
  if(!ball || !world) return 0;

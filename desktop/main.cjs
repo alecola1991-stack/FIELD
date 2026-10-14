@@ -146,6 +146,10 @@ app.whenReady().then(async () => {
                 const track = document.getElementById('music-track-name').textContent;
                 document.getElementById('music-next').click();
                 if (document.getElementById('music-track-name').textContent === track) throw new Error('Playlist did not advance');
+                const recording = document.getElementById('menu-recording-audio');
+                if (!recording) throw new Error('Recorded music player was not created');
+                for (let attempt = 0; attempt < 100 && recording.readyState < 1; attempt++) await new Promise(resolve => setTimeout(resolve, 50));
+                if (recording.readyState < 1 || !Number.isFinite(recording.duration) || recording.duration < 20 || recording.error) throw new Error('Bundled MP3 did not decode offline');
                 document.getElementById('controller-reset').click();
                 const saved = JSON.parse(localStorage.getItem('field-settings'));
                 if (saved.musicVolume !== 25 || saved.ambienceVolume !== 25 || saved.effectsVolume !== 25 || saved.controllerMap.shoot !== 0) throw new Error('Audio/controller preferences did not save');

@@ -46,18 +46,18 @@ test('stadium excitement increases near both goals and respects vertical distanc
  assert.equal(goalExcitement({x:WORLD.left,y:WORLD.goalTop-300},WORLD),0);
  assert.equal(goalExcitement(null,WORLD),0);
 });
-test('playlist has four distinct original themes and volume never exceeds the safe range',()=>{
+test('playlist has four licensed bundled recordings and volume never exceeds the safe range',()=>{
  assert.equal(new Set(MENU_PLAYLIST.map(song=>song.name)).size,4);
- for(const song of MENU_PLAYLIST){assert.equal(song.melody.length,16);assert.equal(song.roots.length,4);assert.ok(song.bpm>0);}
+ for(const song of MENU_PLAYLIST){assert.equal(song.artist,'The Cynic Project');assert.equal(song.license,'CC0-1.0');assert.match(song.src,/\.mp3$/);}
  assert.equal(audioLevel(-10),0);assert.equal(audioLevel(300),1);assert.equal(audioLevel('bad',35),.35);
 });
 test('music is scheduled only in menus and the stadium bus is independent',()=>{
  const values={};const param=key=>({value:0,setTargetAtTime(v){values[key]=v;}});
- const sound=Object.create(Sound.prototype);let notes=0;
- Object.assign(sound,{track:0,step:0,nextNote:0,scene:'menu',voices:new Set(),excitement:1,matchActive:true,
+ const sound=Object.create(Sound.prototype);let playing=false;
+ Object.assign(sound,{track:0,step:0,nextNote:0,scene:'menu',excitement:1,matchActive:true,
  getSettings:()=>({sound:true,volume:100,musicVolume:35,ambienceVolume:50}),
- ctx:{state:'running',currentTime:10},master:{gain:param('master')},music:{gain:param('music')},crowd:{gain:param('crowd')},note(){notes++;}});
- sound.tick();assert.ok(notes>0);assert.equal(values.music,.35);assert.equal(values.crowd,0);
- notes=0;sound.setScene('game');sound.tick();assert.equal(notes,0);assert.equal(values.music,0);assert.ok(values.crowd>0);
+ ctx:{state:'running',currentTime:10},master:{gain:param('master')},music:{gain:param('music')},crowd:{gain:param('crowd')},menuPlayer:{sync(active){playing=active;}}});
+ sound.tick();assert.equal(playing,true);assert.equal(values.music,.35);assert.equal(values.crowd,0);
+ sound.setScene('game');sound.tick();assert.equal(playing,false);assert.equal(values.music,0);assert.ok(values.crowd>0);
  sound.getSettings=()=>({sound:false,volume:100});sound.tick();assert.equal(values.master,0);assert.equal(values.crowd,0);
 });

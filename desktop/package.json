@@ -1,8 +1,8 @@
 {
   "name": "futbol-arcade-desktop",
-  "version": "1.1.0",
-  "description": "Fútbol arcade para Windows",
-  "author": "Fútbol arcade",
+  "version": "1.1.1",
+  "description": "F\u00fatbol arcade para Windows",
+  "author": "F\u00fatbol arcade",
   "private": true,
   "main": "main.cjs",
   "scripts": {
@@ -39,7 +39,7 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "shortcutName": "Fútbol arcade"
+      "shortcutName": "F\u00fatbol arcade"
     },
     "portable": {
       "artifactName": "Futbol-Arcade-Portable-${version}.exe"

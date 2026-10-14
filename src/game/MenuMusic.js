@@ -12,7 +12,7 @@ export class MenuMusic {
   unlock() { this.blocked = false; }
   async loadParts(track, revision) {
     try {
-      const buffers = await Promise.all(track.parts.map(async url => {
+      const buffers = await Promise.all((track.parts || [track.src]).map(async url => {
         const response = await this.fetcher(url, { signal: this.abort.signal });
         if (!response.ok) throw new Error('Audio download failed');
         return response.arrayBuffer();
@@ -31,9 +31,8 @@ export class MenuMusic {
       this.audio.pause(); this.abort?.abort();
       if (this.objectURL) this.urls.revokeObjectURL(this.objectURL);
       this.objectURL = null; this.url = track.src; this.failed = false; this.revision++;
-      this.loading = Boolean(track.parts?.length); this.loadStarted = false;
-      if (this.loading) this.abort = new AbortController();
-      else { this.audio.src = track.src; this.audio.load(); }
+      this.loading = true; this.loadStarted = false;
+      this.abort = new AbortController();
     }
     if (this.loading && active && !this.loadStarted) { this.loadStarted = true; this.loadParts(track, this.revision); }
     if (!active) { this.audio.pause(); return; }

@@ -31,8 +31,8 @@ app.whenReady().then(async () => {
   const updatePackage = smokeTest && process.argv.find(argument => argument.startsWith('--update-package='));
   if (updatePackage) stageBundle(updateBase, JSON.parse(readFileSync(updatePackage.slice('--update-package='.length), 'utf8')));
   const cached = smokeTest && !updatePackage ? null : readCached(updateBase);
-  const current = cached && (updatePackage || cached.builtAt > bundledBuild.builtAt) ? cached : { ...bundledBuild, root: resolve(__dirname, 'game') };
-  const root = current.root;
+  let current = cached && (updatePackage || cached.builtAt > bundledBuild.builtAt) ? cached : { ...bundledBuild, root: resolve(__dirname, 'game') };
+  let root = current.root;
   let checking = false, pending = null;
   async function updates(manual = false) {
     if (checking || smokeTest) return;
@@ -83,12 +83,36 @@ app.whenReady().then(async () => {
     { label: 'Vista', submenu: [{ label: 'Pantalla completa', role: 'togglefullscreen' }, { label: 'Restablecer zoom', role: 'resetZoom' }] },
   ]));
   const updateItem = Menu.getApplicationMenu().getMenuItemById('game-update');
-  if (!smokeTest && app.isPackaged) window.webContents.once('did-finish-load', () => { updates(); });
   window.webContents.setWindowOpenHandler(({ url }) => { external(url); return { action: 'deny' }; });
   window.webContents.on('will-navigate', (event, url) => {
     if (!url.startsWith('arcade://game/')) { event.preventDefault(); external(url); }
   });
   window.webContents.on('render-process-gone', (_event, details) => { console.error(details.reason); if (smokeTest) app.exit(1); });
+  updateItem.enabled = false;
+  await window.loadFile(join(__dirname, 'startup.html'));
+  const startupStatus = (title, detail) => {
+    if (window.isDestroyed()) return;
+    window.webContents.executeJavaScript(`document.getElementById('startup-status').textContent = ${JSON.stringify(title)}; document.getElementById('startup-detail').textContent = ${JSON.stringify(detail)};`).catch(() => {});
+  };
+  if (smokeTest) {
+    const visible = await window.webContents.executeJavaScript("document.getElementById('startup-status')?.textContent === 'Buscando actualizaciones' && !document.getElementById('game-canvas')");
+    if (!visible) { console.error('Startup update screen failed'); app.exit(1); return; }
+  }
+  const started = Date.now();
+  try {
+    if (!smokeTest) {
+      const latest = await checkForUpdate({ fetch: (...args) => net.fetch(...args), current, base: updateBase, onStatus: startupStatus, timeout: 10000 });
+      if (latest) { current = latest; root = latest.root; }
+    }
+    await new Promise(resolve => setTimeout(resolve, Math.max(0, 700 - (Date.now() - started))));
+    startupStatus('Iniciando juego', 'Versión local preparada. ¡A jugar!');
+  } catch (error) {
+    console.warn('Startup update:', error.message);
+    startupStatus('No se pudo comprobar la actualización', 'Abriremos tu copia local. Puedes volver a comprobarlo desde Juego → Buscar actualizaciones.');
+    await new Promise(resolve => setTimeout(resolve, 1400));
+  }
+  if (window.isDestroyed()) return;
+  updateItem.enabled = true;
   if (smokeTest) {
     let seeded = false;
     window.webContents.on('did-fail-load', (_event, code, description) => { console.error(code, description); app.exit(1); });

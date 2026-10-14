@@ -66,3 +66,12 @@ La trayectoria de la pelota se activa en Ajustes (también aparece en el control
 Los efectos de sonido se sintetizan en el navegador; pueden sustituirse por archivos de audio dentro de `Sound.js` si se agregan recursos más adelante.
 
 El BOT cambia entre presión ofensiva y cobertura del arco; ajusta reacción, velocidad y precisión según dificultad. Los dos jugadores también rebotan y se separan físicamente al chocar. El campo de nombre ignora los atajos del juego mientras está enfocado, así puedes escribir cualquier letra sin restricción.
+
+
+## Actualizaciones de Windows (desde 1.2.0)
+
+Tanto Setup como Portable comprueban al abrirse el paquete `game-update.json` de la publicación `windows-latest` de este repositorio. Descargan en segundo plano las nuevas versiones del juego y las aplican al próximo inicio, sin interrumpir el partido actual. Juego → Buscar actualizaciones permite comprobarlo manualmente y reiniciar cuando esté preparado.
+
+La descarga se verifica con el SHA-256 publicado por GitHub y el de cada archivo. Un fallo de red o una descarga incompleta conserva la copia anterior. Se mantienen el mismo origen local y la carpeta de perfil, por lo que no se borran monedas, experiencia, ajustes ni competiciones. El juego actualizado queda disponible sin conexión. Cada compilación correcta de Windows publica el paquete después de probarlo.
+
+Las versiones 1.1.1 y anteriores requieren descargar una vez el instalador o Portable 1.2.0. Este sistema actualiza el juego; una actualización futura de Electron o del propio lanzador requiere descargar un nuevo ejecutable. En Portable, la actualización se guarda en el perfil de Windows de ese ordenador, por lo que al llevar el EXE a otro equipo se descargará allí de nuevo.

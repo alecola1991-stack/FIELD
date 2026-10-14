@@ -70,7 +70,7 @@ El BOT cambia entre presión ofensiva y cobertura del arco; ajusta reacción, ve
 
 ## Actualizaciones de Windows (desde 1.2.0)
 
-La versión Portable comprueba al abrirse el paquete `game-update.json` de la publicación `windows-latest` de este repositorio. Descarga en segundo plano las nuevas versiones del juego y las aplica al próximo inicio, sin interrumpir el partido actual. Juego → Buscar actualizaciones permite comprobarlo manualmente y reiniciar cuando esté preparado.
+Desde Portable 1.2.1 aparece «Buscando actualizaciones» antes del juego. La versión Portable comprueba al abrirse el paquete `game-update.json` de la publicación `windows-latest` de este repositorio. Descarga, verifica y aplica las nuevas versiones antes de abrir el juego. Si falla la conexión, muestra un aviso y abre la copia local. Juego → Buscar actualizaciones permite comprobarlo manualmente y reiniciar cuando esté preparado.
 
 La descarga se verifica con el SHA-256 publicado por GitHub y el de cada archivo. Un fallo de red o una descarga incompleta conserva la copia anterior. Se mantienen el mismo origen local y la carpeta de perfil, por lo que no se borran monedas, experiencia, ajustes ni competiciones. El juego actualizado queda disponible sin conexión. Cada compilación correcta de Windows publica el paquete después de probarlo.
 

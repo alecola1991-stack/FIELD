@@ -1,13 +1,13 @@
 {
   "name": "futbol-arcade-desktop",
-  "version": "1.1.1",
-  "description": "F\u00fatbol arcade para Windows",
-  "author": "F\u00fatbol arcade",
+  "version": "1.2.0",
+  "description": "Fútbol arcade para Windows",
+  "author": "Fútbol arcade",
   "private": true,
   "main": "main.cjs",
   "scripts": {
-    "start": "electron .",
-    "package:win": "node create-icon.cjs && electron-builder --win --x64 --publish never"
+    "start": "node create-update.cjs && electron .",
+    "package:win": "node create-update.cjs && node create-icon.cjs && electron-builder --win --x64 --publish never"
   },
   "devDependencies": {
     "electron": "44.7.0",
@@ -23,7 +23,9 @@
       "main.cjs",
       "game/**/*",
       "package.json",
-      "icon.png"
+      "icon.png",
+      "updates.cjs",
+      "build-info.json"
     ],
     "win": {
       "target": [
@@ -39,7 +41,7 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "shortcutName": "F\u00fatbol arcade"
+      "shortcutName": "Fútbol arcade"
     },
     "portable": {
       "artifactName": "Futbol-Arcade-Portable-${version}.exe"

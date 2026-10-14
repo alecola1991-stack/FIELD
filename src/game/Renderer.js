@@ -52,30 +52,27 @@ export class Renderer {
   }
   render(game, dt) {
     this.renderBlend = 1 - Math.exp(-24 * (dt > 0 ? Math.min(dt, .05) : 1 / 60));
-    this.effectTime = (this.effectTime || 0) + Math.min(Math.max(dt || 0, 0), .05);
     this.world = game.world || WORLD;
     const c = this.ctx, W = this.world; c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = '#0b1115'; c.fillRect(0, 0, this.canvas.width, this.canvas.height);
     c.setTransform(this.scale, 0, 0, this.scale, this.ox, this.oy);
     if (this.fieldCacheContext) {
-      const key = `${game.fieldTheme}|${game.competitionRound}|${game.cosmetics?.fieldTint}|${W.goalTop}|${W.goalBottom}|${W.goalBack}`;
-      if (key !== this.fieldCacheKey) { this.drawField(this.fieldCacheContext, game.fieldTheme, game.competitionRound, game.cosmetics); this.fieldCacheKey = key; }
+      const key = `${game.fieldTheme}|${game.competitionRound}|${W.goalTop}|${W.goalBottom}|${W.goalBack}`;
+      if (key !== this.fieldCacheKey) { this.drawField(this.fieldCacheContext, game.fieldTheme, game.competitionRound); this.fieldCacheKey = key; }
       c.drawImage(this.fieldCache, 0, 0);
-    } else this.drawField(c, game.fieldTheme, game.competitionRound, game.cosmetics);
+    } else this.drawField(c, game.fieldTheme, game.competitionRound);
     if (game.trajectory) this.drawTrajectory(c, game.ball);
     if (game.shotRangeTimer > 0) this.drawShotRange(c, game.player, game.ball, game.shotRangeTimer);
     const ballPosition = this.smooth(game.ball);
     if (game.shotPreview) this.drawShotPreview(c, game.player, game.ball, ballPosition);
-    if (game.cosmetics?.shotEffect && game.cosmetics.shotEffect !== 'off') this.drawShotEffect(c, game.ball, game.cosmetics.shotEffect, ballPosition);
     if (game.bot) this.drawPlayer(c, game.bot, game.bot.color);
-    this.drawPlayer(c, game.player, game.player.color, game.cosmetics?.playerEffect, game.cosmetics?.circleRelief, game.cosmetics?.playerTrail);
-    this.drawBall(c, game.ball, game.cosmetics?.ballSkin, ballPosition);
+    this.drawPlayer(c, game.player, game.player.color);
+    this.drawBall(c, game.ball, ballPosition);
     this.updateParticles(c, dt);
     if (game.goalTimer > 0) {
       c.fillStyle = `rgba(220,255,235,${Math.min(.075, game.goalTimer * .05)})`; c.fillRect(W.left, W.top, W.right - W.left, W.bottom - W.top);
-      this.drawGoalEffect(c, game.goalTimer, game.cosmetics?.goalEffect, game.goalSide);
     }
   }
-  drawField(c, themeName = 'arcade', round = 0, cosmetics = {}) {
+  drawField(c, themeName = 'arcade', round = 0) {
     const world = this.world || WORLD;
     const { left, right, top, bottom, goalTop, goalBottom, goalBack } = world;
     const theme = FIELD_THEMES[themeName] || FIELD_THEMES.arcade;
@@ -86,8 +83,6 @@ export class Renderer {
     c.fillStyle = theme.net; c.fillRect(goalBack, goalTop, left - goalBack, goalBottom - goalTop); c.fillRect(right, goalTop, world.width - goalBack - right, goalBottom - goalTop);
     c.save(); c.beginPath(); c.rect(left, top, right - left, bottom - top); c.clip();
     c.fillStyle = theme.grass; c.fillRect(left, top, right - left, bottom - top);
-    const tint = { mint: 'rgba(40,210,133,.15)', dusk: 'rgba(105,86,210,.19)', lagoon: 'rgba(20,166,195,.17)' }[cosmetics.fieldTint];
-    if (tint) { c.fillStyle = tint; c.fillRect(left, top, right - left, bottom - top); }
     const stripe = (right - left) / 10;
     for (let i = 0; i < 10; i += 2) { c.fillStyle = theme.stripe; c.fillRect(left + i * stripe, top, stripe, bottom - top); }
     c.restore();
@@ -120,11 +115,9 @@ export class Renderer {
     const blend = this.renderBlend ?? .33; entity._rx += (entity.x - entity._rx) * blend; entity._ry += (entity.y - entity._ry) * blend;
     return [entity._rx, entity._ry];
   }
-  drawPlayer(c, player, color, effect = 'off', relief = 'off', trail = 'off') {
+  drawPlayer(c, player, color) {
     const [x, y] = this.smooth(player), r = player.radius, kick = player.kickScale || 0;
-    this.drawPlayerTrail(c, player, x, y, trail !== 'off' ? trail : effect === 'speed' ? 'speed' : 'off', color);
     c.save(); c.translate(x, y);
-    this.drawPlayerAura(c, r, effect);
     c.fillStyle = '#0005'; c.beginPath(); c.ellipse(2, 8, r * 1.05, r * .82, 0, 0, Math.PI * 2); c.fill();
     c.scale(1 + kick * .18, 1 - kick * .1);
     c.shadowColor = color + '55'; c.shadowBlur = 15;
@@ -132,7 +125,6 @@ export class Renderer {
     c.fillStyle = grad; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill(); c.shadowBlur = 0;
     if (player.secondaryColor) this.drawKitPattern(c, player, r, color);
     c.strokeStyle = '#ffffff70'; c.lineWidth = 1.5; c.stroke();
-    this.drawPlayerRelief(c, r, relief);
     const numberColor = player.numberColor || readable(color);
     const whiteDorsal = [numberColor, color, player.secondaryColor].some(value => /^#(?:fff|ffffff|f5fff8|f7f7f7|f4f3ee|f4f2e9)$/i.test(value || ''));
     const dorsalOutline = whiteDorsal ? '#000000' : readable(numberColor) === '#f5fff8' ? 'rgba(255,255,255,.98)' : 'rgba(5,12,10,.95)';
@@ -174,108 +166,15 @@ export class Renderer {
     }
     c.restore();
   }
-  drawBall(c, ball, skin = 'classic', position = null) {
+  drawBall(c, ball, position = null) {
     const [x, y] = position || this.smooth(ball), r = ball.radius;
     c.save(); c.translate(x, y); c.fillStyle = '#0007'; c.beginPath(); c.ellipse(2, 5, r * 1.08, r * .76, 0, 0, Math.PI * 2); c.fill();
     c.rotate(ball.spin); c.scale(1 + ball.kickScale * .16, 1 - ball.kickScale * .12);
-    const ballStyles = { gold: ['#f3c85e', '#704d14', '#ffd76caa'], lava: ['#f4773f', '#512019', '#ff653dcc'], ice: ['#b9edf1', '#176276', '#7feeffcc'], cosmic: ['#ab78ed', '#241451', '#c38effcc'], carbon: ['#69757a', '#172024', '#b5d1d566'], pearl: ['#f4e6ff', '#8d78bb', '#dfbcff88'], emerald: ['#83e9ad', '#125d42', '#5efba688'] };
     const sizeScale = r / 12;
-    const [ballColor, patchColor, glow] = ballStyles[skin] || ['#e8eee9', '#23352d', '#e9f4ee70'];
-    c.shadowColor = glow; c.shadowBlur = skin === 'classic' ? 9 : 16; c.fillStyle = ballColor; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill(); c.shadowBlur = 0;
+    const [ballColor, patchColor, glow] = ['#e8eee9', '#23352d', '#e9f4ee70'];
+    c.shadowColor = glow; c.shadowBlur = 9; c.fillStyle = ballColor; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill(); c.shadowBlur = 0;
     c.fillStyle = patchColor; c.beginPath(); c.arc(0, 0, 3.3 * sizeScale, 0, Math.PI * 2); c.fill();
     for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5; c.beginPath(); c.arc(Math.cos(a) * 7 * sizeScale, Math.sin(a) * 7 * sizeScale, 2.1 * sizeScale, 0, Math.PI * 2); c.fill(); }
-    c.restore();
-  }
-  trailPoints(entity, x, y, lifetime = .22) {
-    const time = this.effectTime || 0, speed = Math.hypot(entity.vx || 0, entity.vy || 0);
-    let points = (entity._cosmeticTrail || []).filter(point => time - point.time <= lifetime);
-    if (speed < 35 || points.length && Math.hypot(x - points[0].x, y - points[0].y) > 100) points = [];
-    // A reversal or bounce must never leave a tail ahead of the moving body.
-    if (points.some(point => (point.x - x) * entity.vx + (point.y - y) * entity.vy > 2 * speed)) points = [];
-    if (!points.length || Math.hypot(x - points[0].x, y - points[0].y) > 1) points.unshift({ x, y, time });
-    entity._cosmeticTrail = points.slice(0, 16);
-    return entity._cosmeticTrail;
-  }
-  drawShotEffect(c, ball, effect, position = null) {
-    const [x, y] = position || [ball._rx ?? ball.x, ball._ry ?? ball.y];
-    const points = this.trailPoints(ball, x, y);
-    const speed = Math.hypot(ball.vx, ball.vy); if (speed < 105 || points.length < 2) return;
-    const colors = { fire: '#ff9b55', neon: '#68e8ff', lightning: '#f4ef75', aurora: '#8c90ff', plasma: '#f77ee5', ice: '#a1f4ff', rainbow: '#87ffd8' };
-    c.save(); c.lineCap = 'round'; c.lineJoin = 'round';
-    for (let i = points.length - 1; i > 0; i--) {
-      const older = points[i], newer = points[i - 1], fade = Math.max(0, 1 - ((this.effectTime || 0) - older.time) / .22);
-      const color = effect === 'rainbow' ? `hsl(${((this.effectTime || 0) * 100 + i * 28) % 360} 95% 72%)` : colors[effect] || colors.neon;
-      c.globalAlpha = fade * Math.min(.8, speed / 650); c.strokeStyle = color; c.shadowColor = color; c.shadowBlur = 8;
-      c.lineWidth = (effect === 'fire' ? 9 : effect === 'lightning' ? 3 : 6) * (.25 + fade * .75);
-      c.beginPath(); c.moveTo(newer.x, newer.y);
-      if (effect === 'lightning') {
-        const dx = older.x - newer.x, dy = older.y - newer.y, length = Math.hypot(dx, dy) || 1;
-        const wobble = Math.sin(i * 3 + (this.effectTime || 0) * 35) * 3;
-        c.lineTo((newer.x + older.x) / 2 - dy / length * wobble, (newer.y + older.y) / 2 + dx / length * wobble);
-      }
-      c.lineTo(older.x, older.y); c.stroke();
-      if (effect === 'aurora' || effect === 'plasma') {
-        c.globalAlpha *= .5; c.strokeStyle = '#ffffff'; c.lineWidth *= .3; c.stroke();
-      }
-    }
-    c.restore();
-  }
-  drawPlayerTrail(c, player, x, y, effect, color) {
-    if (!effect || effect === 'off') return;
-    const points = this.trailPoints(player, x, y, .3), speed = Math.hypot(player.vx || 0, player.vy || 0);
-    if (speed < 35 || points.length < 2) return;
-    const tint = { speed: color, comet: '#c4a1ff', storm: '#7eeaff', sparks: '#ffc06e' }[effect] || color;
-    c.save(); c.lineCap = 'round'; c.strokeStyle = tint; c.shadowColor = tint; c.shadowBlur = 6;
-    for (let i = points.length - 1; i > 0; i--) {
-      const fade = Math.max(0, 1 - ((this.effectTime || 0) - points[i].time) / .3);
-      c.globalAlpha = fade * .45; c.lineWidth = player.radius * (.15 + fade * .65);
-      c.beginPath(); c.moveTo(points[i - 1].x, points[i - 1].y); c.lineTo(points[i].x, points[i].y); c.stroke();
-      if (effect !== 'speed') {
-        c.globalAlpha = fade * .8; c.fillStyle = tint;
-        const angle = i * 2.4 + (this.effectTime || 0) * 5, offset = 7 * (1 - fade);
-        c.beginPath(); c.arc(points[i].x + Math.cos(angle) * offset, points[i].y + Math.sin(angle) * offset, 1 + fade * 1.8, 0, Math.PI * 2); c.fill();
-      }
-    }
-    c.restore();
-  }
-  drawPlayerAura(c, r, effect) {
-    if (!['halo', 'orbit', 'pulse', 'cosmic', 'flame'].includes(effect)) return;
-    const time = this.effectTime || 0, pulse = Math.sin(time * 3.5), radius = r + 5 + pulse * 2;
-    const tint = { halo: '#8effc3', orbit: '#79dfff', pulse: '#ff91ce', cosmic: '#c0a1ff', flame: '#ffb15b' }[effect];
-    c.save(); c.strokeStyle = tint; c.fillStyle = tint; c.shadowColor = tint; c.shadowBlur = 9 + pulse * 3; c.lineWidth = 2;
-    c.globalAlpha = .6 + pulse * .17;
-    c.beginPath(); c.arc(0, 0, radius, time * .8, time * .8 + Math.PI * 1.7); c.stroke();
-    if (effect === 'pulse') {
-      const phase = (time * .7) % 1; c.globalAlpha = (1 - phase) * .45;
-      c.beginPath(); c.arc(0, 0, r + 6 + phase * 14, 0, Math.PI * 2); c.stroke();
-    } else {
-      for (let i = 0; i < (effect === 'flame' ? 7 : 3); i++) {
-        const angle = time * (effect === 'cosmic' ? -1.4 : 1.8) + i * Math.PI * 2 / (effect === 'flame' ? 7 : 3);
-        const distance = radius + Math.sin(time * 5 + i) * 2;
-        c.globalAlpha = .7; c.beginPath(); c.arc(Math.cos(angle) * distance, Math.sin(angle) * distance, effect === 'flame' ? 2.4 : 2, 0, Math.PI * 2); c.fill();
-      }
-    }
-    c.restore();
-  }
-  drawPlayerRelief(c, r, relief) {
-    if (!relief || relief === 'off') return;
-    const colors = { raised: ['#10251c', '#d8f4e4'], gold: ['#6e4611', '#ffe39a'], chrome: ['#374552', '#e6f7ff'], obsidian: ['#05070d', '#a394dd'], prism: ['#525683', '#9af2ee'] };
-    const palette = colors[relief]; if (!palette) return;
-    c.save(); c.lineWidth = 4; c.strokeStyle = palette[0]; c.shadowColor = '#0009'; c.shadowBlur = 5; c.shadowOffsetY = 2;
-    c.beginPath(); c.arc(0, 0, r - 1, 0, Math.PI * 2); c.stroke();
-    c.shadowBlur = 0; c.shadowOffsetY = 0; c.lineWidth = 2; c.strokeStyle = palette[1];
-    c.beginPath(); c.arc(0, 0, r - 2, Math.PI * 1.05, Math.PI * 1.95); c.stroke();
-    if (relief === 'prism') { c.globalAlpha = .7; c.strokeStyle = `hsl(${((this.effectTime || 0) * 40) % 360} 85% 75%)`; c.beginPath(); c.arc(0, 0, r - 2, 0, Math.PI * 2); c.stroke(); }
-    c.restore();
-  }
-  drawGoalEffect(c, timer, effect, goalSide) {
-    if (!effect || effect === 'off') return;
-    const progress = Math.max(0, Math.min(1, 1 - timer / 1.25)), alpha = 1 - progress, color = effect === 'fireworks' ? '#ffb76f' : '#8effc1';
-    c.save(); c.globalAlpha = alpha * .82; c.strokeStyle = color; c.lineWidth = 3;
-    const world = this.world || WORLD;
-    const x = goalSide === -1 ? world.left + 24 : world.right - 24;
-    const radius = 18 + progress * 118; c.beginPath(); c.arc(x, WORLD.height / 2, radius, 0, Math.PI * 2); c.stroke();
-    if (effect === 'fireworks') for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4 + progress * .5, inner = radius + 5, outer = radius + 13 + progress * 16; c.strokeStyle = ['#ffbd63', '#ff73ad', '#7ce8ff', '#b89cff'][i % 4]; c.beginPath(); c.moveTo(x + Math.cos(a) * inner, WORLD.height / 2 + Math.sin(a) * inner); c.lineTo(x + Math.cos(a) * outer, WORLD.height / 2 + Math.sin(a) * outer); c.stroke(); }
     c.restore();
   }
   drawTrajectory(c, ball) {

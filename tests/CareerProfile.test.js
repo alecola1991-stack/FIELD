@@ -26,68 +26,13 @@ test('trophy awards are unique and persist with their date', () => {
   assert.ok(Number.isFinite(Date.parse(reloaded.trophies[0].date)));
 });
 
-test('play coins, purchases, and unlocked cosmetics persist and merge idempotently', () => {
-  memoryStorage();
-  const profile = new CareerProfile();
-  profile.recordMatch(true);
-  profile.earnCoins(60);
-  assert.equal(profile.stats.coinsEarned - profile.stats.coinsSpent, 90);
-  assert.equal(profile.buyItem('circle-raised', 80), true);
-  assert.equal(profile.stats.coinsEarned - profile.stats.coinsSpent, 10);
-  profile.equipItem('circle-raised', 'circleRelief', 'raised');
-  const snapshot = profile.toJSON();
-  profile.merge(snapshot);
-  const restored = new CareerProfile();
-  assert.equal(restored.stats.coinsEarned - restored.stats.coinsSpent, 10);
-  assert.deepEqual(restored.ownedItems, ['circle-raised']);
-  assert.equal(restored.equipped.circleRelief, 'raised');
-});
-
-test('cosmetics cannot be bought without enough earned coins', () => {
-  memoryStorage();
-  const profile = new CareerProfile();
-  profile.earnCoins(79);
-  assert.equal(profile.buyItem('circle-raised', 80), false);
-  assert.deepEqual(profile.ownedItems, []);
-  profile.earnCoins(1);
-  assert.equal(profile.buyItem('circle-raised', 80), true);
-  assert.equal(profile.stats.coinsEarned - profile.stats.coinsSpent, 0);
-  assert.equal(profile.buyItem('circle-raised', 80), false);
-});
-
-test('new cosmetic equipment slots persist with safe defaults', () => {
-  memoryStorage();
-  const profile = new CareerProfile();
-  profile.equipped = { ...profile.equipped, fieldTint: 'lagoon', shotEffect: 'aurora', ballSkin: 'cosmic', playerEffect: 'halo', goalEffect: 'fireworks', circleRelief: 'gold' };
-  profile.save();
-  const restored = new CareerProfile();
-  assert.deepEqual(restored.equipped, { circleRelief: 'gold', fieldTint: 'lagoon', shotEffect: 'aurora', ballSkin: 'cosmic', playerEffect: 'halo', playerTrail: 'off', goalEffect: 'fireworks' });
-});
-
-test('promo code grants its coins once and merges idempotently across devices', () => {
-  memoryStorage();
-  const firstDevice = new CareerProfile('player');
-  assert.deepEqual(firstDevice.redeemPromoCode('ADMINxela1721'), { ok: true, coins: 90000, balance: 90000 });
-  assert.equal(firstDevice.redeemPromoCode('adminxela1721').reason, 'used');
-
-  const savedFirstDevice = firstDevice.toJSON();
-  memoryStorage();
-  const secondDevice = new CareerProfile('player');
-  assert.equal(secondDevice.redeemPromoCode('ADMINxela1721').ok, true);
-  secondDevice.merge(savedFirstDevice);
-  assert.equal(secondDevice.stats.coinsEarned - secondDevice.stats.coinsSpent, 90000);
-  assert.equal(secondDevice.redeemPromoCode('ADMINxela1721').reason, 'used');
-  assert.equal(new CareerProfile('player').stats.coinsEarned, 90000);
-});
-
-test('competition missions give coins and XP progress once and survive profile merge', () => {
+test('competition missions give XP progress once and survive profile merge', () => {
   memoryStorage();
   const profile = new CareerProfile('missions-player');
   assert.deepEqual(profile.processMissionEvent({ competitionMode: true, won: true }), []);
   assert.deepEqual(profile.processMissionEvent({ competitionMode: true, won: true }), []);
   const earned = profile.processMissionEvent({ competitionMode: true, won: true });
   assert.equal(earned[0].id, 'competition-wins');
-  assert.equal(profile.stats.coinsEarned, 100);
   assert.deepEqual(profile.processMissionEvent({ competitionMode: true, won: true }), []);
   profile.processMissionEvent({ competitionId: 'champions', isFinal: true, playerGoals: 1 });
   profile.processMissionEvent({ competitionId: 'world-cup', isChampion: true });
@@ -96,27 +41,23 @@ test('competition missions give coins and XP progress once and survive profile m
   const merged = new CareerProfile('missions-remote'); merged.merge(snapshot);
   assert.equal(merged.missions['competition-wins'].completed, true);
   assert.equal(merged.missions['league-champion:laliga-barcelona'].completed, true);
-  assert.equal(merged.stats.coinsEarned, 770);
 });
 
-test('new cosmetic variants persist and an aura can coexist with a player trail', () => {
+test('old economy data is removed on load and cloud merge without losing career or missions', () => {
   memoryStorage();
+  const legacy = { stats: { matches: 8, wins: 5, coinsEarned: 90000, coinsSpent: 100 },
+    ownedItems: ['ball-gold'], equipped: { ballSkin: 'gold' }, redeemedCodes: ['old-code'],
+    trophies: [{ id: 'first-win', name: 'Victoria' }], missions: { 'competition-wins': { progress: 3, completed: true } } };
+  localStorage.setItem('field-career-profile', JSON.stringify(legacy));
   const profile = new CareerProfile();
-  profile.equipped = { ...profile.equipped, circleRelief: 'prism', shotEffect: 'rainbow', ballSkin: 'emerald', playerEffect: 'orbit', playerTrail: 'comet' };
-  profile.save();
-  const restored = new CareerProfile();
-  assert.equal(restored.equipped.circleRelief, 'prism');
-  assert.equal(restored.equipped.shotEffect, 'rainbow');
-  assert.equal(restored.equipped.ballSkin, 'emerald');
-  assert.equal(restored.equipped.playerEffect, 'orbit');
-  assert.equal(restored.equipped.playerTrail, 'comet');
-});
-
-test('existing speed cosmetics migrate to the independent player trail slot', () => {
-  memoryStorage();
-  const profile = new CareerProfile();
-  profile.equipped = { playerEffect: 'speed' }; profile.save();
-  const restored = new CareerProfile();
-  assert.equal(restored.equipped.playerTrail, 'speed');
-  assert.equal(restored.equipped.playerEffect, 'off');
+  for (const incoming of [legacy, { ...legacy, shards: { device: legacy.stats, 'promo:old-code': { coinsEarned: 90000 } } }]) {
+    profile.merge(incoming);
+    const data = profile.toJSON();
+    for (const key of ['ownedItems', 'equipped', 'redeemedCodes']) assert.equal(key in data, false);
+    assert.equal('coinsEarned' in data.stats, false); assert.equal('coinsSpent' in data.stats, false);
+    assert.equal(Object.keys(data.shards).some(key => key.startsWith('promo:')), false);
+    assert.equal(data.trophies[0].id, 'first-win'); assert.equal(data.missions['competition-wins'].completed, true);
+  }
+  assert.ok(new CareerProfile().stats.wins >= 5);
+  assert.equal(JSON.stringify(JSON.parse(localStorage.getItem('field-career-profile'))).includes('coins'), false);
 });

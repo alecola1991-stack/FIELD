@@ -16,10 +16,10 @@ export function setSettingsScope(scope) {
 export function loadSettings() {
   try {
     const stored = JSON.parse(localStorage.getItem(storageKey()) || '{}');
-    delete stored.color;
+    delete stored.color; delete stored.cosmetics;
     return { ...defaults, ...stored };
   } catch { return { ...defaults }; }
 }
 export function saveSettings(value) {
-  try { const { color, ...profile } = value; localStorage.setItem(storageKey(), JSON.stringify(profile)); } catch { /* storage can be unavailable in private contexts */ }
+  try { const { color, cosmetics, ...profile } = value; localStorage.setItem(storageKey(), JSON.stringify(profile)); } catch { /* storage can be unavailable in private contexts */ }
 }

@@ -1,8 +1,7 @@
 import { MISSION_DEFINITIONS, getLeagueMission } from './Missions.js';
 
 const BASE_KEY = 'field-career-profile';
-const statKeys = ['matches', 'wins', 'losses', 'goalsFor', 'goalsAgainst', 'trainingGoals', 'leagueSeasons', 'timePlayedSeconds', 'bestScore', 'coinsEarned', 'coinsSpent'];
-const PROMO_CODES = { adminxela1721: { coins: 90000 } };
+const statKeys = ['matches', 'wins', 'losses', 'goalsFor', 'goalsAgainst', 'trainingGoals', 'leagueSeasons', 'timePlayedSeconds', 'bestScore'];
 
 export class CareerProfile {
   constructor(scope = 'guest') { this.scope = normalizeScope(scope); this.load(); }
@@ -16,10 +15,8 @@ export class CareerProfile {
     if (!Object.keys(this.shards).length) this.shards.legacy = normalizeStats(saved.stats);
     this.stats = sumShards(this.shards);
     this.trophies = Array.isArray(saved.trophies) ? saved.trophies.filter(item => item && typeof item.id === 'string').slice(0, 200) : [];
-    this.ownedItems = Array.isArray(saved.ownedItems) ? [...new Set(saved.ownedItems.filter(item => typeof item === 'string'))] : [];
-    this.equipped = normalizeEquipped(saved.equipped);
-    this.redeemedCodes = normalizeRedeemedCodes(saved.redeemedCodes);
     this.missions = normalizeMissions(saved.missions);
+    this.save(); // Persist the normalized profile without retired economy data.
   }
 
   setScope(scope) { this.scope = normalizeScope(scope); this.load(); }
@@ -34,10 +31,8 @@ export class CareerProfile {
   recordMatch(won, { playerScore = 0, elapsedSeconds = 0 } = {}) {
     const shard = this.deviceShard(); shard.matches++; shard[won ? 'wins' : 'losses']++;
     shard.timePlayedSeconds += safeCount(elapsedSeconds); shard.bestScore = Math.max(shard.bestScore, safeCount(playerScore));
-    this.earnCoins(20 + (won ? 10 : 0));
     this.refreshStats(); this.save();
   }
-  earnCoins(amount) { this.deviceShard().coinsEarned += safeCount(amount); this.refreshStats(); this.save(); }
   processMissionEvent(event = {}) {
     const completed = [];
     const advance = (definition, amount = 1) => {
@@ -46,8 +41,6 @@ export class CareerProfile {
       state.progress = Math.min(definition.goal, state.progress + safeCount(amount));
       if (state.progress >= definition.goal) {
         state.completed = true;
-        const rewardShard = this.shards[`mission:${definition.id}`] || (this.shards[`mission:${definition.id}`] = normalizeStats({}));
-        rewardShard.coinsEarned = Math.max(rewardShard.coinsEarned, definition.coins);
         completed.push({ ...definition });
       }
     };
@@ -57,27 +50,6 @@ export class CareerProfile {
     if (event.leagueId && event.isLeagueChampion) advance(getLeagueMission(event.teamId));
     this.refreshStats(); this.save();
     return completed;
-  }
-  redeemPromoCode(value) {
-    const code = String(value || '').trim().toLowerCase();
-    const reward = PROMO_CODES[code];
-    if (!reward) return { ok: false, reason: 'invalid' };
-    if (this.redeemedCodes.includes(code)) return { ok: false, reason: 'used' };
-    const shardId = `promo:${code}`;
-    const shard = this.shards[shardId] || (this.shards[shardId] = normalizeStats({}));
-    shard.coinsEarned = Math.max(shard.coinsEarned, reward.coins);
-    this.redeemedCodes.push(code);
-    this.refreshStats(); this.save();
-    return { ok: true, coins: reward.coins, balance: this.stats.coinsEarned - this.stats.coinsSpent };
-  }
-  buyItem(id, cost) {
-    const price = safeCount(cost);
-    if (this.ownedItems.includes(id) || this.stats.coinsEarned - this.stats.coinsSpent < price) return false;
-    this.deviceShard().coinsSpent += price; this.ownedItems.push(id); this.refreshStats(); this.save(); return true;
-  }
-  equipItem(id, slot, value) {
-    if (!this.ownedItems.includes(id)) return false;
-    this.equipped = { ...this.equipped, [slot]: value }; this.save(); return true;
   }
   recordLeagueSeason() { this.deviceShard().leagueSeasons++; this.refreshStats(); this.save(); }
   ensureProgressionWins(wins) {
@@ -92,16 +64,13 @@ export class CareerProfile {
   toJSON() {
     const shards = {};
     for (const [device, stats] of Object.entries(this.shards)) shards[device] = { ...stats };
-    return { stats: { ...this.stats }, shards, trophies: this.trophies.map(item => ({ ...item })), ownedItems: [...this.ownedItems], equipped: { ...this.equipped }, redeemedCodes: [...this.redeemedCodes], missions: structuredClone(this.missions) };
+    return { stats: { ...this.stats }, shards, trophies: this.trophies.map(item => ({ ...item })), missions: structuredClone(this.missions) };
   }
   apply(value = {}) {
     this.shards = normalizeShards(value.shards);
     if (!Object.keys(this.shards).length) this.shards.legacy = normalizeStats(value.stats);
     this.refreshStats();
     this.trophies = Array.isArray(value.trophies) ? value.trophies.filter(item => item && typeof item.id === 'string').slice(0, 200) : [];
-    this.ownedItems = Array.isArray(value.ownedItems) ? [...new Set(value.ownedItems.filter(item => typeof item === 'string'))] : [];
-    this.equipped = normalizeEquipped(value.equipped);
-    this.redeemedCodes = normalizeRedeemedCodes(value.redeemedCodes);
     this.missions = normalizeMissions(value.missions);
     this.save();
   }
@@ -117,9 +86,6 @@ export class CareerProfile {
     for (const trophy of value.trophies || []) if (trophy && typeof trophy.id === 'string' && !known.has(trophy.id)) { this.trophies.push(trophy); known.add(trophy.id); }
     this.trophies.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
     this.trophies = this.trophies.slice(0, 200); this.save();
-    this.ownedItems = [...new Set([...this.ownedItems, ...(Array.isArray(value.ownedItems) ? value.ownedItems.filter(item => typeof item === 'string') : [])])];
-    this.equipped = { ...normalizeEquipped(value.equipped), ...this.equipped };
-    this.redeemedCodes = [...new Set([...this.redeemedCodes, ...normalizeRedeemedCodes(value.redeemedCodes)])];
     const incomingMissions = normalizeMissions(value.missions);
     for (const [id, incoming] of Object.entries(incomingMissions)) {
       const current = this.missions[id] || { progress: 0, completed: false };
@@ -135,21 +101,9 @@ export class CareerProfile {
 function safeCount(value) { return Number.isFinite(Number(value)) ? Math.max(0, Math.min(1_000_000_000, Math.floor(Number(value)))) : 0; }
 function normalizeScope(scope) { return scope && scope !== 'guest' ? String(scope).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 100) || 'guest' : 'guest'; }
 function normalizeStats(value = {}) { return Object.fromEntries(statKeys.map(key => [key, safeCount(value?.[key])])); }
-function normalizeRedeemedCodes(value) { return Array.isArray(value) ? [...new Set(value.filter(code => typeof code === 'string').map(code => code.trim().toLowerCase()).filter(code => Object.hasOwn(PROMO_CODES, code)))].slice(0, 100) : []; }
-function normalizeEquipped(value = {}) {
-  return {
-    circleRelief: ['off', 'raised', 'gold', 'chrome', 'obsidian', 'prism'].includes(value?.circleRelief) ? value.circleRelief : 'off',
-    fieldTint: ['off', 'mint', 'dusk', 'lagoon'].includes(value?.fieldTint) ? value.fieldTint : 'off',
-    shotEffect: ['off', 'neon', 'fire', 'lightning', 'aurora', 'plasma', 'ice', 'rainbow'].includes(value?.shotEffect) ? value.shotEffect : 'off',
-    ballSkin: ['classic', 'gold', 'lava', 'ice', 'cosmic', 'carbon', 'pearl', 'emerald'].includes(value?.ballSkin) ? value.ballSkin : 'classic',
-    playerEffect: ['off', 'halo', 'orbit', 'pulse', 'cosmic', 'flame'].includes(value?.playerEffect) ? value.playerEffect : 'off',
-    playerTrail: ['off', 'speed', 'comet', 'storm', 'sparks'].includes(value?.playerTrail) ? value.playerTrail : value?.playerEffect === 'speed' ? 'speed' : 'off',
-    goalEffect: ['off', 'shockwave', 'fireworks'].includes(value?.goalEffect) ? value.goalEffect : 'off',
-  };
-}
 function normalizeShards(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
-  return Object.fromEntries(Object.entries(value).slice(0, 100).filter(([id, stats]) => typeof id === 'string').map(([id, stats]) => [id.slice(0, 100), normalizeStats(stats)]));
+  return Object.fromEntries(Object.entries(value).slice(0, 100).filter(([id, stats]) => typeof id === 'string' && !id.startsWith('promo:') && !id.startsWith('mission:')).map(([id, stats]) => [id.slice(0, 100), normalizeStats(stats)]));
 }
 function normalizeMissions(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};

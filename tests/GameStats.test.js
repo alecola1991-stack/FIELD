@@ -24,15 +24,6 @@ test('competition match summary tracks shots and records scorer and goal minute'
   });
 });
 
-test('goal celebration draws its wave at the goal that was scored', () => {
-  for (const [side, expectedX] of [[-1, WORLD.left + 24], [1, WORLD.right - 24]]) {
-    const arcXs = [];
-    const context = { save() {}, restore() {}, beginPath() {}, stroke() {}, arc(x) { arcXs.push(x); } };
-    Renderer.prototype.drawGoalEffect.call({}, context, 1, 'shockwave', side);
-    assert.deepEqual(arcXs, [expectedX]);
-  }
-});
-
 test('player name and larger dorsal are drawn inside the circle in the team color', () => {
   const texts = []; let clipped = false;
   const context = new Proxy({
@@ -104,4 +95,18 @@ test('ball update keeps the extra fire-shot speed instead of clipping it to the 
   ball.update(1 / 60);
   assert.ok(ball.vx > 663);
   assert.ok(ball.vx < 800);
+});
+
+test('default match renders players and ball without a cosmetic inventory', async () => {
+  const { Player } = await import('../src/game/Player.js');
+  const circles = [];
+  const ctx = new Proxy({
+    createRadialGradient() { return { addColorStop() {} }; },
+    arc(x, y, radius) { assert.ok(Number.isFinite(radius)); circles.push(radius); },
+  }, { get(target, key) { return key in target ? target[key] : () => {}; } });
+  const renderer = Object.create(Renderer.prototype);
+  Object.assign(renderer, { ctx, canvas: { width: 1140, height: 700 }, scale: 1, ox: 0, oy: 0, particles: [] });
+  renderer.render({ player: new Player({ x: 300, y: 350, color: '#123456' }),
+    bot: new Player({ x: 700, y: 350, color: '#abcdef' }), ball: new Ball(570, 350), fieldTheme: 'arcade', goalTimer: 1 }, 1 / 60);
+  assert.ok(circles.includes(12)); assert.ok(circles.includes(22));
 });

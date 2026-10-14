@@ -1,3 +1,4 @@
+import { selectionFor, cycleTeamSelection, teamAbbreviation } from './TeamSelection.js';
 import { GamepadController } from '../game/GamepadController.js';
 import { OnlineHub } from './OnlineHub.js';
 import { MODIFIER_OPTIONS, DEFAULT_MODIFIERS, normalizeModifiers, modifiersAreDefault, formatModifier } from '../config/modifiers.js';
@@ -17,67 +18,27 @@ const ROUND_NAMES = ['OCTAVOS DE FINAL', 'CUARTOS DE FINAL', 'SEMIFINAL', 'FINAL
 const ROUND_NAMES_32 = ['DIECISÉISAVOS DE FINAL', ...ROUND_NAMES];
 const roundName = (size, round) => (size === 32 ? ROUND_NAMES_32 : ROUND_NAMES)[Math.max(0, Math.min(size === 32 ? 4 : 3, round - 1))];
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-const STORE_ITEMS = [
-  { id: 'circle-raised', name: 'Círculo en relieve', slot: 'circleRelief', value: 'raised', price: 80, icon: '◉', preview: 'ring', description: 'Un aro con sombra y luz que destaca el círculo de tu jugador.' },
-  { id: 'circle-gold', name: 'Aro de campeón', slot: 'circleRelief', value: 'gold', price: 170, icon: '✧', preview: 'ring gold', description: 'Dale un acabado dorado y brillante al círculo de tu jugador.' },
-  { id: 'field-mint', name: 'Campo menta', slot: 'fieldTint', value: 'mint', price: 90, icon: '▦', preview: 'field mint', description: 'Un tono fresco para vestir todo el terreno de juego.' },
-  { id: 'field-dusk', name: 'Campo crepúsculo', slot: 'fieldTint', value: 'dusk', price: 110, icon: '▦', preview: 'field dusk', description: 'Colores violeta y azul para jugar al anochecer.' },
-  { id: 'field-lagoon', name: 'Campo laguna', slot: 'fieldTint', value: 'lagoon', price: 130, icon: '▦', preview: 'field lagoon', description: 'Un acabado turquesa inspirado en aguas profundas.' },
-  { id: 'shot-neon', name: 'Estela neón', slot: 'shotEffect', value: 'neon', price: 100, icon: '〰', preview: 'trail neon', description: 'Una línea cian luminosa acompaña tus tiros potentes.' },
-  { id: 'shot-fire', name: 'Estela de fuego', slot: 'shotEffect', value: 'fire', price: 120, icon: '♨', preview: 'trail fire', description: 'Una estela cálida de fuego al disparar.' },
-  { id: 'shot-lightning', name: 'Estela eléctrica', slot: 'shotEffect', value: 'lightning', price: 160, icon: 'ϟ', preview: 'trail lightning', description: 'Descargas eléctricas zigzaguean tras el balón.' },
-  { id: 'shot-aurora', name: 'Estela aurora', slot: 'shotEffect', value: 'aurora', price: 190, icon: '〰', preview: 'trail aurora', description: 'Ondas de luz multicolor siguen cada disparo.' },
-  { id: 'ball-gold', name: 'Balón dorado', slot: 'ballSkin', value: 'gold', price: 150, icon: '⚽', preview: 'ball gold', description: 'Un balón dorado con brillo especial durante el partido.' },
-  { id: 'ball-lava', name: 'Balón magma', slot: 'ballSkin', value: 'lava', price: 180, icon: '⚽', preview: 'ball lava', description: 'Una cubierta ardiente para tus remates.' },
-  { id: 'ball-ice', name: 'Balón glaciar', slot: 'ballSkin', value: 'ice', price: 180, icon: '⚽', preview: 'ball ice', description: 'Cristal azul helado con destellos fríos.' },
-  { id: 'ball-cosmic', name: 'Balón cósmico', slot: 'ballSkin', value: 'cosmic', price: 220, icon: '⚽', preview: 'ball cosmic', description: 'Un balón de otra galaxia, profundo y brillante.' },
-  { id: 'ball-carbon', name: 'Balón carbono', slot: 'ballSkin', value: 'carbon', price: 200, icon: '⚽', preview: 'ball carbon', description: 'Un diseño oscuro con detalles metálicos.' },
-  { id: 'player-halo', name: 'Aura de energía', slot: 'playerEffect', value: 'halo', price: 140, icon: '✺', preview: 'player halo', description: 'Un halo suave destaca a tu jugador en el campo.' },
-  { id: 'player-speed', name: 'Ráfaga veloz', slot: 'playerTrail', value: 'speed', price: 160, icon: '➤', preview: 'player speed', description: 'Líneas de velocidad aparecen cuando te mueves.' },
-  { id: 'circle-chrome', name: 'Relieve cromado', slot: 'circleRelief', value: 'chrome', price: 190, icon: '◉', preview: 'ring chrome', description: 'Borde metálico con luces y sombras en el círculo del jugador.' },
-  { id: 'circle-obsidian', name: 'Relieve obsidiana', slot: 'circleRelief', value: 'obsidian', price: 210, icon: '◉', preview: 'ring obsidian', description: 'Un borde oscuro con reflejos violeta para tu jugador.' },
-  { id: 'circle-prism', name: 'Relieve prisma', slot: 'circleRelief', value: 'prism', price: 260, icon: '◉', preview: 'ring prism', description: 'Un borde iridiscente que cambia de color en tu círculo.' },
-  { id: 'shot-plasma', name: 'Estela plasma', slot: 'shotEffect', value: 'plasma', price: 210, icon: '〰', preview: 'trail plasma', description: 'Luz magenta con un núcleo blanco detrás del balón.' },
-  { id: 'shot-ice', name: 'Estela glaciar', slot: 'shotEffect', value: 'ice', price: 190, icon: '〰', preview: 'trail ice', description: 'Una cola azul helada sigue el recorrido del balón.' },
-  { id: 'shot-rainbow', name: 'Estela arcoíris', slot: 'shotEffect', value: 'rainbow', price: 270, icon: '〰', preview: 'trail rainbow', description: 'La estela del balón recorre todos los colores.' },
-  { id: 'ball-pearl', name: 'Balón perla', slot: 'ballSkin', value: 'pearl', price: 220, icon: '⚽', preview: 'ball pearl', description: 'Acabado nacarado blanco y violeta.' },
-  { id: 'ball-emerald', name: 'Balón esmeralda', slot: 'ballSkin', value: 'emerald', price: 230, icon: '⚽', preview: 'ball emerald', description: 'Un balón verde brillante con detalles oscuros.' },
-  { id: 'player-orbit', name: 'Aura orbital', slot: 'playerEffect', value: 'orbit', price: 200, icon: '✺', preview: 'player orbit', description: 'Tres luces azules orbitan alrededor de tu jugador.' },
-  { id: 'player-pulse', name: 'Aura pulsar', slot: 'playerEffect', value: 'pulse', price: 210, icon: '✺', preview: 'player pulse', description: 'Ondas rosadas se expanden alrededor de tu círculo.' },
-  { id: 'player-cosmic', name: 'Aura cósmica', slot: 'playerEffect', value: 'cosmic', price: 260, icon: '✺', preview: 'player cosmic', description: 'Un halo violeta con estrellas que giran alrededor.' },
-  { id: 'player-flame', name: 'Aura solar', slot: 'playerEffect', value: 'flame', price: 240, icon: '✺', preview: 'player flame', description: 'Chispas cálidas recorren el borde de tu jugador.' },
-  { id: 'player-comet', name: 'Estela cometa', slot: 'playerTrail', value: 'comet', price: 210, icon: '➤', preview: 'player speed comet', description: 'Una cola violeta de luz y partículas sigue tus movimientos.' },
-  { id: 'player-storm', name: 'Estela tormenta', slot: 'playerTrail', value: 'storm', price: 240, icon: '➤', preview: 'player speed storm', description: 'Un rastro cian luminoso acompaña al jugador al correr.' },
-  { id: 'player-sparks', name: 'Estela de chispas', slot: 'playerTrail', value: 'sparks', price: 190, icon: '➤', preview: 'player speed sparks', description: 'Pequeñas chispas doradas quedan detrás de tu jugador.' },
-  { id: 'goal-shockwave', name: 'Onda de gol', slot: 'goalEffect', value: 'shockwave', price: 180, icon: '◎', preview: 'goal shockwave', description: 'Una onda expansiva celebra cada gol.' },
-  { id: 'goal-fireworks', name: 'Fuegos de gol', slot: 'goalEffect', value: 'fireworks', price: 240, icon: '✹', preview: 'goal fireworks', description: 'Chispas de colores llenan el campo al marcar.' },
-];
-const STORE_CATEGORIES = [['all', 'Todo'], ['field', 'Campo'], ['ball', 'Balones'], ['trail', 'Estelas'], ['player', 'Jugador'], ['goal', 'Goles']];
-const SLOT_LABELS = { circleRelief: 'Relieve', fieldTint: 'Campo', ballSkin: 'Balón', shotEffect: 'Estela balón', playerEffect: 'Aura', playerTrail: 'Estela jugador', goalEffect: 'Gol' };
-const SLOT_DEFAULTS = { circleRelief: 'off', fieldTint: 'off', ballSkin: 'classic', shotEffect: 'off', playerEffect: 'off', playerTrail: 'off', goalEffect: 'off' };
-
 export class UI {
   constructor(initialUser = null) {
     this.pendingGuestMigration = initialUser ? readGuestProfile() : null;
     this.user = initialUser; this.accountService = null; this.accountMode = 'login'; this.accountSyncTimer = 0; this.lastAccountSync = 0; this.accountSyncBusy = false;
     const storageScope = initialUser?.id || 'guest'; setSettingsScope(storageScope); setCompetitionSaveScope(storageScope);
     this.settings = loadSettings(); this.progression = new Progression(storageScope); this.career = new CareerProfile(storageScope); this.game = null; this.sound = null;
-    this.settings.cosmetics = this.career.equipped;
     if (this.career.stats.matches === 0 && this.career.stats.wins === 0 && this.progression.wins > 0) this.career.ensureProgressionWins(this.progression.wins);
-    this.tournament = null; this.league = null; this.pendingMode = null; this.pendingCompetition = null; this.pendingTeamType = 'all'; this.pendingLeagueId = ''; this.selectedCompetition = 'champions'; this.competitionIndex = 0; this.selectedTeamId = ''; this.teamCursor = new Map(); this.storeTab = 'shop'; this.storeCategory = 'all';
+    this.tournament = null; this.league = null; this.pendingMode = null; this.pendingCompetition = null; this.pendingTeamType = 'all'; this.pendingLeagueId = ''; this.selectedCompetition = 'champions'; this.competitionIndex = 0; this.selectedTeamId = ''; this.teamCursor = new Map();
     this.currentMatchMode = null; this.currentMatchOptions = null; this.autoMatchmaking = false; this.confetti = new Confetti();
     this.activeLeague = TEAM_LEAGUES[0].id;
     this.activeCountry = TEAM_COUNTRIES[0].id;
-    this.quickChoices = { player: '', rival: 'laliga-real-madrid' }; this.quickCountries = {}; this.quickDifficulty = this.settings.difficulty;
+    this.quickChoices = { player: '', rival: 'laliga-real-madrid' }; this.quickDifficulty = this.settings.difficulty;
     this.legendIndex = 0; this.legendTeamId = '';
     this.screens = {
-      home: document.querySelector('#home-screen'), play: document.querySelector('#play-screen'), store: document.querySelector('#store-screen'), inventory: document.querySelector('#inventory-screen'), customize: document.querySelector('#customize-screen'),
+      home: document.querySelector('#home-screen'), play: document.querySelector('#play-screen'), customize: document.querySelector('#customize-screen'),
       settings: document.querySelector('#settings-screen'), account: document.querySelector('#account-screen'), online: document.querySelector('#online-screen'), leaderboard: document.querySelector('#leaderboard-screen'), competitions: document.querySelector('#competition-screen'), tournament: document.querySelector('#tournament-screen'),
       league: document.querySelector('#league-screen'), game: document.querySelector('#game-screen'), profile: document.querySelector('#profile-screen'),
       missions: document.querySelector('#missions-screen'),
       modifiers: document.querySelector('#modifiers-screen'), quick: document.querySelector('#quick-screen'), legends: document.querySelector('#legends-screen'),
     };
-    this.cacheElements(); this.menuBackdrop = new MenuBackdrop(this.menu_backdrop); this.populateTeamPicker(); this.populateLeagueCompetitions(); this.fillInputs(); this.bind(); this.updateLeaguePreview(); this.renderProgress(); this.renderStore(); this.show('home'); this.refreshContinueButton();
+    this.cacheElements(); this.menuBackdrop = new MenuBackdrop(this.menu_backdrop); this.populateTeamPicker(); this.populateLeagueCompetitions(); this.fillInputs(); this.bind(); this.updateLeaguePreview(); this.renderProgress(); this.show('home'); this.refreshContinueButton();
   }
 
   cacheElements() {
@@ -91,11 +52,11 @@ export class UI {
       'competition-picker-card',
       'tournament-header-tag','tournament-eyebrow','tournament-title','tournament-description','tournament-emblem','tournament-team-count',
       'account-status','account-status-dot','account-message','account-form','account-name','account-name-wrap','account-email','account-password','account-submit','account-form-title','account-dashboard','account-auth-panel','account-email-label','account-sync-state','account-level','account-wins','account-matches','account-goals','account-conceded','account-seasons','account-trophy-count','account-trophies',
-      'profile-eyebrow','profile-title','profile-copy','home-club-colors','home-club-name','home-coins','store-coins','store-grid','store-message','store-categories','store-loadout','inventory-count','play-continue-wrap',
+      'profile-eyebrow','profile-title','profile-copy','home-club-colors','home-club-name','play-continue-wrap',
       'menu-backdrop','modifier-controls','modifiers-back','modifiers-done','modifiers-reset','modifiers-note','modifier-summary',
       'match-intro','online-player-details','online-opponent-details','quick-pickers','quick-difficulty','quick-start','legends-mode-card','legends-mode-tag','legends-lock','legend-prev','legend-next','legend-title','legend-edition','legend-position','legend-history','legend-teams','legend-start',
       'continue-competition','continue-detail','league-goal-target','trajectory-enabled','shot-preview-enabled','shot-power-time',
-      'promo-code-form','promo-code-input','promo-code-status',
+      
       'online-room-input','online-room-panel','online-status','online-room-code-wrap','online-room-code',
       'online-find-match','online-cancel',
       'career-avatar','career-team-label','career-name','career-subtitle','career-level','career-xp','career-xp-fill','career-matches','career-wins','career-winrate','career-goals','career-best','career-time','career-seasons','trophy-summary','trophy-percent','trophy-progress-fill','trophy-grid','trophy-detail','trophy-toast','trophy-toast-name',
@@ -170,15 +131,25 @@ export class UI {
     const country = TEAM_COUNTRIES.find(item => item.id === this.activeCountry) || TEAM_COUNTRIES[0];
     const groups = TEAM_GROUPS.filter(group => country.groups.includes(group.id) && allowedIds.has(group.id));
     if (!groups.some(group => group.id === this.activeLeague)) this.activeLeague = groups[0]?.id || '';
+    document.getElementById('leagues-prev').disabled = document.getElementById('leagues-next').disabled = groups.length < 2;
     this.league_tabs.replaceChildren(...groups.map(group => {
       const tab = document.createElement('button'); tab.type = 'button'; tab.className = 'league-tab';
       tab.dataset.league = group.id; tab.textContent = group.label.split(' · ')[0];
-      tab.setAttribute('role', 'tab'); tab.setAttribute('aria-selected', 'false'); return tab;
+      tab.hidden = group.id !== this.activeLeague; tab.setAttribute('role', 'tab'); tab.setAttribute('aria-selected', 'false'); return tab;
     }));
     for (const tab of this.league_tabs.querySelectorAll('[data-league]')) {
       const active = tab.dataset.league === this.activeLeague;
       tab.classList.toggle('active', active); tab.setAttribute('aria-selected', String(active));
     }
+  }
+
+  moveLeague(direction) {
+    const country = TEAM_COUNTRIES.find(item => item.id === this.activeCountry);
+    const groups = this.getAllowedTeamGroups().filter(group => country?.groups.includes(group.id));
+    if (!groups.length) return;
+    const index = groups.findIndex(group => group.id === this.activeLeague);
+    this.activeLeague = groups[(index + direction + groups.length) % groups.length].id;
+    this.renderTeamNavigation(); this.renderTeamCarousel(); this.sound?.play('click');
   }
 
   moveCountry(direction) {
@@ -247,19 +218,6 @@ export class UI {
     }));
     document.getElementById('account-open').addEventListener('click', () => { this.renderAccount(); this.show('account'); });
     document.getElementById('profile-account-open').addEventListener('click', () => { this.renderAccount(); this.show('account'); });
-    this.store_grid.addEventListener('click', event => {
-      const button = event.target.closest('[data-store-item], [data-clear-slot]'); if (!button) return;
-      if (button.hasAttribute('data-clear-slot')) this.unequipCosmetic(button.dataset.clearSlot);
-      else this.handleStoreItem(button.dataset.storeItem);
-    });
-    this.store_categories.addEventListener('click', event => {
-      const button = event.target.closest('[data-store-category]'); if (!button) return;
-      this.storeCategory = button.dataset.storeCategory; this.renderStore(); this.sound?.play('click');
-    });
-    this.store_loadout.addEventListener('click', event => {
-      const button = event.target.closest('[data-clear-slot]'); if (!button) return;
-      this.unequipCosmetic(button.dataset.clearSlot);
-    });
     this.trophy_grid.addEventListener('click', event => {
       const button = event.target.closest('[data-trophy-id]'); if (!button) return;
       this.renderTrophyDetail(button.dataset.trophyId); this.sound?.play('select');
@@ -281,6 +239,8 @@ export class UI {
     });
     this.countries_prev.addEventListener('click', () => this.moveCountry(-1));
     this.countries_next.addEventListener('click', () => this.moveCountry(1));
+    document.getElementById('leagues-prev').addEventListener('click', () => this.moveLeague(-1));
+    document.getElementById('leagues-next').addEventListener('click', () => this.moveLeague(1));
     this.league_tabs.addEventListener('click', event => {
       const tab = event.target.closest('[data-league]'); if (!tab) return;
       this.activeLeague = tab.dataset.league;
@@ -298,7 +258,7 @@ export class UI {
     this.teams_next.addEventListener('click', () => this.moveTeam(1));
     this.quick_pickers.addEventListener('click', event => {
       const button = event.target.closest('[data-quick-move]'); if (!button) return;
-      this.moveQuickChoice(button.dataset.side, Number(button.dataset.quickMove), button.dataset.kind === 'country');
+      this.moveQuickChoice(button.dataset.side, Number(button.dataset.quickMove), button.dataset.kind);
     });
     for (const button of [this.modifiers_back, this.modifiers_done]) button.addEventListener('click', () => this.closeModifiers());
     this.modifiers_reset.addEventListener('click', () => { if (this.modifierLocked) return; this.modifierValues = { ...DEFAULT_MODIFIERS }; this.saveModifiers(); this.renderModifiers(); });
@@ -321,7 +281,6 @@ export class UI {
       this.settings.trajectory = this.trajectory_enabled.checked; this.trajectory_toggle.checked = this.settings.trajectory;
       this.persist();
     });
-    this.promo_code_form.addEventListener('submit', event => { event.preventDefault(); this.redeemPromoCode(); });
     for(const [id,key] of [['music-enabled','musicEnabled'],['ambience-enabled','ambienceEnabled'],['controller-vibration','controllerVibration']]) document.getElementById(id).addEventListener('change',event=>{this.settings[key]=event.target.checked;this.persist();this.sound?.tick?.();});
     for(const [id,key] of [['music-volume','musicVolume'],['ambience-volume','ambienceVolume'],['effects-volume','effectsVolume']]) document.getElementById(id).addEventListener('input',event=>{this.settings[key]=Number(event.target.value);document.getElementById(id+'-value').textContent=event.target.value+'%';this.persist();this.sound?.tick?.();});
     document.getElementById('music-next').addEventListener('click',()=>{this.sound?.unlock?.();this.sound?.nextTrack?.();});
@@ -393,7 +352,8 @@ export class UI {
   }
 
   currentCloudProfile() {
-    return { settings: this.settings, progression: this.progression.toJSON(), career: this.career.toJSON(), competitionSave: loadCompetitionSave() };
+    const { cosmetics, ...settings } = this.settings;
+    return { settings, progression: this.progression.toJSON(), career: this.career.toJSON(), competitionSave: loadCompetitionSave() };
   }
 
   async activateAccount(user) {
@@ -421,7 +381,7 @@ export class UI {
       if (!this.settings.profileReady && guestProfile.settings?.profileReady) this.settings = { ...this.settings, ...guestProfile.settings };
       if (!localProfile.competitionSave && guestProfile.competitionSave) storeCompetitionSave(guestProfile.competitionSave);
     }
-    this.settings.cosmetics = { ...this.career.equipped };
+    delete this.settings.cosmetics;
     saveSettings(this.settings); this.game?.updateSettings(this.settings);
     this.fillInputs(); this.renderProgress(); this.renderAccount(); this.refreshContinueButton();
     await this.syncAccount(true);
@@ -454,7 +414,7 @@ export class UI {
     try { await this.accountService?.signOut(); } catch { /* Local scope still switches even if the network is unavailable. */ }
     if (this.accountSyncTimer) clearTimeout(this.accountSyncTimer);
     this.user = null; this.hub?.reset(); setSettingsScope('guest'); setCompetitionSaveScope('guest');
-    this.progression.setScope('guest'); this.career.setScope('guest'); this.settings = loadSettings(); this.settings.cosmetics = { ...this.career.equipped };
+    this.progression.setScope('guest'); this.career.setScope('guest'); this.settings = loadSettings();
     this.game?.updateSettings(this.settings); this.fillInputs(); this.renderProgress(); this.renderAccount(); this.refreshContinueButton();
     this.setAccountMessage('Has cerrado sesión. Tu guardado local sigue disponible.', false, true);
   }
@@ -584,47 +544,56 @@ export class UI {
     this.quickChoices.player = getTeamById(this.settings.teamId)?.id || 'laliga-barcelona';
     if (!getTeamById(this.quickChoices.rival)) this.quickChoices.rival = 'laliga-real-madrid';
     this.quickDifficulty = this.settings.difficulty;
-    for (const side of ['player', 'rival']) this.quickCountries[side] = TEAM_COUNTRIES.find(country => country.groups.includes(getTeamById(this.quickChoices[side]).league))?.id || TEAM_COUNTRIES[0].id;
     this.renderQuickSetup(); this.show('quick');
   }
 
-  moveQuickChoice(side, direction, changeCountry = false) {
+  moveQuickChoice(side, direction, kind = 'team') {
     if (!['player', 'rival'].includes(side)) return;
-    const countryIndex = TEAM_COUNTRIES.findIndex(country => country.id === this.quickCountries[side]);
-    if (changeCountry) {
-      const country = TEAM_COUNTRIES[(countryIndex + direction + TEAM_COUNTRIES.length) % TEAM_COUNTRIES.length];
-      this.quickCountries[side] = country.id;
-      this.quickChoices[side] = PROFILE_TEAMS.find(team => country.groups.includes(team.league))?.id || '';
-    } else {
-      const country = TEAM_COUNTRIES[countryIndex] || TEAM_COUNTRIES[0];
-      const teams = PROFILE_TEAMS.filter(team => country.groups.includes(team.league));
-      const index = teams.findIndex(team => team.id === this.quickChoices[side]);
-      this.quickChoices[side] = teams[(index + direction + teams.length) % teams.length]?.id || '';
-    }
+    this.quickChoices[side] = cycleTeamSelection(this.quickChoices[side], kind, direction);
     this.renderQuickSetup(); this.sound?.play('click');
+    this.quick_pickers.querySelector(`[data-side="${side}"][data-kind="${kind}"][data-quick-move="${direction}"]`)?.focus({ preventScroll: true });
+  }
+
+  teamStars(team) {
+    const rating = document.createElement('span'); rating.className = 'selection-stars';
+    rating.setAttribute('role', 'img'); rating.setAttribute('aria-label', `${team.stars || 3} de 5 estrellas`);
+    rating.innerHTML = Array.from({ length: 5 }, (_, index) => `<svg class="${index < (team.stars || 3) ? 'filled' : ''}" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.6 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5-5.8-3.1-5.8 3.1 1.1-6.5-4.7-4.6 6.5-.9L12 2.6Z"/></svg>`).join('');
+    return rating;
+  }
+
+  teamEmblem(team) {
+    const crest = document.createElement('span'); crest.className = 'selection-crest';
+    crest.style.background = getKitBackground(team);
+    const label = document.createElement('b'); label.textContent = teamAbbreviation(team.name);
+    crest.append(label); crest.setAttribute('aria-hidden', 'true'); return crest;
   }
 
   renderQuickSetup() {
     this.quick_pickers.replaceChildren(...['player', 'rival'].map(side => {
-      const country = TEAM_COUNTRIES.find(item => item.id === this.quickCountries[side]) || TEAM_COUNTRIES[0];
-      const teams = PROFILE_TEAMS.filter(team => country.groups.includes(team.league));
-      const team = getTeamById(this.quickChoices[side]) || teams[0];
-      const panel = document.createElement('section'); panel.className = 'match-team-panel';
-      const title = document.createElement('h3'); title.textContent = side === 'player' ? 'TU EQUIPO' : 'EQUIPO RIVAL';
+      const { country, league, team } = selectionFor(this.quickChoices[side]);
+      const teams = PROFILE_TEAMS.filter(item => item.league === team.league);
+      const panel = document.createElement('section'); panel.className = `match-team-panel fifa-team-panel ${side}`;
+      panel.setAttribute('aria-label', side === 'player' ? 'Equipo local' : 'Equipo visitante');
+      const title = document.createElement('h3'); title.textContent = side === 'player' ? 'LOCAL / TU EQUIPO' : 'VISITANTE / RIVAL';
       const makeArrow = (kind, delta, label) => { const button = document.createElement('button'); button.type = 'button'; button.className = 'carousel-arrow'; button.dataset.quickMove = String(delta); button.dataset.side = side; button.dataset.kind = kind; button.textContent = delta < 0 ? '‹' : '›'; button.setAttribute('aria-label', label); return button; };
-      const categories = document.createElement('div'); categories.className = 'match-category-carousel';
-      const category = document.createElement('b'); category.textContent = country.label;
-      categories.append(makeArrow('country', -1, 'Categoría anterior'), category, makeArrow('country', 1, 'Categoría siguiente'));
-      const carousel = document.createElement('div'); carousel.className = 'match-category-carousel';
-      const card = document.createElement('div'); card.className = 'match-team-display';
-      const circle = document.createElement('span'); circle.className = 'match-team-preview';
-      this.paintPlayerPreview(circle, team, { name: side === 'player' ? this.settings.name : 'RIVAL', number: side === 'player' ? this.settings.number : 10 });
-      const name = document.createElement('b'); name.textContent = team.name;
-      const group = document.createElement('small'); group.textContent = `${TEAM_GROUPS.find(item => item.id === team.league)?.label.split(' · ')[0] || ''} · ${team.stars || 3}/5`;
-      card.append(circle, name, group);
+      const row = (kind, label, value, disabled = false) => {
+        const wrap = document.createElement('div'); wrap.className = 'match-category-carousel selection-filter';
+        const text = document.createElement('span'), caption = document.createElement('small'), name = document.createElement('b');
+        caption.textContent = label; name.textContent = value; text.append(caption, name);
+        const prev = makeArrow(kind, -1, `${label} anterior`), next = makeArrow(kind, 1, `${label} siguiente`);
+        prev.disabled = next.disabled = disabled; wrap.append(prev, text, next); return wrap;
+      };
+      const carousel = document.createElement('div'); carousel.className = 'match-category-carousel selection-team';
+      const card = document.createElement('div'); card.className = 'match-team-display'; card.setAttribute('aria-live', 'polite');
+      const name = document.createElement('b'); name.className = 'selection-team-name'; name.textContent = team.name;
+      card.append(name, this.teamEmblem(team), this.teamStars(team));
       carousel.append(makeArrow('team', -1, 'Equipo anterior'), card, makeArrow('team', 1, 'Equipo siguiente'));
-      const count = document.createElement('small'); count.className = 'match-team-count'; count.textContent = `${teams.findIndex(item => item.id === team.id) + 1} / ${teams.length} EQUIPOS`;
-      panel.append(title, categories, carousel, count); return panel;
+      const kit = document.createElement('div'); kit.className = 'selection-kit';
+      const circle = document.createElement('span'); circle.className = 'match-team-preview';
+      this.paintPlayerPreview(circle, team, { name: side === 'player' ? this.settings.name : teamAbbreviation(team.name), number: side === 'player' ? this.settings.number : 10 });
+      const caption = document.createElement('span'); caption.textContent = 'EQUIPACIÓN'; kit.append(circle, caption);
+      const count = document.createElement('small'); count.className = 'match-team-count'; count.textContent = `EQUIPO ${teams.findIndex(item => item.id === team.id) + 1} / ${teams.length}`;
+      panel.append(title, row('country', 'País / categoría', country.label), row('league', 'Liga / grupo', league.label.split(' · ')[0], country.groups.length < 2), carousel, kit, count); return panel;
     }));
     this.updateDifficultyControls();
   }
@@ -804,10 +773,9 @@ export class UI {
     strip.setAttribute('aria-label', `Camiseta: ${team.kitPattern.replaceAll('-', ' ')}`);
     const details = document.createElement('span'); details.className = 'team-card-details';
     const name = document.createElement('span'); name.className = 'team-card-name'; name.textContent = team.name;
-    const rating = document.createElement('span'); rating.className = 'team-rating';
-    rating.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.6 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5-5.8-3.1-5.8 3.1 1.1-6.5-4.7-4.6 6.5-.9L12 2.6Z"/></svg><b>${team.stars || 3}</b><span>/ 5</span>`;
+    const rating = this.teamStars(team);
     const league = document.createElement('small'); league.textContent = chosen ? 'EQUIPO ELEGIDO ✓' : 'PULSA PARA ELEGIR';
-    details.append(name, rating, league); card.append(strip, details); this.team_grid.append(card);
+    details.append(name, rating, league); card.append(this.teamEmblem(team), strip, details); this.team_grid.append(card);
     this.team_position.textContent = `${index + 1} / ${leagueTeams.length}`;
     this.teams_prev.disabled = this.teams_next.disabled = leagueTeams.length < 2;
   }
@@ -860,9 +828,6 @@ export class UI {
     number.textContent = preview.number ?? (this.player_number.value === '' ? '—' : clamp(Number(this.player_number.value) || 0, 0, 99));
     circle.style.background = getKitBackground(team);
     circle.style.setProperty('--dorsal-color', team?.numberColor || '#ffffff');
-    const relief = this.career.equipped.circleRelief || 'off';
-    circle.classList.toggle('has-player-relief', relief !== 'off');
-    circle.style.setProperty('--relief-color', ({ raised: '#ccebdc', gold: '#ffe39a', chrome: '#e6f7ff', obsidian: '#a394dd', prism: '#9af2ee' })[relief] || '#ccebdc');
     circle.classList.toggle('white-dorsal', [team?.numberColor || '#ffffff', team?.primary, team?.secondary].some(value => /^#(?:fff|ffffff|f5fff8|f7f7f7|f4f3ee|f4f2e9)$/i.test(value || '')));
     circle.style.setProperty('--preview-name-size', String(Math.min(16, 75 / Math.max(1, label.length * .65))));
   }
@@ -915,30 +880,10 @@ export class UI {
 
   persist() { saveSettings(this.settings); this.game?.updateSettings(this.settings); this.syncAccount(false); }
 
-  redeemPromoCode() {
-    const result = this.career.redeemPromoCode(this.promo_code_input.value);
-    this.promo_code_status.classList.remove('success', 'error');
-    if (!result.ok) {
-      this.promo_code_status.classList.add('error');
-      this.promo_code_status.textContent = result.reason === 'used' ? 'Este código ya se canjeó en este perfil.' : 'El código no es válido.';
-      return;
-    }
-    this.promo_code_input.value = '';
-    this.promo_code_status.classList.add('success');
-    this.promo_code_status.textContent = `Código canjeado: +${result.coins.toLocaleString('es-ES')} monedas. Saldo: ${result.balance.toLocaleString('es-ES')}.`;
-    this.renderProgress();
-    this.syncAccount(true);
-  }
-
   show(view) {
     this.currentView = view;
     const onlineTheme = ['online', 'leaderboard'].includes(view) || view === 'game' && this.currentMatchMode === 'online';
     document.body.classList.toggle('blue-theme', !onlineTheme);
-    if (view === 'store' || view === 'inventory') {
-      this.storeTab = view === 'inventory' ? 'inventory' : 'shop';
-      this.storeCategory = 'all';
-      this.screens[view].append(document.getElementById('store-browser'));
-    }
     this.sound?.setScene?.(view === 'game' && !this.game?.state.paused ? 'game' : 'menu');
     document.querySelector('.rules-game-button')?.classList.toggle('hidden', this.currentMatchMode === 'online');
     if (this.game) {
@@ -953,7 +898,6 @@ export class UI {
     this.menuBackdrop?.setActive(view === 'home');
     if (view === 'profile') this.renderProfile();
     if (view === 'missions') this.renderMissions();
-    if (view === 'store' || view === 'inventory') this.renderStore();
     if (view === 'play') this.refreshContinueButton();
     if (view === 'game') requestAnimationFrame(() => this.game?.renderer.resize());
   }
@@ -964,80 +908,10 @@ export class UI {
     this.xp_label.textContent = maxed ? 'NIVEL MÁXIMO' : `${progress.xp} / ${progress.xpForNextLevel()} XP`;
     this.wins_label.textContent = `${progress.wins} VICTORIAS`;
     this.xp_fill.style.width = `${progress.progressRatio() * 100}%`;
-    this.home_coins.textContent = String(this.career.stats.coinsEarned - this.career.stats.coinsSpent);
-    if (this.store_coins) this.store_coins.innerHTML = `${this.career.stats.coinsEarned - this.career.stats.coinsSpent} <i>◈</i>`;
-    this.renderStore();
+   
     this.updateDifficultyControls();
     this.renderAccount();
     this.checkAchievements();
-  }
-
-  renderStore() {
-    if (!this.store_grid || !this.career) return;
-    const balance = Math.max(0, this.career.stats.coinsEarned - this.career.stats.coinsSpent);
-    const storeKey = JSON.stringify([this.storeTab, this.storeCategory, balance, this.career.ownedItems, this.career.equipped]);
-    if (storeKey === this.lastStoreKey) return; this.lastStoreKey = storeKey;
-    this.home_coins.textContent = String(balance);
-    this.store_coins.innerHTML = `${balance} <i>◈</i>`;
-    this.inventory_count.textContent = String(this.career.ownedItems.filter(id => STORE_ITEMS.some(item => item.id === id)).length);
-    this.store_categories.classList.remove('hidden');
-    this.store_loadout.classList.toggle('hidden', this.storeTab !== 'inventory');
-    this.store_loadout.replaceChildren(...Object.entries(SLOT_LABELS).map(([slot, label]) => {
-      const value = this.career.equipped[slot], item = STORE_ITEMS.find(entry => entry.slot === slot && entry.value === value);
-      const row = document.createElement('div'); row.className = `loadout-slot${item ? ' filled' : ''}`;
-      const slotName = document.createElement('small'); slotName.textContent = label.toUpperCase();
-      const name = document.createElement('b'); name.textContent = item?.name || 'Predeterminado';
-      const action = document.createElement('button'); action.type = 'button'; action.dataset.clearSlot = slot; action.disabled = !item; action.textContent = item ? 'Quitar' : '—';
-      row.append(slotName, name, action); return row;
-    }));
-    this.store_categories.replaceChildren(...STORE_CATEGORIES.map(([id, label]) => {
-      const button = document.createElement('button'); button.type = 'button'; button.dataset.storeCategory = id; button.className = `store-category${id === this.storeCategory ? ' active' : ''}`; button.textContent = label; return button;
-    }));
-    const visibleItems = STORE_ITEMS.filter(item => {
-      if (this.storeTab === 'inventory' && !this.career.ownedItems.includes(item.id)) return false;
-      if (this.storeCategory === 'all') return true;
-      const category = item.slot === 'ballSkin' ? 'ball' : ['shotEffect', 'playerTrail'].includes(item.slot) ? 'trail' : ['playerEffect', 'circleRelief'].includes(item.slot) ? 'player' : item.slot === 'goalEffect' ? 'goal' : 'field';
-      return category === this.storeCategory;
-    });
-    this.store_grid.replaceChildren(...visibleItems.map(item => {
-      const owned = this.career.ownedItems.includes(item.id), equipped = owned && this.career.equipped[item.slot] === item.value;
-      const card = document.createElement('article'); card.className = 'store-item';
-      const preview = document.createElement('div'); preview.className = `item-preview preview-${item.preview}`; preview.setAttribute('aria-label', `Vista previa animada: ${item.name}`); preview.innerHTML = '<span></span><i></i><b></b>';
-      if (item.slot === 'circleRelief') preview.querySelector('b').textContent = '10';
-      const icon = document.createElement('span'); icon.className = 'store-item-icon'; icon.textContent = item.icon;
-      const tag = document.createElement('small'); tag.className = 'store-item-tag'; tag.textContent = equipped ? 'EQUIPADO' : owned ? 'EN INVENTARIO' : SLOT_LABELS[item.slot].toUpperCase();
-      const title = document.createElement('b'); title.textContent = item.name;
-      const description = document.createElement('p'); description.textContent = item.description;
-      const button = document.createElement('button'); button.type = 'button'; button.className = equipped ? 'store-item-action equipped' : 'store-item-action';
-      if (this.storeTab === 'shop' && owned) { button.disabled = true; button.textContent = 'En tu inventario'; }
-      else if (equipped) { button.dataset.clearSlot = item.slot; button.textContent = 'Quitar'; }
-      else { button.dataset.storeItem = item.id; button.disabled = !owned && balance < item.price; button.textContent = owned ? 'Equipar' : `Desbloquear · ${item.price} ◈`; }
-      card.append(preview, icon, tag, title, description, button); return card;
-    }));
-    if (!visibleItems.length) {
-      const empty = document.createElement('p'); empty.className = 'collection-empty';
-      empty.textContent = 'Aún no tienes objetos en esta categoría. Descúbrelos en la tienda.';
-      this.store_grid.append(empty);
-    }
-    this.store_message.textContent = this.storeTab === 'inventory' ? (this.career.ownedItems.length ? 'Elige un objeto para equiparlo. Cada ranura admite un objeto activo.' : 'Tu inventario está vacío. Desbloquea artículos en la tienda.') : 'Gana monedas jugando y equipa tus artículos desde el inventario.';
-  }
-
-  handleStoreItem(id) {
-    const item = STORE_ITEMS.find(entry => entry.id === id); if (!item) return;
-    if (!this.career.ownedItems.includes(id)) {
-      if (!this.career.buyItem(id, item.price)) { this.store_message.textContent = 'Te faltan monedas. Completa partidos para ganar más.'; return; }
-      this.store_message.textContent = `${item.name} desbloqueado.`;
-    } else this.store_message.textContent = `${item.name} equipado. Puedes cambiarlo cuando quieras.`;
-    if (this.storeTab === 'inventory') this.career.equipItem(id, item.slot, item.value);
-    this.settings.cosmetics = { ...this.career.equipped };
-    this.game?.updateSettings(this.settings); this.career.save(); this.syncAccount(false); this.renderProgress(); this.renderStore(); this.sound?.play('select');
-  }
-
-  unequipCosmetic(slot) {
-    if (!Object.hasOwn(SLOT_DEFAULTS, slot)) return;
-    this.career.equipped[slot] = SLOT_DEFAULTS[slot]; this.career.save();
-    this.settings.cosmetics = { ...this.career.equipped }; this.game?.updateSettings(this.settings);
-    this.syncAccount(false); this.renderStore(); this.sound?.play('click');
   }
 
   updateDifficultyControls() {
@@ -1087,7 +961,7 @@ export class UI {
       const status = document.createElement('span'); status.className = 'mission-status'; status.textContent = state.completed ? 'COMPLETADA' : `${Math.min(state.progress, mission.goal)}/${mission.goal}`;
       heading.append(copy, status);
       const track = document.createElement('div'); track.className = 'mission-progress'; const fill = document.createElement('i'); fill.style.width = `${Math.min(100, state.progress / mission.goal * 100)}%`; track.append(fill);
-      const reward = document.createElement('small'); reward.textContent = `RECOMPENSA · ${mission.coins} ◈ · ${mission.xp} XP`;
+      const reward = document.createElement('small'); reward.textContent = `RECOMPENSA · ${mission.xp} XP`;
       card.append(heading, track, reward); this.missions_list.append(card);
     }
   }
@@ -1504,13 +1378,11 @@ export class UI {
   handleMatchEnd(result) {
     const won = result.winner === 'player';
     if (result.mode !== 'training') this.career.recordMatch(won, { playerScore: result.playerScore, elapsedSeconds: result.elapsedSeconds });
-    else this.career.earnCoins(5);
     const reward = result.mode !== 'training' ? this.progression.awardMatch(won) : null;
     if (won) this.confetti.play();
     this.sound?.play(won ? 'win' : 'loss');
     this.renderProgress();
-    const coinReward = result.mode === 'training' ? 5 : 20 + (won ? 10 : 0);
-    const rewardText = !reward ? `+${coinReward} ◈ por jugar.` : (reward.gained ? `+${reward.gained} XP y +${coinReward} ◈ por jugar.` : `+${coinReward} ◈ · nivel máximo.`);
+    const rewardText = !reward ? 'Entrenamiento completado.' : reward.gained ? `+${reward.gained} XP por jugar.` : 'Nivel máximo.';
     const levelText = reward?.leveledUp ? ` ¡Has subido al nivel ${reward.level}!` : '';
     this.result_xp.textContent = reward ? (reward.gained ? `+${reward.gained} XP` : 'NIVEL MÁXIMO') : '0 XP';
     this.result_level.textContent = `NIVEL ${this.progression.level}`;
@@ -1574,7 +1446,6 @@ export class UI {
       isFinal: cupFinal, isChampion: cupChampion, playerGoals: result.playerScore,
       leagueId: leagueFinished ? this.league?.competitionId : '', isLeagueChampion: leagueChampion, teamId: team?.id,
     });
-    const missionCoins = newMissions.reduce((sum, mission) => sum + mission.coins, 0);
     const missionXp = newMissions.reduce((sum, mission) => sum + mission.xp, 0);
     if (missionXp) {
       const missionReward = this.progression.awardXP(missionXp);
@@ -1583,7 +1454,7 @@ export class UI {
       this.result_xp.textContent = totalGained ? `+${totalGained} XP` : 'NIVEL MÁXIMO';
       this.result_level.textContent = `NIVEL ${this.progression.level}`;
       this.result_xp_fill.style.width = `${this.progression.progressRatio() * 100}%`;
-      this.result_copy.textContent += ` Misiones: ${newMissions.map(mission => mission.title).join(', ')} (+${missionCoins} ◈, +${missionXp} XP).`;
+      this.result_copy.textContent += ` Misiones: ${newMissions.map(mission => mission.title).join(', ')} (+${missionXp} XP).`;
       if (missionReward.leveledUp) this.result_copy.textContent += ` ¡Has subido al nivel ${this.progression.level}!`;
     }
     if (cupFinal || leagueFinished) this.showCompetitionResultStats(result, cupChampion || leagueChampion, leagueFinished ? this.league : null, leagueChampion);

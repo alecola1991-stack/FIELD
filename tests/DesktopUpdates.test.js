@@ -24,12 +24,12 @@ function githubFetch(update, digest = `sha256:${hash(Buffer.from(JSON.stringify(
 }
 
 test('a downloaded game becomes available on the next launch without touching profile data', () => directory(base => {
-  writeFileSync(join(base, 'profile.json'), 'coins=90000');
+  writeFileSync(join(base, 'profile.json'), 'xp=120');
   const staged = stageBundle(base, bundle());
   const cached = readCached(base);
   assert.equal(cached.build, staged.build);
   assert.equal(readFileSync(join(cached.root, 'index.html'), 'utf8'), '<html>new game</html>');
-  assert.equal(readFileSync(join(base, 'profile.json'), 'utf8'), 'coins=90000');
+  assert.equal(readFileSync(join(base, 'profile.json'), 'utf8'), 'xp=120');
 }));
 
 test('unsafe paths, duplicate Windows paths, invalid bytes and hashes are rejected', () => {

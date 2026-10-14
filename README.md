@@ -72,7 +72,7 @@ El BOT cambia entre presión ofensiva y cobertura del arco; ajusta reacción, ve
 
 Desde Portable 1.2.1 aparece «Buscando actualizaciones» antes del juego. La versión Portable comprueba al abrirse el paquete `game-update.json` de la publicación `windows-latest` de este repositorio. Descarga, verifica y aplica las nuevas versiones antes de abrir el juego. Si falla la conexión, muestra un aviso y abre la copia local. Juego → Buscar actualizaciones permite comprobarlo manualmente y reiniciar cuando esté preparado.
 
-La descarga se verifica con el SHA-256 publicado por GitHub y el de cada archivo. Un fallo de red o una descarga incompleta conserva la copia anterior. Se mantienen el mismo origen local y la carpeta de perfil, por lo que no se borran monedas, experiencia, ajustes ni competiciones. El juego actualizado queda disponible sin conexión. Cada compilación correcta de Windows publica el paquete después de probarlo.
+La descarga se verifica con el SHA-256 publicado por GitHub y el de cada archivo. Un fallo de red o una descarga incompleta conserva la copia anterior. Se mantienen el mismo origen local y la carpeta de perfil, por lo que no se borran experiencia, ajustes ni competiciones. El juego actualizado queda disponible sin conexión. Cada compilación correcta de Windows publica el paquete después de probarlo.
 
 Las versiones 1.1.1 y anteriores requieren descargar una vez Portable 1.2.0. Este sistema actualiza el juego; una actualización futura de Electron o del propio lanzador requiere descargar un nuevo ejecutable. En Portable, la actualización se guarda en el perfil de Windows de ese ordenador, por lo que al llevar el EXE a otro equipo se descargará allí de nuevo.
 

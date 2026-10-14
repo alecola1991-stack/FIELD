@@ -93,6 +93,8 @@ begin
  end loop;
  if jsonb_array_length(r->'lobby'->'matches')<>2 then raise exception 'Private tournament failed'; end if;
  perform set_config('request.jwt.claim.sub',ids[1]::text,true); perform public.field_online('leave',jsonb_build_object('lobbyId',room));
+ r:=public.field_online('queue','{"kind":"quick"}');
+ perform public.field_online('leave',jsonb_build_object('lobbyId',r->'lobby'->>'id'));
  perform set_config('request.jwt.claim.sub',ids[3]::text,true); perform public.field_online('leave',jsonb_build_object('lobbyId',room));
  perform set_config('request.jwt.claim.sub',ids[2]::text,true); r:=public.field_online('leave',jsonb_build_object('lobbyId',room));
  perform set_config('request.jwt.claim.sub',ids[1]::text,true);

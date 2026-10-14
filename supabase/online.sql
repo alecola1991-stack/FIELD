@@ -26,7 +26,7 @@ create table field_private.lobbies (
 create index lobbies_queue_idx on field_private.lobbies(kind,created_at) where state='waiting' and is_public;
 create table field_private.members (
  lobby_id uuid references field_private.lobbies(id) on delete cascade, user_id uuid references field_private.players(user_id) on delete cascade,
- slot integer not null check(slot between 1 and 4), profile jsonb not null default '{}', last_seen timestamptz not null default now(),
+ slot integer not null check(slot between 1 and 4), active boolean not null default true, profile jsonb not null default '{}', last_seen timestamptz not null default now(),
  primary key(lobby_id,user_id), unique(lobby_id,slot)
 );
 create index members_user_idx on field_private.members(user_id);
@@ -56,12 +56,12 @@ revoke all on all tables in schema field_private from public,anon,authenticated;
 
 create function field_private.room_data(room_id uuid) returns jsonb language sql set search_path='' as $$
  select jsonb_build_object('id',l.id,'code',l.code,'kind',l.kind,'public',l.is_public,'state',l.state,'champion',l.champion,
- 'players',coalesce((select jsonb_agg(jsonb_build_object('id',p.user_id,'username',p.username,'elo',p.elo,'slot',m.slot,'profile',m.profile) order by m.slot) from field_private.members m join field_private.players p on p.user_id=m.user_id where m.lobby_id=l.id),'[]'::jsonb),
+ 'players',coalesce((select jsonb_agg(jsonb_build_object('id',p.user_id,'username',p.username,'elo',p.elo,'slot',m.slot,'active',m.active,'profile',m.profile) order by m.slot) from field_private.members m join field_private.players p on p.user_id=m.user_id where m.lobby_id=l.id),'[]'::jsonb),
  'matches',coalesce((select jsonb_agg(jsonb_build_object('id',g.id,'round',g.round,'position',g.position,'p1',g.p1,'p2',g.p2,'state',g.state,'winner',g.winner,'score1',g.score1,'score2',g.score2,'eloDelta',g.elo_delta,'reported1',g.report1 is not null,'reported2',g.report2 is not null) order by g.round,g.position) from field_private.matches g where g.lobby_id=l.id),'[]'::jsonb))
  from field_private.lobbies l where l.id=room_id;
 $$;
 create function field_private.finish_match(match_key uuid, first_score integer, second_score integer) returns void language plpgsql set search_path='' as $$
-declare g field_private.matches; l field_private.lobbies; winner_id uuid; r1 integer; r2 integer; delta integer; final1 uuid; final2 uuid;
+declare g field_private.matches; l field_private.lobbies; winner_id uuid; r1 integer; r2 integer; delta integer; final1 uuid; final2 uuid; final_game uuid; first_active boolean; second_active boolean;
 begin
  select * into g from field_private.matches where id=match_key for update;
  if g.state='finished' then return; end if;
@@ -83,6 +83,12 @@ begin
   select winner into final2 from field_private.matches where lobby_id=l.id and round=1 and position=2 and state='finished';
   if final1 is not null and final2 is not null then
    insert into field_private.matches(lobby_id,round,position,p1,p2) values(l.id,2,1,final1,final2) on conflict do nothing;
+   select id into final_game from field_private.matches where lobby_id=l.id and round=2 and position=1;
+   select active into first_active from field_private.members where lobby_id=l.id and user_id=final1;
+   select active into second_active from field_private.members where lobby_id=l.id and user_id=final2;
+   if not first_active and not second_active then update field_private.lobbies set state='cancelled' where id=l.id;
+   elsif not first_active then perform field_private.finish_match(final_game,0,5);
+   elsif not second_active then perform field_private.finish_match(final_game,5,0); end if;
   end if;
  end if;
 end; $$;
@@ -135,7 +141,7 @@ begin
   -- Clear abandoned waiting seats; active matches retain their participants.
   delete from field_private.members m using field_private.lobbies q where m.lobby_id=q.id and q.state='waiting' and m.last_seen<now()-interval '45 seconds';
   update field_private.lobbies q set state='cancelled' where q.state='waiting' and not exists(select 1 from field_private.members m where m.lobby_id=q.id);
-  select q.id into existing from field_private.lobbies q join field_private.members m on m.lobby_id=q.id where m.user_id=uid and q.state in('waiting','playing') limit 1;
+  select q.id into existing from field_private.lobbies q join field_private.members m on m.lobby_id=q.id where m.user_id=uid and m.active and q.state in('waiting','playing') limit 1;
   if existing is not null then raise exception 'Ya estás en una sala. Sal de ella antes de buscar otra.'; end if;
   capacity:=case when lobby_kind='tournament' then 4 else 2 end;
   if command='join' then
@@ -164,7 +170,7 @@ begin
   select * into l from field_private.lobbies where id=inv.lobby_id and state='waiting' for update;
   if l.id is null then raise exception 'La sala ya no está disponible.'; end if;
   if command='invite_accept' then
-   if exists(select 1 from field_private.members m join field_private.lobbies q on q.id=m.lobby_id where m.user_id=uid and q.state in('waiting','playing')) then raise exception 'Sal de tu sala actual antes de aceptar.'; end if;
+   if exists(select 1 from field_private.members m join field_private.lobbies q on q.id=m.lobby_id where m.user_id=uid and m.active and q.state in('waiting','playing')) then raise exception 'Sal de tu sala actual antes de aceptar.'; end if;
    if not exists(select 1 from field_private.members where lobby_id=l.id and user_id=inv.sender and last_seen>now()-interval '45 seconds') then raise exception 'Tu amigo ya no está esperando.'; end if;
    insert into field_private.members(lobby_id,user_id,slot,profile) values(l.id,uid,2,coalesce(payload->'profile','{}'));
    update field_private.invites set state='accepted' where id=inv.id;
@@ -199,6 +205,7 @@ begin
       perform field_private.finish_match(g.id,case when uid=g.p1 then 0 else 5 end,case when uid=g.p2 then 0 else 5 end);
      end loop;
     end if;
+    update field_private.members set active=false where lobby_id=rid and user_id=uid;
     update field_private.invites set state='expired' where lobby_id=rid and state='pending';
    elsif l.state='playing' then
     for g in select * from field_private.matches where lobby_id=rid and state='playing' and uid in(p1,p2) loop
@@ -214,7 +221,7 @@ begin
  elsif command not in('state','claim_username') then raise exception 'Acción desconocida.';
  end if;
  update field_private.invites set state='expired' where state='pending' and created_at<now()-interval '5 minutes' and uid in(sender,recipient);
- if rid is null and command<>'leave' then select q.id into rid from field_private.lobbies q join field_private.members m on m.lobby_id=q.id where m.user_id=uid and q.state in('waiting','playing') order by q.created_at desc limit 1; end if;
+ if rid is null and command<>'leave' then select q.id into rid from field_private.lobbies q join field_private.members m on m.lobby_id=q.id where m.user_id=uid and m.active and q.state in('waiting','playing') order by q.created_at desc limit 1; end if;
  return jsonb_build_object('identity',(select jsonb_build_object('id',user_id,'username',username,'elo',elo,'played',ranked_played,'wins',ranked_wins) from field_private.players where user_id=uid),
  'friends',coalesce((select jsonb_agg(jsonb_build_object('id',p.user_id,'username',p.username,'elo',p.elo,'accepted',f.accepted,'incoming',f.requested_by<>uid)) from field_private.friends f join field_private.players p on p.user_id=case when f.a=uid then f.b else f.a end where uid in(f.a,f.b)),'[]'::jsonb),
  'invites',coalesce((select jsonb_agg(jsonb_build_object('id',i.id,'sender',i.sender,'recipient',i.recipient,'username',p.username,'state',i.state,'lobbyId',i.lobby_id,'incoming',i.recipient=uid)) from field_private.invites i join field_private.players p on p.user_id=case when i.sender=uid then i.recipient else i.sender end where uid in(i.sender,i.recipient) and i.created_at>now()-interval '5 minutes'),'[]'::jsonb),

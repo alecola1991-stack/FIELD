@@ -22,7 +22,15 @@ app.whenReady().then(async () => {
   const updateBase = join(app.getPath('userData'), 'game-updates');
   if (updateCheckTest) {
     try {
-      const updated = await checkForUpdate({ fetch: (...args) => net.fetch(...args), current: { build: '0'.repeat(40), builtAt: 0 }, base: updateBase });
+      const verifyFetch = (url, options = {}) => {
+        // CI shares public runner IPs. Authenticate only its release metadata request;
+        // never attach the token to asset downloads or normal game startup.
+        if (process.env.GH_TOKEN && new URL(url).origin === 'https://api.github.com') {
+          options = { ...options, headers: { ...options.headers, Authorization: `Bearer ${process.env.GH_TOKEN}` } };
+        }
+        return net.fetch(url, options);
+      };
+      const updated = await checkForUpdate({ fetch: verifyFetch, current: { build: '0'.repeat(40), builtAt: 0 }, base: updateBase });
       const passed = updated?.build === bundledBuild.build && readCached(updateBase)?.build === bundledBuild.build;
       console.log('Published GitHub update test:', passed ? 'PASS' : 'FAIL'); app.exit(passed ? 0 : 1);
     } catch (error) { console.error(error); app.exit(1); }

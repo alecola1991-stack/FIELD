@@ -96,6 +96,8 @@ jobs:
           gh release edit windows-latest --repo $env:GITHUB_REPOSITORY --notes 'Windows de 64 bits. Solo Portable: abrir sin instalar. Desde 1.2.1, una pantalla comprueba las actualizaciones de GitHub antes de abrir el juego y aplica la última versión disponible. Modos contra la IA disponibles sin internet; online y cuenta requieren conexión. El progreso local es independiente del navegador. Compilación sin firma digital.'
           if ($LASTEXITCODE -ne 0) { throw 'Could not update Windows release description' }
       - name: Verify published update download with Electron
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
           $exe = Resolve-Path 'desktop/release/win-unpacked/Futbol Arcade.exe'

@@ -6,7 +6,8 @@ const { tmpdir } = require('node:os');
 const { readCached, checkForUpdate, stageBundle } = require('./updates.cjs');
 const bundledBuild = require('./build-info.json');
 
-const smokeTest = process.argv.includes('--smoke-test');
+const updateCheckTest = process.argv.includes('--update-check-test');
+const smokeTest = updateCheckTest || process.argv.includes('--smoke-test');
 protocol.registerSchemesAsPrivileged([{ scheme: 'arcade', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 if (smokeTest) app.setPath('userData', mkdtempSync(join(tmpdir(), 'futbol-arcade-test-')));
 app.setAppUserModelId('com.futbolarcade.desktop');
@@ -17,8 +18,16 @@ function external(url) {
   try { if (new URL(url).protocol === 'https:') shell.openExternal(url); } catch { /* Invalid links remain closed. */ }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   const updateBase = join(app.getPath('userData'), 'game-updates');
+  if (updateCheckTest) {
+    try {
+      const updated = await checkForUpdate({ fetch: (...args) => net.fetch(...args), current: { build: '0'.repeat(40), builtAt: 0 }, base: updateBase });
+      const passed = updated?.build === bundledBuild.build && readCached(updateBase)?.build === bundledBuild.build;
+      console.log('Published GitHub update test:', passed ? 'PASS' : 'FAIL'); app.exit(passed ? 0 : 1);
+    } catch (error) { console.error(error); app.exit(1); }
+    return;
+  }
   const updatePackage = smokeTest && process.argv.find(argument => argument.startsWith('--update-package='));
   if (updatePackage) stageBundle(updateBase, JSON.parse(readFileSync(updatePackage.slice('--update-package='.length), 'utf8')));
   const cached = smokeTest && !updatePackage ? null : readCached(updateBase);

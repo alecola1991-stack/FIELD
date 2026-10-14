@@ -355,3 +355,20 @@ body.blue-theme{--bg:#070f25;--panel:#101e3b;--green:#81baff;--muted:#b1c3de;--l
 @media(max-width:600px){#quick-pickers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.fifa-team-panel h3{font-size:10px;padding:12px 8px;letter-spacing:0}.selection-filter{grid-template-columns:23px minmax(0,1fr) 23px!important;padding:6px 3px;gap:0}.selection-filter b{font-size:12px}.selection-filter small{font-size:9px;letter-spacing:0}.fifa-team-panel .carousel-arrow{width:23px;height:42px;padding:0}.selection-team{grid-template-columns:22px minmax(0,1fr) 22px!important;padding:12px 3px 0;gap:0}.selection-team-name{font-size:16px!important;min-height:60px;overflow-wrap:anywhere}.selection-crest{width:80px;height:98px;border-top-width:4px}.selection-crest b{font-size:18px;padding:6px}.selection-stars{gap:0}.selection-stars svg{width:16px;height:16px}.selection-kit{flex-direction:column;gap:7px;font-size:9px}.fifa-team-panel .match-team-count{font-size:9px;padding:11px 3px;letter-spacing:0}#quick-screen .match-setup-actions{justify-content:stretch}#quick-screen .match-setup-actions .primary-button{width:100%}#customize-screen .club-config-layout{display:flex;flex-direction:column}#customize-screen .club-config-intro{width:100%}#customize-screen .club-config-panel{width:100%;padding:12px}#customize-screen .profile-preview-card{display:none}#customize-screen .single-team-card{min-height:280px}}
 
 .league-tab[hidden]{display:none!important}
+.blue-theme .section-nav button:not(.active){background:#10213e}
+#quick-screen .match-setup-wrap{margin:0 auto;padding-top:8px}
+#quick-screen .editor-copy{margin-bottom:16px;padding:0}
+#quick-screen .editor-copy h2{font-size:32px}
+#quick-screen .editor-copy p:last-child{margin:7px 0 0;font-size:14px}
+#quick-screen .match-category-carousel{margin:0}
+#quick-screen .selection-filter{min-height:54px;padding-top:4px;padding-bottom:4px}
+#quick-screen .selection-team{padding-top:10px}
+#quick-screen .selection-team-name{min-height:40px}
+#quick-screen .selection-team .match-team-display{gap:10px}
+#quick-screen .selection-crest{width:108px;height:126px}
+#quick-screen .selection-kit{margin:12px 0}
+#quick-screen .selection-kit .match-team-preview{width:50px;height:50px;min-width:50px;min-height:50px}
+#quick-screen .match-team-count{padding:9px}
+#quick-screen .rules-entry{margin-top:12px;min-height:40px}
+#quick-screen .match-setup-actions{width:100%;margin-top:12px}
+@media(max-width:600px){#quick-screen .editor-copy h2{font-size:28px}#quick-screen .selection-crest{width:76px;height:92px}#quick-screen .selection-team-name{min-height:60px}#quick-screen .match-team-count{padding:10px 2px}}

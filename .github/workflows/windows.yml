@@ -6,6 +6,7 @@ on:
     paths:
       - 'desktop/**'
       - 'src/**'
+      - 'tests/**'
       - 'index.html'
       - 'vite.config.js'
       - 'package*.json'
@@ -32,6 +33,8 @@ jobs:
       - run: npm test
       - name: Bundle local game
         run: npm run build -- --mode desktop
+      - name: Prepare verified game update
+        run: node desktop/create-update.cjs
       - name: Install desktop tools
         run: npm ci --prefix desktop
       - name: Build installer and portable executable
@@ -44,11 +47,20 @@ jobs:
           $exe = Resolve-Path 'desktop/release/win-unpacked/Futbol Arcade.exe'
           $process = Start-Process -FilePath $exe -ArgumentList '--smoke-test' -Wait -PassThru
           if ($process.ExitCode -ne 0) { throw "Offline game test failed: $($process.ExitCode)" }
+      - name: Test downloaded update without internet
+        shell: pwsh
+        run: |
+          $exe = Resolve-Path 'desktop/release/win-unpacked/Futbol Arcade.exe'
+          $bundle = Resolve-Path 'desktop/release/game-update.json'
+          $process = Start-Process -FilePath $exe -ArgumentList "--smoke-test --update-package=$bundle" -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Updated offline game test failed: $($process.ExitCode)" }
       - name: Save Windows executables
         uses: actions/upload-artifact@v4
         with:
           name: Futbol-Arcade-Windows
-          path: desktop/release/*.exe
+          path: |
+            desktop/release/*.exe
+            desktop/release/game-update.json
       - name: Publish Windows download
         shell: pwsh
         env:
@@ -62,3 +74,5 @@ jobs:
           $files = Get-ChildItem desktop/release/*.exe | ForEach-Object { $_.FullName }
           gh release upload windows-latest $files --repo $env:GITHUB_REPOSITORY --clobber
           if ($LASTEXITCODE -ne 0) { throw 'Could not publish executables' }
+          gh release upload windows-latest desktop/release/game-update.json --repo $env:GITHUB_REPOSITORY --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Could not publish game update' }

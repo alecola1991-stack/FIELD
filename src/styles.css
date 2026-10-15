@@ -572,3 +572,40 @@ body.blue-theme.online-theme{--bg:#020713;--panel:#071329;--green:#83b4ff;--mute
 .tournament-bracket-panel h3{margin:0 0 8px;color:#b8d4ff;font:12px var(--mono);letter-spacing:.06em}
 @media(max-width:600px){.bracket-round{flex-basis:136px}.bracket-team{font-size:11px;gap:5px;padding:3px 6px}}
 .result-rematch-status{margin:6px 0 10px;text-align:center;font:12px var(--mono);color:#a9c0e4}
+
+/* Online room panel: header, seats (VS for duels, 2x2 for tournaments) and matches. */
+.online-room-panel{padding:14px;border-color:#6089c55c;background:linear-gradient(160deg,#0d1f3d,#071228)}
+.room-header{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:0 0 10px}
+.room-mode{font:800 11px var(--mono);letter-spacing:.12em;color:#cfe0ff}
+.room-state{padding:2px 8px;border-radius:999px;background:#ffffff14;color:#c4d9fa;font:700 10px var(--mono);letter-spacing:.08em}
+.room-state[data-state="waiting"]{background:#ffd67822;color:#ffd678}
+.room-state[data-state="playing"]{background:#65e6a524;color:#8ff0bd}
+.room-state[data-state="cancelled"]{background:#ff6b5a24;color:#ffab9f}
+.room-timer{margin-left:auto;font:12px var(--mono);color:#8ea6cc}
+.online-room-panel .online-status{text-align:left;margin-bottom:10px}
+.online-lobby-roster{display:grid;gap:8px;margin-top:10px}
+.online-lobby-roster.duel{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center}
+.online-lobby-roster.quad{grid-template-columns:repeat(2,minmax(0,1fr))}
+.room-seat{display:flex;align-items:center;gap:10px;min-width:0;padding:10px;border:1px solid #6089c548;border-radius:12px;background:#07162d}
+.room-seat.you{border-color:#65e6a580;box-shadow:0 0 0 2px #65e6a518}
+.room-seat.left{opacity:.5}
+.room-seat.empty{border-style:dashed;color:#7f96bd;font-size:13px}
+.room-crest{flex:0 0 auto;display:grid;place-items:center;width:42px;height:42px;border-radius:50%;color:#fff;font:900 11px var(--mono);text-shadow:0 1px 2px #000;box-shadow:inset 0 0 0 2px #ffffff30}
+.room-crest.pulse{background:#1b2b48;animation:roomPulse 1.4s ease-in-out infinite}
+.room-seat-info{display:flex;flex-direction:column;gap:2px;min-width:0}
+.room-seat-info b{display:flex;align-items:center;gap:6px;font-size:14px;color:#eef4ff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.room-seat-info small{font:11px var(--mono);color:#9fb4d4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.room-you{padding:1px 5px;border-radius:5px;background:#65e6a530;color:#8ff0bd;font:700 9px var(--mono);font-style:normal}
+.room-versus{font:900 18px Manrope,system-ui,sans-serif;font-style:italic;color:#ffd678;text-align:center}
+.online-bracket{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-top:10px}
+.room-match{display:flex;flex-direction:column;gap:4px;padding:9px 10px;border:1px solid #6089c548;border-radius:10px;background:#07162d}
+.room-match small{font:10px var(--mono);letter-spacing:.1em;color:#8ea6cc}
+.room-match-line{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:#c9d8ef}
+.room-match-line span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.room-match-line.winner{color:#fff;font-weight:800}
+.room-match-line.you span{color:#8ff0bd}
+.room-match em{font:10px var(--mono);font-style:normal;color:#ffd678}
+.room-match[data-state="finished"] em{color:#8ea6cc}
+@keyframes roomPulse{50%{opacity:.45}}
+@media(max-width:600px){.online-lobby-roster.duel{grid-template-columns:1fr}.room-versus{font-size:14px}.online-lobby-roster.quad .room-seat{padding:8px;gap:7px}.online-lobby-roster.quad .room-crest{width:34px;height:34px;font-size:10px}.online-lobby-roster.quad .room-seat-info small:last-child{display:none}.online-lobby-roster.quad .room-seat-info b{font-size:13px}}
+@media(prefers-reduced-motion:reduce){.room-crest.pulse{animation:none}}

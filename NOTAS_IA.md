@@ -4,6 +4,17 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-15 · Claude · Sala online mejorada
+**Commit:** rama `claude/marcador-clasificacion-revancha`, commit "Sala online mejorada" (pendiente de aprobación de Ale)
+**Archivos:** `src/ui/OnlineHub.js`, `index.html`, `src/styles.css`, `NOTAS_IA.md`
+**Qué y por qué:** Ale pidió mejorar la interfaz de la sala online.
+**Cómo:**
+- `#online-room-panel` tiene una cabecera nueva, `.room-header` (`#online-room-mode`, `#online-room-state` con `data-state` y `#online-room-timer`, que cuenta el tiempo de espera de la sala actual).
+- `OnlineHub.renderLobby()` reescrito. Muestra una tarjeta por plaza (`seatCard`: colores de la camiseta y abreviatura del equipo, @usuario, etiqueta TÚ, ELO, nivel y equipo, o "Ha salido") y huecos animados (`emptySeat`). En 1 contra 1 se ve "VS" entre las plazas (`.duel`); en torneo, una rejilla 2×2 (`.quad`). Los partidos usan tarjetas `.room-match`, con ganador, marcador y ±ELO en Ranked.
+- **Clases nuevas `room-*`**. No reutilizar `.bracket-match` en el online: esa clase es ahora del cuadro de torneos offline.
+- Se mantienen los IDs existentes (`online-status`, `online-room-code-wrap`, `online-lobby-roster`, `online-bracket` y `online-cancel`).
+**Para el otro asistente:** los datos de cada plaza vienen de `room.players[*].profile` (`teamId`, `level`) del RPC; no hacen falta cambios de SQL.
+
 ## 2026-10-15 · Claude · Revancha online (partido rápido y Ranked)
 **Commit:** rama `claude/marcador-clasificacion-revancha`, commit "Revancha online…" (pendiente de aprobación de Ale)
 **Archivos:** `supabase/online-rematch.sql` (nuevo), `supabase/online-rematch-test.sql` (nuevo), `src/ui/OnlineHub.js`, `src/ui/UI.js`, `index.html`, `src/styles.css`, `tests/OnlineHub.test.js`, `NOTAS_IA.md`

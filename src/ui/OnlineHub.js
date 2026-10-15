@@ -1,4 +1,6 @@
 import { ONLINE_RULES, ONLINE_MODES, normalizeUsername, validUsername, assignedMatch, opponentId } from '../game/OnlineRules.js';
+import { getTeamById, getKitBackground } from '../config/teams.js';
+import { teamAbbreviation } from './TeamSelection.js';
 
 const element = (tag, text, className = '') => { const node = document.createElement(tag); node.textContent = text; node.className = className; return node; };
 export class OnlineHub {
@@ -219,25 +221,68 @@ export class OnlineHub {
     }
     if (!this.invites.length) invites.append(element('p', 'Aquí aparecerán las invitaciones para jugar.', 'online-match-hint'));
   }
+  // Room panel: mode, privacy, state and waiting time; one card per seat (kit
+  // colours, @user, ELO, level) with animated empty seats; VS for duels and a
+  // bracket for four-player tournaments.
   renderLobby() {
     const panel = this.ui.online_room_panel; panel.classList.toggle('hidden', !this.lobby);
     const roster = document.getElementById('online-lobby-roster'); roster.replaceChildren();
     const bracket = document.getElementById('online-bracket'); bracket.replaceChildren();
-    if (!this.lobby) return;
-    const room = this.lobby, capacity = ONLINE_MODES[room.kind]?.capacity || 2;
+    if (!this.lobby) { clearInterval(this.roomTimer); this.roomTimer = 0; this.waitingRoom = null; return; }
+    const room = this.lobby, capacity = ONLINE_MODES[room.kind]?.capacity || 2, mode = ONLINE_MODES[room.kind]?.name || 'Sala';
     this.ui.online_room_code_wrap.classList.toggle('hidden', room.public || room.state !== 'waiting');
     this.ui.online_room_code.textContent = room.code;
     this.ui.online_cancel.textContent = room.state === 'finished' || room.state === 'cancelled' ? 'Cerrar sala' : room.state === 'playing' ? 'Salir de la sala' : 'Cancelar búsqueda / sala';
-    let status = room.state === 'waiting' ? `${ONLINE_MODES[room.kind].name} · ${room.players.length}/${capacity} jugadores · Esperando participantes…` : room.state === 'finished' ? `Ganador: @${room.players.find(p => p.id === room.champion)?.username || 'jugador'}` : room.state === 'cancelled' ? 'Sala cancelada.' : room.kind === 'tournament' ? 'Torneo en curso · dos semifinales y una final' : 'Partido en curso';
+    document.getElementById('online-room-mode').textContent = `${mode.toUpperCase()} · ${room.public ? 'PÚBLICA' : 'PRIVADA'}`;
+    const stateLabel = { waiting: `ESPERANDO · ${room.players.length}/${capacity}`, playing: 'EN JUEGO', finished: 'TERMINADA', cancelled: 'CANCELADA' }[room.state] || '';
+    const stateNode = document.getElementById('online-room-state'); stateNode.textContent = stateLabel; stateNode.dataset.state = room.state;
+    // Waiting timer for the current room.
+    if (room.state === 'waiting') {
+      if (this.waitingRoom !== room.id) { this.waitingRoom = room.id; this.waitingSince = Date.now(); }
+      const tickTimer = () => { const seconds = Math.floor((Date.now() - this.waitingSince) / 1000); document.getElementById('online-room-timer').textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`; };
+      tickTimer(); if (!this.roomTimer) this.roomTimer = setInterval(tickTimer, 1000);
+    } else { clearInterval(this.roomTimer); this.roomTimer = 0; document.getElementById('online-room-timer').textContent = ''; }
+    let status = room.state === 'waiting' ? (room.public ? 'Buscando rivales… te emparejaremos en cuanto haya alguien disponible.' : 'Comparte el código para que tu rival entre.')
+      : room.state === 'finished' ? `Ganador: @${room.players.find(p => p.id === room.champion)?.username || 'jugador'}` : room.state === 'cancelled' ? 'Sala cancelada.'
+        : room.kind === 'tournament' ? 'Torneo en curso · dos semifinales y una final' : 'Partido en curso';
     if (room.kind === 'tournament' && room.state === 'playing' && !assignedMatch(room, this.identity?.id)) status += ' · Esperando la otra semifinal o la final';
     this.ui.online_status.textContent = status; this.ui.online_status.classList.toggle('error', room.state === 'cancelled');
-    room.players.forEach(player => roster.append(element('span', `@${player.username} · ${player.elo} ELO`, 'lobby-player')));
+    roster.classList.toggle('duel', capacity === 2); roster.classList.toggle('quad', capacity === 4);
+    const seats = [];
+    for (let slot = 1; slot <= capacity; slot++) {
+      const player = room.players.find(item => item.slot === slot) || (room.players[slot - 1] && room.players[slot - 1].slot === undefined ? room.players[slot - 1] : null);
+      seats.push(player ? this.seatCard(player) : this.emptySeat());
+      if (capacity === 2 && slot === 1) seats.push(element('b', 'VS', 'room-versus'));
+    }
+    roster.append(...seats);
     for (const match of room.matches) {
       const first = room.players.find(player => player.id === match.p1), second = room.players.find(player => player.id === match.p2);
-      const card = element('div', '', 'bracket-match'); card.append(element('small', room.kind === 'tournament' ? match.round === 2 ? 'FINAL' : `SEMIFINAL ${match.position}` : ONLINE_MODES[room.kind].name.toUpperCase()));
-      card.append(element('b', `@${first?.username} vs @${second?.username}`));
-      card.append(element('span', match.state === 'finished' ? `${match.score1} – ${match.score2} · Gana @${room.players.find(p => p.id === match.winner)?.username}` : match.state === 'disputed' ? 'Resultado discrepante' : match.reported1 || match.reported2 ? 'Confirmando resultado…' : 'En juego'));
+      const card = element('div', '', 'room-match'); card.dataset.state = match.state;
+      card.append(element('small', room.kind === 'tournament' ? match.round === 2 ? 'FINAL' : `SEMIFINAL ${match.position}` : (ONLINE_MODES[room.kind]?.name || '').toUpperCase()));
+      for (const [player, score] of [[first, match.score1], [second, match.score2]]) {
+        const line = element('div', '', 'room-match-line');
+        line.classList.toggle('winner', match.state === 'finished' && match.winner === player?.id);
+        line.classList.toggle('you', player?.id === this.identity?.id);
+        line.append(element('span', `@${player?.username || '—'}`), element('b', match.state === 'finished' ? String(score ?? '') : ''));
+        card.append(line);
+      }
+      card.append(element('em', match.state === 'finished' ? (room.kind === 'ranked' && match.eloDelta ? `±${Math.abs(match.eloDelta)} ELO` : 'Final') : match.state === 'disputed' ? 'Resultado discrepante' : match.reported1 || match.reported2 ? 'Confirmando resultado…' : 'En juego'));
       bracket.append(card);
     }
   }
+  seatCard(player) {
+    const profile = player.profile || {}, team = getTeamById(profile.teamId), mine = player.id === this.identity?.id;
+    const card = element('div', '', 'room-seat'); card.classList.toggle('you', mine); card.classList.toggle('left', player.active === false);
+    const crest = element('span', team ? teamAbbreviation(team.name) : '?', 'room-crest'); crest.style.background = team ? getKitBackground(team) : '#1b2b48';
+    const info = element('div', '', 'room-seat-info');
+    const name = element('b', `@${player.username}`); if (mine) name.append(element('i', 'TÚ', 'room-you'));
+    info.append(name, element('small', `${player.elo} ELO · NIVEL ${profile.level || 1}`), element('small', player.active === false ? 'Ha salido de la sala' : team?.name || 'Equipo sin elegir'));
+    card.append(crest, info); return card;
+  }
+  emptySeat() {
+    const card = element('div', '', 'room-seat empty');
+    card.append(element('span', '', 'room-crest pulse'), element('div', 'Esperando jugador…', 'room-seat-info'));
+    return card;
+  }
+
 }

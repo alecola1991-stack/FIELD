@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-15 · Claude · Ligas Primera y Segunda RFEF
-**Commit:** rama `claude/ligas-rfef` (pendiente de aprobación de Ale antes de fusionar en `main`)
+**Commit:** `884ba43` (rama `claude/ligas-rfef`, fusionada en `main` el 2026-10-15 con la aprobación de Ale). Para deshacerlo: `git revert 884ba43`.
 **Archivos:** `src/config/teams.js`, `src/game/Competitions.js`, `src/game/Renderer.js`, `tests/RfefLeagues.test.js` (nuevo), `README.md`, `NOTAS_IA.md`
 **Qué y por qué:** Ale pidió añadir Primera y Segunda Federación de España. Se añaden 7 ligas jugables, una por grupo oficial 2026/27 (fuente: RFEF), con 130 clubes en total: Primera RFEF tiene 2 grupos de 20 y Segunda RFEF 5 grupos de 18.
 **Cómo:**

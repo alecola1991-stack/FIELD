@@ -1341,10 +1341,13 @@ export class UI {
   updateReplay(info) {
     this.replay_banner.classList.toggle('hidden', !info);
     if (!info) return;
-    const skipKey = this.controller?.index !== null && this.controller?.index !== undefined ? '✕ / A' : 'ESPACIO';
+    const touch = window.matchMedia?.('(pointer:coarse)').matches;
+    const skipHint = this.controller?.index !== null && this.controller?.index !== undefined ? 'Pulsa ✕ / A para saltar' : touch ? 'Toca Saltar o DISPARAR' : 'Pulsa ESPACIO para saltar';
+    // Rotated (portrait) pitch: keep the banner away from the goal being replayed.
+    this.replay_banner.classList.toggle('at-bottom', !!this.game?.renderer.rotated && this.game.state.goalSide === 1);
     this.replay_skip.disabled = info.localSkip;
     this.replay_skip.innerHTML = info.localSkip ? 'Saltada <span aria-hidden="true">✓</span>' : 'Saltar <span aria-hidden="true">⏭</span>';
-    this.replay_status.textContent = !info.online ? `Pulsa ${skipKey} para saltar`
+    this.replay_status.textContent = !info.online ? skipHint
       : info.localSkip ? (info.remoteSkip ? 'Continuando…' : 'Esperando a que tu rival salte…')
         : info.remoteSkip ? 'Tu rival ya ha saltado · salta para continuar' : 'Los dos debéis saltar para continuar';
   }

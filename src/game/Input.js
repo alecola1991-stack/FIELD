@@ -38,7 +38,10 @@ export class Input {
     const left = this.down.has('KeyA') || this.down.has('ArrowLeft'); const right = this.down.has('KeyD') || this.down.has('ArrowRight');
     const up = this.down.has('KeyW') || this.down.has('ArrowUp'); const down = this.down.has('KeyS') || this.down.has('ArrowDown');
     const keyboard = { x: Number(right) - Number(left), y: Number(down) - Number(up) };
-    return keyboard.x || keyboard.y ? keyboard : (this.padAxes || { x: 0, y: 0 });
+    const screen = keyboard.x || keyboard.y ? keyboard : (this.padAxes || { x: 0, y: 0 });
+    // Controls are screen-relative: with the pitch rotated (portrait), screen up
+    // moves toward the attacked goal (+x) and screen right moves toward +y.
+    return this.rotated ? { x: -screen.y || 0, y: screen.x || 0 } : screen;
   }
   consume(code) { const hit = this.pressed.has(code); this.pressed.delete(code); return hit; }
   press(code) { if (!this.down.has(code)) this.pressed.add(code); this.down.add(code); }

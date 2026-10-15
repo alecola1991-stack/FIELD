@@ -29,11 +29,15 @@ const FIELD_THEMES = {
 const RFEF_THEME = { grass: '#2b3324', stripe: '#f2d6a00a', line: 'rgba(244,228,198,.39)', net: '#1f2419', accent: '#d8b46a' };
 for (const id of FEDERATION_LEAGUE_IDS) FIELD_THEMES[`league-${id}`] = RFEF_THEME;
 
+const VIEW_TOP = 25, VIEW_BOTTOM = WORLD.height - 25; // reachable band of the world
+const TOUCH_CONTROLS_HEIGHT = 176; // css px kept clear for the portrait D-pad and kick button
+
 export class Renderer {
   constructor(canvas) {
     this.fieldCache = document.createElement('canvas'); this.fieldCache.width = WORLD.width; this.fieldCache.height = WORLD.height;
     this.fieldCacheContext = this.fieldCache.getContext('2d', { alpha: false });
     this.canvas = canvas; this.ctx = canvas.getContext('2d', { alpha: false }); this.dpr = 1; this.scale = 1; this.ox = 0; this.oy = 0; this.particles = [];
+    this.rotated = false; this.allowRotate = true;
     this.resizeObserver = new ResizeObserver(() => this.resize()); this.resizeObserver.observe(canvas);
     this.resize();
   }
@@ -41,8 +45,28 @@ export class Renderer {
     const rect = this.canvas.getBoundingClientRect(); this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     const w = Math.max(1, rect.width), h = Math.max(1, rect.height);
     this.canvas.width = Math.round(w * this.dpr); this.canvas.height = Math.round(h * this.dpr);
-    this.scale = Math.min(this.canvas.width / WORLD.width, this.canvas.height / WORLD.height);
-    this.ox = (this.canvas.width - WORLD.width * this.scale) / 2; this.oy = (this.canvas.height - WORLD.height * this.scale) / 2;
+    // Frame only the band bodies can reach (players may step half a centre-circle
+    // radius beyond the touchlines), not the empty world margin above and below.
+    // Portrait screens (phones held upright) rotate the pitch so it fills the
+    // height: the attacked goal (+x) points up. On touch layouts the bottom of
+    // the canvas is reserved for the on-screen controls so they never cover it.
+    const cw = this.canvas.width, ch = this.canvas.height, viewH = VIEW_BOTTOM - VIEW_TOP;
+    this.rotated = this.allowRotate && ch > cw * 1.1;
+    if (this.rotated) {
+      const touch = window.matchMedia?.('(pointer:coarse), (max-width:700px)').matches;
+      const usable = Math.max(ch * .55, ch - (touch ? TOUCH_CONTROLS_HEIGHT * this.dpr : 0));
+      this.scale = Math.min(cw / viewH, usable / WORLD.width);
+      this.ox = (cw - viewH * this.scale) / 2; this.oy = Math.max(0, (usable - WORLD.width * this.scale) / 2);
+    } else {
+      this.scale = Math.min(cw / WORLD.width, ch / viewH);
+      this.ox = (cw - WORLD.width * this.scale) / 2; this.oy = (ch - viewH * this.scale) / 2;
+    }
+  }
+  setAllowRotate(allow) { if (this.allowRotate !== !!allow) { this.allowRotate = !!allow; this.resize(); } }
+  applyWorldTransform(c) {
+    const s = this.scale;
+    if (this.rotated) c.setTransform(0, -s, s, 0, this.ox - VIEW_TOP * s, this.oy + WORLD.width * s);
+    else c.setTransform(s, 0, 0, s, this.ox, this.oy - VIEW_TOP * s);
   }
   burst(x, y, color, count = 8, force = 120) {
     for (let i = 0; i < count; i++) { const a = Math.random() * Math.PI * 2, speed = force * (.25 + Math.random() * .75); this.particles.push({ x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, life: .32 + Math.random() * .28, max: .6, size: 1.5 + Math.random() * 2.5, color }); }
@@ -57,10 +81,11 @@ export class Renderer {
   render(game, dt) {
     this.renderBlend = 1 - Math.exp(-24 * (dt > 0 ? Math.min(dt, .05) : 1 / 60));
     this.world = game.world || WORLD;
-    const c = this.ctx, W = this.world; c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = '#0b1115'; c.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    c.setTransform(this.scale, 0, 0, this.scale, this.ox, this.oy);
+    // Fill the spare canvas with the pitch surround colour: no black bands.
+    const c = this.ctx, W = this.world; c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = (FIELD_THEMES[game.fieldTheme] || FIELD_THEMES.arcade).net; c.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    this.applyWorldTransform(c);
     if (this.fieldCacheContext) {
-      const key = `${game.fieldTheme}|${game.competitionRound}|${W.goalTop}|${W.goalBottom}|${W.goalBack}`;
+      const key = `${game.fieldTheme}|${game.competitionRound}|${W.goalTop}|${W.goalBottom}|${W.goalBack}|${this.rotated}`;
       if (key !== this.fieldCacheKey) { this.drawField(this.fieldCacheContext, game.fieldTheme, game.competitionRound); this.fieldCacheKey = key; }
       c.drawImage(this.fieldCache, 0, 0);
     } else this.drawField(c, game.fieldTheme, game.competitionRound);
@@ -77,7 +102,7 @@ export class Renderer {
     }
     if (game.replay) {
       // Replay look: slightly darker pitch with a thin broadcast-style frame.
-      c.fillStyle = 'rgba(6,12,28,.16)'; c.fillRect(0, 0, W.width, W.height);
+      c.fillStyle = 'rgba(6,12,28,.16)'; c.fillRect(W.left, W.top, W.right - W.left, W.bottom - W.top);
       c.strokeStyle = 'rgba(255,214,120,.55)'; c.lineWidth = 3; c.strokeRect(W.left - 6, W.top - 6, W.right - W.left + 12, W.bottom - W.top + 12);
     }
   }
@@ -117,7 +142,10 @@ export class Renderer {
     c.strokeStyle = theme.accent + '88'; c.lineWidth = 3; c.strokeRect(goalBack, goalTop, left - goalBack, goalBottom - goalTop); c.strokeRect(right, goalTop, world.width - goalBack - right, goalBottom - goalTop);
     c.strokeStyle = theme.accent; c.lineWidth = 6; c.lineCap = 'round'; c.beginPath(); c.moveTo(left, goalTop); c.lineTo(left, goalBottom); c.moveTo(right, goalTop); c.lineTo(right, goalBottom); c.stroke(); c.lineCap = 'butt';
     c.fillStyle = theme.accent; for (const x of [left, right]) for (const y of [goalTop, goalBottom]) { c.beginPath(); c.arc(x, y, world.goalPostRadius, 0, Math.PI * 2); c.fill(); }
-    c.fillStyle = theme.accent + 'a0'; c.font = '9px "DM Mono",monospace'; c.textAlign = 'center'; c.fillText('HOME', (goalBack + left) / 2, goalTop - 8); c.fillText('AWAY', (right + world.width - goalBack) / 2, goalTop - 8);
+    c.fillStyle = theme.accent + 'a0'; c.font = '9px "DM Mono",monospace'; c.textAlign = 'center'; for (const [label, x] of [['HOME', (goalBack + left) / 2], ['AWAY', (right + world.width - goalBack) / 2]]) {
+      if (this.rotated) { c.save(); c.translate(x + (x < world.width / 2 ? -16 : 16), world.height / 2); c.rotate(Math.PI / 2); c.fillText(label, 0, 0); c.restore(); }
+      else c.fillText(label, x, goalTop - 8);
+    }
   }
   smooth(entity) {
     if (entity._rx === undefined || Math.hypot(entity.x - entity._rx, entity.y - entity._ry) > 160) { entity._rx = entity.x; entity._ry = entity.y; }
@@ -126,7 +154,7 @@ export class Renderer {
   }
   drawPlayer(c, player, color) {
     const [x, y] = this.smooth(player), r = player.radius, kick = player.kickScale || 0;
-    c.save(); c.translate(x, y);
+    c.save(); c.translate(x, y); if (this.rotated) c.rotate(Math.PI / 2); // keep names, numbers and shadows upright
     c.fillStyle = '#0005'; c.beginPath(); c.ellipse(2, 8, r * 1.05, r * .82, 0, 0, Math.PI * 2); c.fill();
     c.scale(1 + kick * .18, 1 - kick * .1);
     c.shadowColor = color + '55'; c.shadowBlur = 15;
@@ -177,7 +205,7 @@ export class Renderer {
   }
   drawBall(c, ball, position = null) {
     const [x, y] = position || this.smooth(ball), r = ball.radius;
-    c.save(); c.translate(x, y); c.fillStyle = '#0007'; c.beginPath(); c.ellipse(2, 5, r * 1.08, r * .76, 0, 0, Math.PI * 2); c.fill();
+    c.save(); c.translate(x, y); if (this.rotated) c.rotate(Math.PI / 2); c.fillStyle = '#0007'; c.beginPath(); c.ellipse(2, 5, r * 1.08, r * .76, 0, 0, Math.PI * 2); c.fill();
     c.rotate(ball.spin); c.scale(1 + ball.kickScale * .16, 1 - ball.kickScale * .12);
     const sizeScale = r / 12;
     const [ballColor, patchColor, glow] = ['#e8eee9', '#23352d', '#e9f4ee70'];

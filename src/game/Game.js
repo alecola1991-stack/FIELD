@@ -89,6 +89,7 @@ export class Game {
     if (!this.state.running) return;
     this.sound?.updateAmbience?.(this.ball,this.world || WORLD,!this.state.paused && !this.state.matchOver && this.renderEnabled !== false);
     if (this.state.paused) { if (time - (this.pausedPaintAt || 0) < 100) return; this.pausedPaintAt = time; }
+    this.renderer.setAllowRotate?.(this.settings.verticalField !== false); this.input.rotated = !!this.renderer.rotated;
     const dt = this.last ? Math.min((time - this.last) / 1000, .033) : 0; this.last = time;
     if (!this.state.paused) {
       if (this.state.mode === 'online' && !this.onlineAuthority) {

@@ -442,3 +442,26 @@ body.blue-theme.online-theme{--bg:#020713;--panel:#071329;--green:#83b4ff;--mute
 @keyframes replayBlink{to{visibility:hidden}}
 @media(max-width:600px){.replay-banner{flex-wrap:wrap;justify-content:center;gap:6px 10px;width:max-content;border-radius:16px;padding:7px 8px 7px 12px}.replay-banner small{order:3;flex-basis:100%;text-align:center;font-size:10px}}
 @media(prefers-reduced-motion:reduce){.replay-tag i{animation:none}}
+
+/* Full-bleed match screen: the pitch uses the whole viewport (no 1260 px cap,
+   no letterbox bands; the canvas paints spare space with the pitch surround). */
+.game-screen:not(.hidden){position:fixed;inset:0;z-index:5;width:100%;height:100vh;height:100dvh;min-height:0;margin:0;padding:0 clamp(10px,1.6vw,26px) max(6px,env(safe-area-inset-bottom));overflow:hidden;background:#070d1c}
+.game-screen .game-header{flex:0 0 auto;height:62px}
+.game-screen .field-wrap{flex:1 1 auto;min-height:0;display:block}
+.game-screen .field-wrap canvas{border-radius:6px}
+.game-screen .field-wrap canvas{width:100%;height:100%;max-height:none}
+.game-screen .game-footer{flex:0 0 auto}
+@media (pointer:coarse), (max-width:700px){
+  .game-screen .game-header{height:52px}
+  .game-screen .field-wrap{margin:0 calc(-1 * clamp(10px,1.6vw,26px))}
+  .game-screen .field-wrap canvas{border-radius:0}
+}
+@media (pointer:coarse) and (max-height:480px){.game-screen .game-header{height:40px}}
+@media (pointer:coarse) and (max-height:480px){
+  .game-screen .game-footer{height:30px;min-height:0;padding:0;flex-wrap:nowrap}
+  .game-screen .game-footer :is(.rules-game-button,.mode-label,.controls-hint){display:none}
+}
+/* The match screen no longer scrolls: long result panels scroll inside their overlay. */
+.game-screen .pause-overlay{overflow-y:auto;align-items:safe center;padding:12px 0}
+.replay-banner.at-bottom{top:auto;bottom:12px}
+@media (pointer:coarse), (max-width:700px){.replay-banner.at-bottom{bottom:184px}}

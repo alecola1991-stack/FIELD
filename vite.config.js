@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 
-// GitHub Pages serves this repository under /FIELD/ rather than the domain root.
+// The custom domain serves the web game at its root; desktop uses relative assets.
 export default defineConfig(({ mode }) => ({
-  base: mode === 'desktop' ? './' : process.env.GITHUB_ACTIONS === 'true' ? '/FIELD/' : '/',
+  base: mode === 'desktop' ? './' : '/',
   build: { outDir: mode === 'desktop' ? 'desktop/game' : 'dist' },
 }));

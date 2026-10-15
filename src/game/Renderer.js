@@ -1,4 +1,5 @@
 import { WORLD } from '../config/settings.js';
+import { FEDERATION_LEAGUE_IDS } from '../config/teams.js';
 import { Ball } from './Ball.js';
 import { predictShot, shotRangeRadius, resolveBallWalls, isGoal } from './Physics.js';
 
@@ -24,6 +25,9 @@ const FIELD_THEMES = {
   'copa-libertadores': { grass: '#183e36', stripe: '#d0a4600a', line: 'rgba(235,220,188,.42)', net: '#112d29', accent: '#d6a25b' },
   'club-world-cup': { grass: '#23364c', stripe: '#b4d7ff09', line: 'rgba(221,236,251,.42)', net: '#18283a', accent: '#a6c9ec' },
 };
+// Primera and Segunda RFEF groups share one theme.
+const RFEF_THEME = { grass: '#2b3324', stripe: '#f2d6a00a', line: 'rgba(244,228,198,.39)', net: '#1f2419', accent: '#d8b46a' };
+for (const id of FEDERATION_LEAGUE_IDS) FIELD_THEMES[`league-${id}`] = RFEF_THEME;
 
 export class Renderer {
   constructor(canvas) {

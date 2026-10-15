@@ -3,6 +3,15 @@
 export const TEAM_LEAGUES = [
   { id: 'laliga', label: 'LaLiga · España 26/27' },
   { id: 'laliga2', label: 'LaLiga Hypermotion · España 26/27' },
+  // Third and fourth Spanish tiers: one playable league per official group.
+  // `federation` keeps them out of the Champions draw.
+  { id: 'primera-rfef-1', label: 'Primera RFEF Grupo 1 · España 26/27', federation: true },
+  { id: 'primera-rfef-2', label: 'Primera RFEF Grupo 2 · España 26/27', federation: true },
+  { id: 'segunda-rfef-1', label: 'Segunda RFEF Grupo 1 · España 26/27', federation: true },
+  { id: 'segunda-rfef-2', label: 'Segunda RFEF Grupo 2 · España 26/27', federation: true },
+  { id: 'segunda-rfef-3', label: 'Segunda RFEF Grupo 3 · España 26/27', federation: true },
+  { id: 'segunda-rfef-4', label: 'Segunda RFEF Grupo 4 · España 26/27', federation: true },
+  { id: 'segunda-rfef-5', label: 'Segunda RFEF Grupo 5 · España 26/27', federation: true },
   { id: 'premier', label: 'Premier League · Inglaterra 26/27' },
   { id: 'championship', label: 'Championship · Inglaterra 26/27' },
   { id: 'serie-a', label: 'Serie A · Italia 26/27' },
@@ -20,6 +29,8 @@ export const TEAM_LEAGUES = [
   { id: 'super-lig', label: 'Süper Lig · Turquía 26/27' },
 ];
 
+export const FEDERATION_LEAGUE_IDS = new Set(TEAM_LEAGUES.filter(league => league.federation).map(league => league.id));
+
 export const NATIONAL_GROUPS = [
   { id: 'europe', label: 'Europa · Selecciones', type: 'national' },
   { id: 'america', label: 'América · Selecciones', type: 'national' },
@@ -30,7 +41,7 @@ export const HONORARY_GROUPS = [
 ];
 
 export const TEAM_COUNTRIES = [
-  { id: 'spain', label: 'España', groups: ['laliga', 'laliga2'] },
+  { id: 'spain', label: 'España', groups: ['laliga', 'laliga2', 'primera-rfef-1', 'primera-rfef-2', 'segunda-rfef-1', 'segunda-rfef-2', 'segunda-rfef-3', 'segunda-rfef-4', 'segunda-rfef-5'] },
   { id: 'england', label: 'Inglaterra', groups: ['premier', 'championship'] },
   { id: 'italy', label: 'Italia', groups: ['serie-a', 'serie-b'] },
   { id: 'france', label: 'Francia', groups: ['ligue-1', 'ligue-2'] },
@@ -74,6 +85,86 @@ export const TEAMS = [
     ['real-sociedad-b', 'Real Sociedad B', '#1766AA', '#FFFFFF'], ['sporting', 'Sporting de Gijón', '#D71920', '#1766AA'],
     ['tenerife', 'Tenerife', '#FFFFFF', '#1766AA'], ['valladolid', 'Real Valladolid', '#6B3FA0', '#FFFFFF'],
     ['celta-fortuna', 'Celta Fortuna', '#8CC7E8', '#FFFFFF'], ['albacete', 'Albacete', '#FFFFFF', '#D71920'],
+  ]),
+  // Primera y Segunda Federación 2026/27, official RFEF group composition.
+  ...define('primera-rfef-1', [
+    ['merida', 'Mérida', '#FFFFFF', '#171717'], ['arenas', 'Arenas Club', '#D71920', '#171717'],
+    ['athletic-b', 'Athletic Club B', '#E32636', '#FFFFFF'], ['barakaldo', 'Barakaldo', '#F5D21B', '#171717'],
+    ['coria', 'Coria', '#FFFFFF', '#D71920'], ['extremadura', 'Extremadura', '#1766AA', '#8A2438'],
+    ['lugo', 'Lugo', '#D71920', '#FFFFFF'], ['mirandes', 'Mirandés', '#D71920', '#171717'],
+    ['cacereno', 'Cacereño', '#16834A', '#FFFFFF'], ['cultural', 'Cultural Leonesa', '#FFFFFF', '#171717'],
+    ['pontevedra', 'Pontevedra', '#8A2438', '#FFFFFF'], ['racing-ferrol', 'Racing de Ferrol', '#16834A', '#171717'],
+    ['fabril', 'Deportivo Fabril', '#0875BC', '#FFFFFF'], ['aviles', 'Real Avilés', '#1766AA', '#FFFFFF'],
+    ['real-union', 'Real Unión', '#FFFFFF', '#171717'], ['ponferradina', 'Ponferradina', '#1766AA', '#FFFFFF'],
+    ['ud-logrones', 'UD Logroñés', '#D71920', '#FFFFFF'], ['ourense', 'UD Ourense', '#1766AA', '#FFFFFF'],
+    ['unionistas', 'Unionistas de Salamanca', '#FFFFFF', '#171717'], ['zamora', 'Zamora', '#D71920', '#FFFFFF'],
+  ]),
+  ...define('primera-rfef-2', [
+    ['alcorcon', 'Alcorcón', '#F5D21B', '#1766AA'], ['aguilas', 'Águilas', '#FFFFFF', '#1766AA'],
+    ['algeciras', 'Algeciras', '#D71920', '#FFFFFF'], ['antequera', 'Antequera', '#16834A', '#FFFFFF'],
+    ['atletico-madrileno', 'Atlético Madrileño', '#D71920', '#FFFFFF'], ['teruel', 'Teruel', '#D71920', '#FFFFFF'],
+    ['europa', 'CE Europa', '#FFFFFF', '#1766AA'], ['majadahonda', 'Rayo Majadahonda', '#FFFFFF', '#D71920'],
+    ['cartagena', 'Cartagena', '#171717', '#FFFFFF'], ['gimnastic', 'Gimnàstic de Tarragona', '#C8102E', '#171717'],
+    ['hercules', 'Hércules', '#1766AA', '#FFFFFF'], ['torremolinos', 'Juventud Torremolinos', '#1766AA', '#FFFFFF'],
+    ['jaen', 'Real Jaén', '#FFFFFF', '#6B3FA0'], ['castilla', 'Real Madrid Castilla', '#F7F7F7', '#7B58A5'],
+    ['murcia', 'Real Murcia', '#D71920', '#FFFFFF'], ['zaragoza', 'Real Zaragoza', '#FFFFFF', '#1766AA'],
+    ['huesca', 'Huesca', '#1766AA', '#8A2438'], ['ibiza', 'UD Ibiza', '#79BCE8', '#FFFFFF'],
+    ['sant-andreu', 'Sant Andreu', '#D71920', '#F5D21B'], ['villarreal-b', 'Villarreal B', '#FFE500', '#0755A4'],
+  ]),
+  ...define('segunda-rfef-1', [
+    ['alaves-b', 'Alavés B', '#1473B8', '#FFFFFF'], ['amorebieta', 'Amorebieta', '#1766AA', '#FFFFFF'],
+    ['arosa', 'Arosa', '#79BCE8', '#FFFFFF'], ['astorga', 'Atlético Astorga', '#D71920', '#FFFFFF'],
+    ['basconia', 'Basconia', '#FFFFFF', '#171717'], ['bergantinos', 'Bergantiños', '#16834A', '#FFFFFF'],
+    ['compostela', 'Compostela', '#1766AA', '#FFFFFF'], ['coruxo', 'Coruxo', '#16834A', '#171717'],
+    ['eibar-b', 'Eibar B', '#D71920', '#1766AA'], ['gernika', 'Gernika', '#D71920', '#FFFFFF'],
+    ['torrelavega', 'Gimnástica Torrelavega', '#FFFFFF', '#1766AA'], ['llanera', 'Llanera', '#F5D21B', '#1766AA'],
+    ['luanco', 'Marino de Luanco', '#1766AA', '#FFFFFF'], ['ourense-cf', 'Ourense', '#D71920', '#171717'],
+    ['vetusta', 'Oviedo Vetusta', '#1766AA', '#F5D61D'], ['portugalete', 'Portugalete', '#FFFFFF', '#171717'],
+    ['rayo-cantabria', 'Rayo Cantabria', '#147347', '#FFFFFF'], ['sestao', 'Sestao River', '#16834A', '#171717'],
+  ]),
+  ...define('segunda-rfef-2', [
+    ['arnedo', 'Arnedo', '#FFFFFF', '#D71920'], ['barbastro', 'Barbastro', '#D71920', '#FFFFFF'],
+    ['barca-atletic', 'Barça Atlètic', '#A50044', '#004D98'], ['calamocha', 'Calamocha', '#FFFFFF', '#16834A'],
+    ['ebro', 'Ebro', '#1766AA', '#FFFFFF'], ['espanyol-b', 'Espanyol B', '#007FC8', '#FFFFFF'],
+    ['girona-b', 'Girona B', '#D71920', '#FFFFFF'], ['sd-logrones', 'SD Logroñés', '#D71920', '#FFFFFF'],
+    ['ud-logrones-b', 'UD Logroñés B', '#D71920', '#FFFFFF'], ['manresa', 'Manresa', '#D71920', '#171717'],
+    ['naxara', 'Náxara', '#FFFFFF', '#171717'], ['olot', 'Olot', '#D71920', '#FFFFFF'],
+    ['osasuna-b', 'Osasuna Promesas', '#D71920', '#13294B'], ['pena-sport', 'Peña Sport', '#171717', '#FFFFFF'],
+    ['reus', 'Reus FCR', '#D71920', '#171717'], ['terrassa', 'Terrassa', '#FFFFFF', '#D71920'],
+    ['tudelano', 'Tudelano', '#D71920', '#FFFFFF'], ['utebo', 'Utebo', '#1766AA', '#FFFFFF'],
+  ]),
+  ...define('segunda-rfef-3', [
+    ['alcoyano', 'Alcoyano', '#FFFFFF', '#1766AA'], ['atletico-baleares', 'Atlético Baleares', '#1766AA', '#FFFFFF'],
+    ['castellon-b', 'Castellón B', '#171717', '#FFFFFF'], ['castellonense', 'Castellonense', '#16834A', '#FFFFFF'],
+    ['cieza', 'Cieza', '#D71920', '#FFFFFF'], ['ilicitano', 'Elche Ilicitano', '#178B55', '#FFFFFF'],
+    ['intercity', 'Intercity', '#171717', '#1766AA'], ['la-nucia', 'La Nucía', '#1766AA', '#FFFFFF'],
+    ['lorca', 'Lorca Deportiva', '#FFFFFF', '#1766AA'], ['mallorca-b', 'Mallorca B', '#D71920', '#171717'],
+    ['minera', 'Minera', '#171717', '#F5D21B'], ['murcia-imperial', 'Murcia Imperial', '#D71920', '#FFFFFF'],
+    ['orihuela', 'Orihuela', '#1766AA', '#FFFFFF'], ['pena-deportiva', 'Peña Deportiva', '#D71920', '#FFFFFF'],
+    ['poblense', 'Poblense', '#1766AA', '#FFFFFF'], ['ucam', 'UCAM Murcia', '#1766AA', '#F5D21B'],
+    ['mestalla', 'Valencia Mestalla', '#171717', '#FFFFFF'], ['yeclano', 'Yeclano', '#1766AA', '#FFFFFF'],
+  ]),
+  ...define('segunda-rfef-4', [
+    ['antoniano', 'Atlético Antoniano', '#16834A', '#FFFFFF'], ['atletico-central', 'Atlético Central', '#D71920', '#FFFFFF'],
+    ['sanluqueno', 'Atlético Sanluqueño', '#16834A', '#FFFFFF'], ['badajoz', 'Badajoz', '#FFFFFF', '#171717'],
+    ['betis-deportivo', 'Betis Deportivo', '#16834A', '#FFFFFF'], ['lucena', 'Ciudad de Lucena', '#1766AA', '#FFFFFF'],
+    ['don-benito', 'Don Benito', '#FFFFFF', '#16834A'], ['estepona', 'Estepona', '#1766AA', '#FFFFFF'],
+    ['las-palmas-atletico', 'Las Palmas Atlético', '#F5D61D', '#1766AA'], ['linares', 'Linares Deportivo', '#1766AA', '#FFFFFF'],
+    ['marbella', 'Marbella', '#79BCE8', '#FFFFFF'], ['mijas', 'Mijas-Las Lagunas', '#FFFFFF', '#16834A'],
+    ['puente-genil', 'Puente Genil', '#D71920', '#FFFFFF'], ['recreativo', 'Recreativo de Huelva', '#1766AA', '#FFFFFF'],
+    ['sevilla-atletico', 'Sevilla Atlético', '#D71920', '#FFFFFF'], ['tamaraceite', 'Tamaraceite', '#F5D21B', '#1766AA'],
+    ['tenerife-b', 'Tenerife B', '#FFFFFF', '#1766AA'], ['xerez', 'Xerez', '#1766AA', '#FFFFFF'],
+  ]),
+  ...define('segunda-rfef-5', [
+    ['alcala', 'Alcalá', '#D71920', '#FFFFFF'], ['atletico-albacete', 'Atlético Albacete', '#FFFFFF', '#D71920'],
+    ['atletico-madrid-c', 'Atlético de Madrid C', '#D71920', '#FFFFFF'], ['paso', 'Atlético Paso', '#1766AA', '#FFFFFF'],
+    ['tordesillas', 'Atlético Tordesillas', '#D71920', '#FFFFFF'], ['avila', 'Real Ávila', '#FFFFFF', '#171717'],
+    ['calvo-sotelo', 'Calvo Sotelo', '#1766AA', '#FFFFFF'], ['conquense', 'Conquense', '#FFFFFF', '#1766AA'],
+    ['getafe-b', 'Getafe B', '#0053A0', '#FFFFFF'], ['segoviana', 'Gimnástica Segoviana', '#D71920', '#FFFFFF'],
+    ['guadalajara', 'Guadalajara', '#6B3FA0', '#FFFFFF'], ['navalcarnero', 'Navalcarnero', '#1766AA', '#FFFFFF'],
+    ['numancia', 'Numancia', '#D71920', '#1766AA'], ['real-madrid-c', 'Real Madrid C', '#F7F7F7', '#7B58A5'],
+    ['salamanca', 'Salamanca UDS', '#FFFFFF', '#171717'], ['sanse', 'San Sebastián de los Reyes', '#D71920', '#FFFFFF'],
+    ['talavera', 'Talavera de la Reina', '#1766AA', '#FFFFFF'], ['valladolid-promesas', 'Valladolid Promesas', '#6B3FA0', '#FFFFFF'],
   ]),
   ...define('premier', [
     ['arsenal', 'Arsenal', '#EF0107', '#FFFFFF'], ['aston-villa', 'Aston Villa', '#670E36', '#95BFE5'],
@@ -246,6 +337,12 @@ const KIT_PATTERN_GROUPS = {
     'brasileirao-athletico-pr', 'brasileirao-atletico-mg', 'brasileirao-botafogo', 'brasileirao-gremio', 'brasileirao-corinthians', 'brasileirao-fluminense', 'super-lig-besiktas', 'liga-mx-monterrey',
     'liga-mx-cruz-azul', 'liga-mx-guadalajara', 'liga-mx-tigres', 'liga-mx-atlas', 'liga-portugal-benfica', 'liga-portugal-porto',
     'belgian-pro-club-brugge', 'belgian-pro-gent', 'belgian-pro-standard', 'super-lig-fenerbahce', 'super-lig-trabzonspor',
+    'primera-rfef-1-arenas', 'primera-rfef-1-athletic-b', 'primera-rfef-1-lugo', 'primera-rfef-1-zamora', 'primera-rfef-1-ud-logrones',
+    'primera-rfef-1-ponferradina', 'primera-rfef-1-aviles', 'primera-rfef-1-fabril', 'primera-rfef-1-extremadura',
+    'primera-rfef-2-algeciras', 'primera-rfef-2-cartagena', 'primera-rfef-2-hercules', 'primera-rfef-2-atletico-madrileno', 'primera-rfef-2-huesca',
+    'segunda-rfef-1-alaves-b', 'segunda-rfef-1-sestao', 'segunda-rfef-1-eibar-b', 'segunda-rfef-2-barca-atletic', 'segunda-rfef-2-girona-b',
+    'segunda-rfef-2-sd-logrones', 'segunda-rfef-2-ud-logrones-b', 'segunda-rfef-3-atletico-baleares', 'segunda-rfef-3-castellon-b',
+    'segunda-rfef-4-recreativo', 'segunda-rfef-4-xerez', 'segunda-rfef-4-sanluqueno', 'segunda-rfef-4-betis-deportivo', 'segunda-rfef-5-atletico-madrid-c',
   ],
   checkerboard: ['europe-croatia'],
   'half-horizontal': [
@@ -255,6 +352,7 @@ const KIT_PATTERN_GROUPS = {
     'america-brazil', 'america-canada', 'america-usa', 'honor-ge-bazan',
     'argentina-boca', 'argentina-river', 'argentina-huracan', 'argentina-velez', 'brasileirao-sao-paulo', 'brasileirao-santos',
     'liga-mx-america', 'liga-mx-puebla', 'liga-mx-toluca', 'liga-portugal-braga', 'belgian-pro-antwerp', 'super-lig-goztepe', 'super-lig-galatasaray',
+    'primera-rfef-2-castilla', 'segunda-rfef-5-real-madrid-c',
   ],
   'half-vertical': [
     'laliga-rayo', 'laliga-deportivo', 'laliga-valencia', 'laliga-villarreal', 'premier-aston-villa', 'premier-everton',
@@ -395,7 +493,7 @@ const ONE_STAR = new Set([
   'ligue-2-boulogne', 'bundesliga-2-osnabruck', 'europe-hungary', 'america-bolivia',
 ]);
 for (const team of [...TEAMS, ...NATIONAL_TEAMS]) {
-  team.stars = FIVE_STAR.has(team.id) ? 5 : FOUR_STAR.has(team.id) ? 4 : ONE_STAR.has(team.id) ? 1 : team.league.endsWith('2') || team.league === 'championship' || team.league === 'serie-b' || team.league === 'ligue-2' ? 2 : 3;
+  team.stars = FIVE_STAR.has(team.id) ? 5 : FOUR_STAR.has(team.id) ? 4 : ONE_STAR.has(team.id) ? 1 : team.league.endsWith('2') || team.league === 'championship' || team.league === 'serie-b' || team.league === 'ligue-2' || FEDERATION_LEAGUE_IDS.has(team.league) ? 2 : 3;
 }
 
 export const TEAM_GROUPS = [...TEAM_LEAGUES, ...NATIONAL_GROUPS, ...HONORARY_GROUPS];

@@ -8,6 +8,8 @@ La primera vez que se elige un modo, se solicita un equipo, nombre y dorsal ante
 
 La Liga Nacional permite escoger LaLiga, Premier League, Serie A, Ligue 1 o Bundesliga y sortea 16 rivales de esa competición. La Copa Champions fija Barcelona, Real Madrid, PSG, Mónaco, Borussia Dortmund, Bayern, Inter y Milan; completa el cuadro con clubes aleatorios de las cinco ligas. El Mundial mezcla selecciones de Europa y América; Eurocopa y Copa América limitan el sorteo a sus regiones. Cada torneo cuenta con un trofeo vectorial y un diseño de campo propio.
 
+España incluye también Primera Federación (2 grupos de 20) y Segunda Federación (5 grupos de 18) de la temporada 2026/27, según la composición oficial de la RFEF. Cada grupo es una liga jugable propia, con valoración de 2 estrellas, y sus clubes no se sortean como rivales de la Champions.
+
 El BOT conserva tres dificultades; Difícil se desbloquea en el nivel 5. Las competiciones guardan automáticamente la jornada o ronda y el estado del partido para continuar desde el menú principal. El disparo normal sale radialmente desde el jugador; el disparo de fuego es más potente y se recarga cada tres segundos.
 
 ## Cuenta y guardado en la nube con Supabase

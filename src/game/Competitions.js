@@ -1,4 +1,4 @@
-import { TEAM_LEAGUES, TEAMS, NATIONAL_TEAMS, getTeamById } from '../config/teams.js';
+import { TEAM_LEAGUES, TEAMS, NATIONAL_TEAMS, FEDERATION_LEAGUE_IDS, getTeamById } from '../config/teams.js';
 
 export const CHAMPIONS_CORE = [
   'laliga-barcelona', 'laliga-real-madrid', 'laliga-atletico', 'ligue-1-psg', 'ligue-1-monaco',
@@ -40,7 +40,8 @@ export function createChampionsDraw(playerTeamId, random = Math.random) {
   const slots = 15 - fixedRivals.length;
 
   // Include at least one randomly drawn club from every available league.
-  for (const league of TEAM_LEAGUES) {
+  // Federation (RFEF) groups are not drawn as Champions rivals.
+  for (const league of TEAM_LEAGUES.filter(item => !FEDERATION_LEAGUE_IDS.has(item.id))) {
     if (randomRivals.length >= slots) break;
     const pool = TEAMS.filter(team => team.league === league.id && !pickedIds.has(team.id));
     if (!pool.length) continue;
@@ -48,7 +49,7 @@ export function createChampionsDraw(playerTeamId, random = Math.random) {
     randomRivals.push(team); pickedIds.add(team.id);
   }
 
-  const remaining = TEAMS.filter(team => !pickedIds.has(team.id));
+  const remaining = TEAMS.filter(team => !pickedIds.has(team.id) && !FEDERATION_LEAGUE_IDS.has(team.league));
   while (randomRivals.length < slots) {
     const team = pick(remaining, random);
     randomRivals.push(team); pickedIds.add(team.id);

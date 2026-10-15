@@ -1,3 +1,4 @@
+import { startGoogleSignIn } from './GoogleSignIn.js';
 import { createClient } from '@supabase/supabase-js';
 
 // These browser credentials are intentionally public; RLS controls all profile access.
@@ -54,6 +55,10 @@ export class AccountService {
     });
     if (error) throw error;
     return { user: toAccountUser(data.user), session: data.session };
+  }
+
+  async signInWithGoogle() {
+    return startGoogleSignIn(this.requireClient(), { projectUrl, publishableKey, location: window.location });
   }
 
   async signOut() {

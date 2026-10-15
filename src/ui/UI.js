@@ -230,6 +230,7 @@ export class UI {
     document.getElementById('online-copy-code').addEventListener('click', () => this.copyOnlineRoomCode());
     this.result_rematch.addEventListener('click', () => this.requestOnlineRematch());
     this.leaderboard_refresh.addEventListener('click', () => this.loadLeaderboard());
+    document.getElementById('account-google').addEventListener('click', () => this.submitGoogleAccount());
     document.getElementById('account-mode-toggle').addEventListener('click', () => this.toggleAccountMode());
     document.getElementById('account-sync-button').addEventListener('click', () => this.syncAccount(true));
     document.getElementById('account-logout').addEventListener('click', () => this.logOut());
@@ -323,6 +324,20 @@ export class UI {
     this.account_submit.innerHTML = signup ? 'Crear cuenta <span>↗</span>' : 'Entrar <span>↗</span>';
     document.getElementById('account-mode-toggle').textContent = signup ? 'Ya tengo cuenta · Iniciar sesión' : '¿Primera vez? Crear cuenta';
     this.setAccountMessage(signup ? 'Crea tu cuenta y entra directamente, sin confirmar el correo.' : 'El progreso local seguirá disponible sin cuenta.');
+  }
+
+  async submitGoogleAccount() {
+    const button = document.getElementById('account-google');
+    if (button.disabled) return;
+    button.disabled = true; this.account_submit.disabled = true;
+    this.setAccountMessage('Conectando con Google…');
+    try {
+      await this.accountService.signInWithGoogle();
+    } catch (error) {
+      this.setAccountMessage(error?.message || 'No se pudo conectar con Google. Inténtalo de nuevo.', true);
+    } finally {
+      button.disabled = false; this.account_submit.disabled = false;
+    }
   }
 
   async submitAccount() {

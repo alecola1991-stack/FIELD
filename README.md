@@ -102,3 +102,16 @@ DualShock 4 (PS4), DualSense (PS5) y Xbox con el mapeo estándar de Gamepad API:
 Ajustes permite configurar disparar/aceptar/volver/pausa, restablecer los botones y activar la vibración cuando esté disponible. Los campos de texto abren un teclado en pantalla con el botón de aceptar. Cambiar de ventana o desconectar el mando deja de introducir movimiento. No se requieren controladores especiales del juego; el sistema operativo y el navegador deben reconocer el mando. Las pruebas automatizadas simulan los layouts; no sustituyen pruebas físicas con cada modelo.
 
 La playlist incluye cuatro grabaciones reales de The Cynic Project publicadas con licencia CC0 en OpenGameArt: The Charm 68, Awake! (Megawall-10), Hyperflight Racing y Hyper Ultra-Racing. Los archivos MP3 están incluidos en la web y en la portable, sin servicios externos de streaming ni descargas durante la compilación. Se normalizan a -18 LUFS y se codifican a 128 kbps para equilibrar calidad y tamaño. `src/assets/music/LICENSES.md` conserva autor, fuentes, licencia y hashes de los originales. La reproducción avanza automáticamente al acabar cada tema y se pausa durante los partidos. El ambiente de estadio y los controles de volumen independientes se mantienen. Algunos navegadores requieren un clic o una pulsación de teclado para habilitar el audio.
+
+### Inicio de sesión con Google (web)
+
+El botón «Continuar con Google» comprueba que el proveedor esté activo antes de redirigir. Requiere configurar Google Cloud y Supabase; el código del cliente no contiene secretos OAuth.
+
+1. En Google Auth Platform, configura la audiencia y el consentimiento de Fútbol arcade. Crea un cliente OAuth de tipo **Aplicación web**, con los permisos básicos `openid`, `email` y `profile`.
+2. Origen JavaScript autorizado: `https://alecola1991-stack.github.io`.
+3. URI de redirección autorizada en Google: `https://nughauzrbwwmyumkqjez.supabase.co/auth/v1/callback`.
+4. Copia el **Client ID** (termina en `.apps.googleusercontent.com`) y el **Client Secret** a Authentication → Sign In / Providers → Google en Supabase. Estos valores no son el correo ni la contraseña de Google. Activa el proveedor y conserva las comprobaciones nonce.
+5. En Supabase → Authentication → URL Configuration, permite `https://alecola1991-stack.github.io/FIELD/` como URL de retorno.
+6. En modo Testing, Google limita el acceso a los usuarios de prueba añadidos. Configura la audiencia de producción cuando vayas a abrirlo al público.
+
+El inicio OAuth está preparado para la web HTTPS. La portable conserva correo y contraseña; todavía no implementa el retorno desde el navegador al ejecutable.

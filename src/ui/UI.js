@@ -46,7 +46,7 @@ export class UI {
       'player-name','player-number','preview-name','preview-number','preview-ball','preview-team','saved-note','save-player',
       'difficulty','play-difficulty','settings-difficulty','sound-enabled','volume','volume-value','score','timer','hud-player-name','hud-opponent-name','player-dot','opponent-dot',
       'goal-banner','countdown-banner','pause-overlay','result-overlay','result-eyebrow','result-title','result-copy','result-xp','result-level','result-xp-fill',
-      'result-next','result-finish','result-rematch','result-online-status','result-stats','result-stat-duration','result-stat-goals','result-stat-shots','result-trophy','result-season-summary','league-standings-panel','league-standings-title','league-standings-body','connection-banner','leaderboard-message','leaderboard-list','leaderboard-refresh','training-tools','trajectory-toggle','mode-label','game-canvas','level-value','xp-label','wins-label','xp-fill','missions-list',
+      'result-next','result-finish','result-rematch','result-online-status','result-stats','result-stat-duration','result-stat-goals','result-stat-shots','result-trophy','result-season-summary','league-standings-panel','league-standings-title','league-standings-body','connection-banner','replay-banner','replay-status','replay-skip','leaderboard-message','leaderboard-list','leaderboard-refresh','training-tools','trajectory-toggle','mode-label','game-canvas','level-value','xp-label','wins-label','xp-fill','missions-list',
       'team-position','league-competition','league-competition-summary','country-tabs','countries-prev','countries-next','country-position','league-tabs','team-grid','teams-prev','teams-next','chosen-team-label','tournament-roster',
       'competition-trophy','competition-eyebrow','competition-title','competition-description','competition-dots','competition-select','competition-prev','competition-next',
       'competition-picker-card',
@@ -79,6 +79,7 @@ export class UI {
       onPeerReconnecting: seconds => this.showConnectionStatus(seconds),
       onPeerReconnected: () => this.hideConnectionStatus(),
       onRematchRequested: () => this.showRematchRequest(),
+      onReplaySkip: () => game.setRemoteReplaySkip(),
     });
     if (this.user && accountService) this.activateAccount(this.user).catch(error => this.setAccountMessage(error.message, true));
     else this.renderAccount();
@@ -229,6 +230,7 @@ export class UI {
     document.getElementById('online-cancel').addEventListener('click', () => this.cancelOnlineRoom());
     document.getElementById('online-copy-code').addEventListener('click', () => this.copyOnlineRoomCode());
     this.result_rematch.addEventListener('click', () => this.requestOnlineRematch());
+    this.replay_skip.addEventListener('click', () => this.game?.skipReplay());
     this.leaderboard_refresh.addEventListener('click', () => this.loadLeaderboard());
     document.getElementById('account-google').addEventListener('click', () => this.submitGoogleAccount());
     document.getElementById('account-mode-toggle').addEventListener('click', () => this.toggleAccountMode());
@@ -1333,6 +1335,18 @@ export class UI {
       this.updateOnlineStatus('peer-left');
       this.hub?.message('Conexión perdida. Esperando la resolución de la sala; puedes salir o esperar la reconexión.', true);
     }
+  }
+
+  // Goal replay overlay. Online, the replay only ends early once both players skip.
+  updateReplay(info) {
+    this.replay_banner.classList.toggle('hidden', !info);
+    if (!info) return;
+    const skipKey = this.controller?.index !== null && this.controller?.index !== undefined ? '✕ / A' : 'ESPACIO';
+    this.replay_skip.disabled = info.localSkip;
+    this.replay_skip.innerHTML = info.localSkip ? 'Saltada <span aria-hidden="true">✓</span>' : 'Saltar <span aria-hidden="true">⏭</span>';
+    this.replay_status.textContent = !info.online ? `Pulsa ${skipKey} para saltar`
+      : info.localSkip ? (info.remoteSkip ? 'Continuando…' : 'Esperando a que tu rival salte…')
+        : info.remoteSkip ? 'Tu rival ya ha saltado · salta para continuar' : 'Los dos debéis saltar para continuar';
   }
 
   showConnectionStatus(seconds) {

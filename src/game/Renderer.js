@@ -75,6 +75,11 @@ export class Renderer {
     if (game.goalTimer > 0) {
       c.fillStyle = `rgba(220,255,235,${Math.min(.075, game.goalTimer * .05)})`; c.fillRect(W.left, W.top, W.right - W.left, W.bottom - W.top);
     }
+    if (game.replay) {
+      // Replay look: slightly darker pitch with a thin broadcast-style frame.
+      c.fillStyle = 'rgba(6,12,28,.16)'; c.fillRect(0, 0, W.width, W.height);
+      c.strokeStyle = 'rgba(255,214,120,.55)'; c.lineWidth = 3; c.strokeRect(W.left - 6, W.top - 6, W.right - W.left + 12, W.bottom - W.top + 12);
+    }
   }
   drawField(c, themeName = 'arcade', round = 0) {
     const world = this.world || WORLD;

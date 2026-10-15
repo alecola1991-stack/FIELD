@@ -157,6 +157,11 @@ export class OnlineMatch {
   handleSignal(message) {
     if (!message || message.clientId === this.clientId) return;
     if (this.assignment && String(message.kind || '').startsWith('rematch')) return;
+    // Goal replay: the guest tells the host it skipped; the host ends the replay once both have.
+    if (message.kind === 'replay-skip') {
+      if (this.role === 'host' && this.matched && message.clientId === this.opponent?.clientId && (!message.matchId || message.matchId === this.matchId)) this.handlers.onReplaySkip?.();
+      return;
+    }
     if (message.kind === 'version-mismatch' && message.target === this.clientId) { this.handlers.onStatus?.('error', 'Actualiza el juego para usar los modificadores de esta sala.'); return; }
     if (this.assignment && ['hello', 'start'].includes(message.kind)) {
       const peer = message.kind === 'hello' ? message.profile : message.host;
@@ -308,6 +313,11 @@ export class OnlineMatch {
   sendInput(input) {
     if (this.role !== 'guest' || !this.matched) return;
     this.send('input', { clientId: this.clientId, matchId: this.matchId, sequence: ++this.inputSequence, x: clampAxis(input.x), y: clampAxis(input.y), kick: input.kick === true });
+  }
+
+  sendReplaySkip() {
+    if (this.role !== 'guest' || !this.matched) return;
+    this.send('signal', { kind: 'replay-skip', clientId: this.clientId, matchId: this.matchId });
   }
 
   sendSnapshot(snapshot) {

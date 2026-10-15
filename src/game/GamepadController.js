@@ -35,7 +35,7 @@ export class GamepadController {
     }
     const game=this.ui.currentView==='game', running=game&&!this.ui.game.state.paused&&!this.ui.game.state.matchOver;
     this.ui.game.input.padAxes=running?padAxes(pad):{x:0,y:0};
-    if(!changedView && running && (edge(map.shoot)||edge(5)||edge(7))) { this.ui.game.input.pressed.add('Space'); this.rumble(.25,70); this.ui.sound.unlock?.(); }
+    if(!changedView && (running || (game && this.ui.game.replay)) && (edge(map.shoot)||edge(5)||edge(7))) { this.ui.game.input.pressed.add('Space'); this.rumble(.25,70); this.ui.sound.unlock?.(); }
     if(edge(map.pause) && game && !this.ui.game.state.matchOver) this.ui.pause(!this.ui.game.state.paused);
     else if(!changedView && !running) {
       const axes=padAxes(pad,.35); const direction=Math.abs(axes.x)>Math.abs(axes.y)? axes.x>0?'right':axes.x<0?'left':'':axes.y>0?'down':axes.y<0?'up':'';

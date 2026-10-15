@@ -7,7 +7,7 @@ export const BOT_LEVELS = Object.freeze({
   hard: { speed: 221, reaction: .156, accuracy: .658, defense: .616 },
   legend: { speed: 295, reaction: .055, accuracy: .96, defense: .93 },
 });
-const defaults = { name: 'JUGADOR', number: 10, teamId: '', profileReady: false, leagueCompetition: 'laliga', leagueGoalTarget: 2, difficulty: 'easy', sound: true, volume: 45, musicEnabled: true, musicVolume: 35, ambienceEnabled: true, ambienceVolume: 50, effectsVolume: 100, controllerVibration: true, controllerMap: {}, trajectory: false, shotPreview: false, modifiers: {} };
+const defaults = { name: 'JUGADOR', number: 10, teamId: '', profileReady: false, leagueCompetition: 'laliga', leagueGoalTarget: 2, difficulty: 'easy', sound: true, volume: 45, musicEnabled: true, musicVolume: 35, ambienceEnabled: true, ambienceVolume: 50, effectsVolume: 100, controllerVibration: true, controllerMap: {}, trajectory: false, shotPreview: false, goalReplays: true, modifiers: {} };
 let storageScope = 'guest';
 function storageKey() { return storageScope === 'guest' ? 'field-settings' : `field-settings:${storageScope}`; }
 export function setSettingsScope(scope) {

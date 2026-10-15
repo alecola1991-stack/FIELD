@@ -21,5 +21,7 @@ const game = new Game(document.querySelector('#game-canvas'), ui.settings, sound
   getRemoteInput: () => onlineMatch.getRemoteInput(),
   onOnlineInput: input => onlineMatch.sendInput(input),
   onOnlineSnapshot: snapshot => onlineMatch.sendSnapshot(snapshot),
+  onReplay: info => ui.updateReplay(info),
+  onReplaySkip: () => onlineMatch.sendReplaySkip(),
 });
 ui.attach(game, sound, accountService, onlineMatch);

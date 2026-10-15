@@ -11,6 +11,10 @@ import { kickBall, resolveBallWalls, resolvePlayerBall, resolvePlayerPlayers, re
 
 const POWER_SHOT_COOLDOWN_SECONDS = 20;
 const ONLINE_PACKET_INTERVAL = 1 / 30;
+// Goal replays: the last REPLAY_SECONDS before (and a short tail after) a goal.
+const REPLAY_SECONDS = 3;
+const REPLAY_TAIL_SECONDS = .45;
+const REPLAY_MIN_FRAMES = 20;
 
 export class Game {
   constructor(canvas, settings, sound, hooks = {}) {
@@ -22,6 +26,7 @@ export class Game {
     this.goalTarget = 5; this.shotRangeTimer = 0; this.autosaveClock = 0; this.powerHudClock = 0;
     this.onlineSnapshotClock = 0; this.onlineInputClock = 0; this.localSide = 'left'; this.onlineAuthority = true; this.remoteInput = { x: 0, y: 0, kick: false }; this.onlineMatchEnded = false; this.onlinePendingKick = false;
     this.matchStats = { shotsPlayer: 0, shotsOpponent: 0, goals: [] };
+    this.resetReplay();
   }
   start(mode = 'bot', difficulty = this.settings.difficulty, options = {}) {
     this.state.start(mode); if (mode !== 'legends') this.settings.difficulty = difficulty; this.botAI.setDifficulty(mode === 'legends' ? 'legend' : difficulty);
@@ -43,6 +48,7 @@ export class Game {
     const opponentTeam = options.opponentTeam || null;
     this.botAI.setTeamStrength(opponentTeam?.stars || 3);
     this.matchStats = { shotsPlayer: 0, shotsOpponent: 0, goals: [] };
+    this.resetReplay(); this.hooks.onReplay?.(null);
     const opponentX = this.localSide === 'left' ? WORLD.width * .69 : WORLD.width * .31;
     const opponentName = mode === 'online' ? options.opponentName || 'RIVAL' : teamInitials(opponentTeam?.name || options.opponentName || 'BOT');
     const opponentNumber = mode === 'online' ? options.opponentNumber ?? 10 : [10, 9, 11][Math.floor(Math.random() * 3)];
@@ -75,7 +81,7 @@ export class Game {
     this.botAI.setDifficulty(this.state.mode === 'legends' ? 'legend' : settings.difficulty); this.trajectory = !!settings.trajectory;
   }
   setPaused(paused) { this.state.paused = paused; this.input.enabled = !paused; this.last = 0; this.input.down.clear(); this.input.pressed.clear(); }
-  stop() { this.sound?.updateAmbience?.(null,null,false); this.input.enabled = false; this.state.running = false; this.state.paused = false; this.trajectory = false; if (this.raf) cancelAnimationFrame(this.raf); this.raf = 0; this.last = 0; }
+  stop() { if (this.replay) { this.replay = null; this.hooks.onReplay?.(null); } this.sound?.updateAmbience?.(null,null,false); this.input.enabled = false; this.state.running = false; this.state.paused = false; this.trajectory = false; if (this.raf) cancelAnimationFrame(this.raf); this.raf = 0; this.last = 0; }
   resetBall() { this.ball.reset(WORLD.width / 2, WORLD.height / 2); }
   resetPlayer() { if (this.player) { this.player.x = WORLD.width * .31; this.player.y = WORLD.height / 2; this.player.stop(); } }
   loop(time) {
@@ -97,6 +103,7 @@ export class Game {
           this.onlinePendingKick = false;
         }
       } else this.update(dt);
+      this.captureReplayFrame(dt);
       if (this.state.mode === 'online' && this.onlineAuthority && !this.state.paused) {
         this.onlineSnapshotClock += dt;
         if (this.onlineSnapshotClock >= ONLINE_PACKET_INTERVAL) {
@@ -109,11 +116,16 @@ export class Game {
         if (this.autosaveClock >= 2) { this.autosaveClock %= 2; this.hooks.onAutosave?.(); }
       }
     }
-    if (this.renderEnabled !== false) this.renderer.render({ player: this.player, bot: this.bot, ball: this.ball, trajectory: this.trajectory, shotPreview: !!this.settings.shotPreview && this.countdown === 0 && this.state.goalTimer <= 0 && !this.state.matchOver, goalTimer: this.state.goalTimer, goalSide: this.state.goalSide, world: this.world || WORLD, fieldTheme: this.fieldTheme, competitionRound: this.competitionRound, shotRangeTimer: this.shotRangeTimer }, this.state.paused ? 0 : dt);
+    if (this.renderEnabled !== false) {
+      const view = this.replayView();
+      this.renderer.render(view ? { ...view, trajectory: false, shotPreview: false, goalTimer: 0, goalSide: 0, world: this.world || WORLD, fieldTheme: this.fieldTheme, competitionRound: this.competitionRound, shotRangeTimer: 0, replay: true }
+        : { player: this.player, bot: this.bot, ball: this.ball, trajectory: this.trajectory, shotPreview: !!this.settings.shotPreview && this.countdown === 0 && this.state.goalTimer <= 0 && !this.state.matchOver && !this.replay, goalTimer: this.state.goalTimer, goalSide: this.state.goalSide, world: this.world || WORLD, fieldTheme: this.fieldTheme, competitionRound: this.competitionRound, shotRangeTimer: this.shotRangeTimer }, this.state.paused ? 0 : dt);
+    }
     this.input.endFrame();
   }
   update(dt) {
     if (dt <= 0) return;
+    if (this.replay) { this.updateReplay(dt); return; }
     if (this.countdown > 0) {
       this.countdownClock -= dt;
       if (this.countdownClock <= 0) {
@@ -131,14 +143,7 @@ export class Game {
     this.state.elapsed += dt; this.hooks.onTime?.(this.state.formatTime());
     if (this.state.goalTimer > 0) {
       this.state.goalTimer = Math.max(0, this.state.goalTimer - dt);
-      if (this.state.goalTimer <= 0) {
-        if (this.state.matchOver) {
-          this.state.paused = true; this.input.enabled = false;
-          // The normal network tick stops while paused: deliver the terminal state first.
-          if (this.state.mode === 'online' && this.onlineAuthority) this.hooks.onOnlineSnapshot?.(this.captureSnapshot(true));
-          this.hooks.onMatchEnd?.({ mode: this.state.mode, elapsedSeconds: this.state.elapsed, playerScore: this.state.scorePlayer, botScore: this.state.scoreBot, winner: this.state.scorePlayer > this.state.scoreBot ? 'player' : 'opponent', stats: this.matchSummary() });
-        } else { this.resetPositions(); this.beginCountdown(); }
-      }
+      if (this.state.goalTimer <= 0 && !this.startReplay()) this.finishGoalSequence();
       return;
     }
     const move = this.input.axes(); this.player.move(move.x, move.y, dt);
@@ -194,8 +199,99 @@ export class Game {
     resolveBallWalls(this.ball, () => this.sound.bump());
     }
   }
+  finishGoalSequence() {
+    this.resetReplay();
+    if (this.state.matchOver) {
+      this.state.paused = true; this.input.enabled = false;
+      // The normal network tick stops while paused: deliver the terminal state first.
+      if (this.state.mode === 'online' && this.onlineAuthority) this.hooks.onOnlineSnapshot?.(this.captureSnapshot(true));
+      this.hooks.onMatchEnd?.({ mode: this.state.mode, elapsedSeconds: this.state.elapsed, playerScore: this.state.scorePlayer, botScore: this.state.scoreBot, winner: this.state.scorePlayer > this.state.scoreBot ? 'player' : 'opponent', stats: this.matchSummary() });
+    } else { this.resetPositions(); this.beginCountdown(); }
+  }
+  // ---- Goal replays -------------------------------------------------------
+  // Frames are recorded locally on every peer, so nothing heavy crosses the
+  // network. Online, the host decides when the replay starts and ends; it ends
+  // early only when both players have skipped it, and never lasts over 3 s.
+  resetReplay() {
+    this.replay = null; this.replayFrames = []; this.replayClip = null; this.replayClock = 0; this.replayTail = 0;
+  }
+  replaysEnabled() { return this.state.mode !== 'training' && this.settings?.goalReplays !== false; }
+  captureReplayFrame(dt) {
+    if (!(dt > 0) || this.replay || !this.player || !this.state.running || this.countdown > 0 || this.state.mode === 'training') return;
+    const scoring = this.state.goalTimer > 0;
+    if (scoring && this.replayTail <= 0) return;
+    const body = item => item && [item.x, item.y, item.faceX, item.faceY, item.kickScale || 0, item.powerFlash || 0, item.spin || 0];
+    this.replayFrames ||= []; this.replayClock = (this.replayClock || 0) + dt;
+    this.replayFrames.push({ t: this.replayClock, player: body(this.player), bot: body(this.bot), ball: body(this.ball) });
+    while (this.replayFrames.length && this.replayFrames[0].t < this.replayClock - REPLAY_SECONDS) this.replayFrames.shift();
+    if (scoring) { this.replayTail -= dt; if (this.replayTail <= 0) this.replayClip = this.replayFrames.slice(); }
+  }
+  markGoalForReplay() { this.replayTail = REPLAY_TAIL_SECONDS; this.replayClip = null; }
+  startReplay() {
+    const clip = this.replayClip || (this.replayTail > 0 ? (this.replayFrames || []).slice() : null);
+    if (!this.replaysEnabled() || !clip || clip.length < REPLAY_MIN_FRAMES) return false;
+    this.replay = { frames: clip, time: 0, duration: Math.min(REPLAY_SECONDS, clip.at(-1).t - clip[0].t), localSkip: false, remoteSkip: false };
+    this.notifyReplay();
+    return true;
+  }
+  updateReplay(dt) {
+    const replay = this.replay;
+    if (this.input.consume('Space')) this.skipReplay();
+    replay.time += dt;
+    const bothSkipped = replay.localSkip && (this.state.mode !== 'online' || replay.remoteSkip);
+    if (replay.time >= replay.duration || bothSkipped) { this.hooks.onReplay?.(null); this.finishGoalSequence(); }
+  }
+  skipReplay() {
+    const replay = this.replay;
+    if (!replay || replay.localSkip) return;
+    replay.localSkip = true;
+    if (this.state.mode === 'online' && !this.onlineAuthority) { replay.resendClock = .3; this.hooks.onReplaySkip?.(); }
+    this.notifyReplay();
+  }
+  setRemoteReplaySkip() {
+    if (!this.replay || !this.onlineAuthority || this.replay.remoteSkip) return;
+    this.replay.remoteSkip = true; this.notifyReplay();
+  }
+  notifyReplay() {
+    const replay = this.replay;
+    this.hooks.onReplay?.(replay && { online: this.state.mode === 'online', localSkip: replay.localSkip, remoteSkip: replay.remoteSkip, duration: replay.duration });
+  }
+  // Guest side: follow the host's replay phase using the locally recorded clip.
+  syncGuestReplay(info) {
+    const active = info?.active === true;
+    if (active && !this.replay) {
+      const clip = this.replayClip || (this.replayFrames || []).slice();
+      const frames = this.settings?.goalReplays !== false && clip.length >= REPLAY_MIN_FRAMES ? clip : [];
+      this.replay = { frames, time: 0, duration: frames.length ? Math.min(REPLAY_SECONDS, frames.at(-1).t - frames[0].t) : 0, localSkip: false, remoteSkip: false, acked: false };
+      this.notifyReplay();
+      if (!frames.length) this.skipReplay(); // replays disabled locally: never hold the rival back
+    } else if (!active && this.replay) { this.resetReplay(); this.hooks.onReplay?.(null); return; }
+    if (!this.replay) return;
+    const remoteSkip = info.skipHost === true, acked = info.skipGuest === true;
+    if (remoteSkip !== this.replay.remoteSkip || acked !== this.replay.acked) { this.replay.remoteSkip = remoteSkip; this.replay.acked = acked; this.notifyReplay(); }
+  }
+  replayView() {
+    const replay = this.replay;
+    if (!replay?.frames?.length) return null;
+    const frames = replay.frames, target = frames[0].t + Math.min(replay.time, replay.duration);
+    let index = frames.findIndex(frame => frame.t >= target); if (index < 0) index = frames.length - 1;
+    const frame = frames[index];
+    const body = (source, data) => {
+      if (!source || !data) return source && null;
+      const [x, y, faceX, faceY, kickScale, powerFlash, spin] = data;
+      return { ...source, x, y, faceX, faceY, kickScale, powerFlash, spin, _rx: x, _ry: y };
+    };
+    return { player: body(this.player, frame.player), bot: body(this.bot, frame.bot), ball: body(this.ball, frame.ball) };
+  }
   predictOnlineGuest(dt) {
     if (dt <= 0 || !this.player) return;
+    if (this.replay) {
+      if (this.input.consume('Space')) this.skipReplay();
+      this.replay.time = Math.min(this.replay.duration, this.replay.time + dt);
+      // Broadcast is unacknowledged: repeat the skip until the host confirms it.
+      if (this.replay.localSkip && !this.replay.acked && (this.replay.resendClock -= dt) <= 0) { this.replay.resendClock = .3; this.hooks.onReplaySkip?.(); }
+      this.onlinePendingKick = false; return;
+    }
     const axes = this.input.axes();
     const kickPressed = this.input.consume('Space');
     if (this.countdown > 0 || this.state.goalTimer > 0 || this.state.matchOver) { this.onlinePendingKick = false; return; }
@@ -236,6 +332,7 @@ export class Game {
     else this.state.scoreBot++;
     this.matchStats.goals.push({ side: playerScored ? 'player' : 'opponent', elapsedSeconds: this.state.elapsed, minute: Math.max(1, Math.floor(this.state.elapsed / 60) + 1) });
     this.state.goalTimer = 1.65; this.ball.vx *= .25; this.ball.vy *= .25;
+    this.markGoalForReplay();
     const target = this.goalTarget;
     if (this.state.mode !== 'training' && Math.max(this.state.scorePlayer, this.state.scoreBot) >= target) this.state.matchOver = true;
     this.sound.play('goal'); this.renderer.burst(this.ball.x, this.ball.y, '#b8f4ce', 24, 190);
@@ -247,7 +344,9 @@ export class Game {
     const entity = body => body && ({ x: body.x, y: body.y, vx: body.vx, vy: body.vy, faceX: body.faceX, faceY: body.faceY, shotCooldown: body.shotCooldown, powerCooldown: body.powerCooldown, powerFlash: body.powerFlash, kickScale: body.kickScale, boost: body.boost, spin: body.spin });
     return {
       mode: this.state.mode, elapsed: this.state.elapsed, scorePlayer: this.state.scorePlayer, scoreBot: this.state.scoreBot,
-      goalTimer: this.state.goalTimer, goalSide: this.state.goalSide, matchOver: this.state.matchOver, goalTarget: this.goalTarget,
+      // While a replay runs the goal phase is still open (a restored save resumes the reset, old guests keep waiting).
+      goalTimer: this.replay ? Math.max(this.state.goalTimer, .01) : this.state.goalTimer, goalSide: this.state.goalSide, matchOver: this.state.matchOver, goalTarget: this.goalTarget,
+      ...(online ? { replay: this.replay ? { active: true, skipHost: this.replay.localSkip, skipGuest: this.replay.remoteSkip } : null } : {}),
       countdown: this.countdown, countdownClock: this.countdownClock, trajectory: this.trajectory,
       ...(online ? {} : { modifiers: this.modifiers, fieldTheme: this.fieldTheme, competitionRound: this.competitionRound }),
       matchStats: online ? this.matchStats : this.matchSummary(),
@@ -331,11 +430,13 @@ export class Game {
     if (this.countdown !== priorCountdown) this.hooks.onCountdown?.(this.countdown > 0 ? this.countdown : null);
     this.hooks.onPowerCooldown?.(this.player.powerCooldown || 0);
     if (priorScorePlayer !== this.state.scorePlayer || priorScoreBot !== this.state.scoreBot) {
+      this.markGoalForReplay();
       this.hooks.onScore?.(this.state.scorePlayer, this.state.scoreBot);
       const localScored = priorScorePlayer !== this.state.scorePlayer;
       this.hooks.onGoal?.(this.state.goalSide || (localScored ? -1 : 1));
     }
-    if (this.state.matchOver && this.state.goalTimer <= 0) {
+    this.syncGuestReplay(snapshot.replay);
+    if (this.state.matchOver && this.state.goalTimer <= 0 && !this.replay) {
       this.state.paused = true; this.input.enabled = false;
       if (this.onlineMatchEnded) return true;
       this.onlineMatchEnded = true;

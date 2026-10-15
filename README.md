@@ -19,7 +19,7 @@ La cuenta permite registrarse e iniciar sesión con correo y contraseña. Al ini
 1. Crea un proyecto en Supabase y abre **SQL Editor**.
 2. Ejecuta el contenido de `supabase/schema.sql`. Crea la tabla de perfiles, limita cada fila a su propietario y define la función segura de guardado.
 3. El proyecto FIELD ya lleva la URL y la clave **Publishable** configuradas. Son valores públicos de navegador; RLS restringe el acceso a los perfiles propios. Nunca pongas la clave `secret` o `service_role` en el cliente.
-4. En Supabase **Authentication → URL Configuration**, añade el dominio de producción de Netlify a las URL permitidas. Configura el registro y la confirmación de correo según prefieras.
+4. En Supabase **Authentication → URL Configuration**, añade el dominio de producción de Netlify a las URL permitidas. En Authentication → Sign In / Providers, mantén activado el registro por correo y desactivado Confirm email para entrar inmediatamente al crear la cuenta. El online requiere una cuenta y un nombre de usuario único; el acceso anónimo no está habilitado.
 
 Para cambiar de proyecto Supabase, define `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY` en `.env.local` (local) o en las variables de Netlify. Ejecuta `npm install` y `npm run dev` para desarrollo local.
 

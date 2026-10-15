@@ -322,7 +322,7 @@ export class UI {
     this.account_form_title.textContent = signup ? 'Crear cuenta' : 'Inicia sesión';
     this.account_submit.innerHTML = signup ? 'Crear cuenta <span>↗</span>' : 'Entrar <span>↗</span>';
     document.getElementById('account-mode-toggle').textContent = signup ? 'Ya tengo cuenta · Iniciar sesión' : '¿Primera vez? Crear cuenta';
-    this.setAccountMessage(signup ? 'Al crear la cuenta, Supabase puede pedirte confirmar el correo.' : 'El progreso local seguirá disponible sin cuenta.');
+    this.setAccountMessage(signup ? 'Crea tu cuenta y entra directamente, sin confirmar el correo.' : 'El progreso local seguirá disponible sin cuenta.');
   }
 
   async submitAccount() {
@@ -337,11 +337,13 @@ export class UI {
       const authResult = signingUp
         ? await this.accountService.signUp(email, password, this.account_name.value.trim())
         : await this.accountService.signIn(email, password);
-      const currentUser = await this.accountService.currentUser();
-      const user = currentUser || (!signingUp ? authResult?.user || authResult : null);
+      // A signup user alone is not proof of authentication: require its session.
+      const user = (signingUp ? authResult?.session?.user : authResult?.user)
+        || await this.accountService.currentUser();
       if (!user) {
-        this.setAccountMessage('Cuenta creada. Revisa tu correo y confirma la dirección antes de iniciar sesión.', false, true);
-        this.accountMode = 'signup'; this.toggleAccountMode(); return;
+        this.accountMode = 'signup'; this.toggleAccountMode();
+        this.setAccountMessage('No se ha podido abrir la sesión. Intenta entrar con tu correo y contraseña.', true);
+        return;
       }
       await this.activateAccount(user);
       this.setAccountMessage('Cuenta conectada. Tu progreso ya está sincronizado.', false, true);

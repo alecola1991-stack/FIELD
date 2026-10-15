@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-15 · Claude · Ajustes divididos en secciones (Juego, Audio, Vídeo, Mandos)
-**Commit:** rama `claude/repeticiones-ajustes-campo`, commit "Ajustes divididos en secciones…" (pendiente de aprobación de Ale)
+**Commit:** `74cfe0f` (fusionado en `main` el 2026-10-15 con la aprobación de Ale). Para deshacerlo: `git revert 74cfe0f`.
 **Archivos:** `index.html`, `src/ui/UI.js`, `src/styles.css`, `NOTAS_IA.md`
 **Qué y por qué:** Ale pidió dividir mejor Ajustes por categorías.
 **Cómo:**
@@ -16,7 +16,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 **Para el otro asistente:** si añades un ajuste, colócalo en el panel que le corresponda y regístralo en las listas de `fillInputs()` y `bind()` de `UI.js`, donde están los pares `[id, clave]`.
 
 ## 2026-10-15 · Claude · Campo a pantalla completa, sin bandas negras y vertical en móvil
-**Commit:** rama `claude/repeticiones-ajustes-campo`, commit "Campo a pantalla completa…" (pendiente de aprobación de Ale)
+**Commit:** `b6db27f` (fusionado en `main` el 2026-10-15 con la aprobación de Ale). Para deshacerlo: `git revert b6db27f` (revierte antes `74cfe0f` si también quieres quitar sus ajustes).
 **Archivos:** `src/game/Renderer.js`, `src/game/Input.js`, `src/game/Game.js`, `src/config/settings.js`, `src/ui/UI.js`, `src/styles.css`, `tests/FieldView.test.js` (nuevo)
 **Qué y por qué:** Ale pidió que el partido se viera más grande y sin bandas negras.
 **Cómo:**
@@ -30,7 +30,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 **Para el otro asistente:** cualquier dibujo nuevo en el mundo debe ir dentro de `applyWorldTransform()`. Si dibujas texto, contra-rota con `if (this.rotated) c.rotate(Math.PI / 2)`. No uses `WORLD.height` para el encuadre: usa `VIEW_TOP`/`VIEW_BOTTOM`.
 
 ## 2026-10-15 · Claude · Repeticiones de gol (3 s, saltables; online requiere que salten ambos)
-**Commit:** rama `claude/repeticiones-ajustes-campo`, commit "Repeticiones de gol…" (pendiente de aprobación de Ale)
+**Commit:** `eb1d96a` (fusionado en `main` el 2026-10-15 con la aprobación de Ale). Para deshacerlo: `git revert eb1d96a` (revierte antes `b6db27f` y `74cfe0f`, que tocan el cartel y el ajuste de repeticiones).
 **Archivos:** `src/game/Game.js`, `src/game/OnlineMatch.js`, `src/game/Renderer.js`, `src/game/GamepadController.js`, `src/main.js`, `src/ui/UI.js`, `src/config/settings.js`, `index.html`, `src/styles.css`, `tests/GoalReplay.test.js` (nuevo)
 **Qué y por qué:** Ale pidió repeticiones de 3 s del último gol que se puedan saltar. En online la repetición solo termina antes de tiempo si **los dos** jugadores la saltan.
 **Cómo:**

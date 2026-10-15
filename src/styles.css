@@ -405,3 +405,28 @@ body.blue-theme.online-theme{--bg:#020713;--panel:#071329;--green:#83b4ff;--mute
 @media(max-width:600px){#quick-screen .selection-crest{width:76px;height:76px}#customize-screen .menu-team-picker .selection-crest{width:100px;height:100px}#customize-screen .menu-team-picker .selection-filter{grid-template-columns:30px minmax(0,1fr) 30px!important;padding:6px;min-height:60px}#customize-screen .menu-team-picker .selection-filter small{font-size:10px}#customize-screen .menu-team-picker .selection-team{grid-template-columns:30px minmax(0,1fr) 30px!important}#customize-screen .selection-team-name{font-size:22px!important;min-height:40px}#customize-screen .menu-team-picker .selection-stars svg{width:22px;height:22px}#customize-screen .menu-team-picker .selection-kit{font-size:11px}}
 
 .google-sign-in{width:100%;display:flex;align-items:center;justify-content:center;gap:12px;min-height:48px;padding:12px 16px;border:1px solid #b8c8e0;border-radius:5px;background:#fff;color:#1f1f1f;font:600 16px Manrope,sans-serif;cursor:pointer}.google-sign-in:hover{background:#eaf1fb}.google-sign-in:disabled{opacity:.65;cursor:wait}.google-sign-in>span{font:bold 22px Arial;color:#4285f4}.account-auth-divider{text-align:center;color:#acbdd8;font:12px var(--mono);letter-spacing:.08em;margin:18px 0}
+
+/* Home shortcuts (Champions, Liga Nacional): eight tiles in two rows of four. */
+.hub-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.hub-champions .tile-art{color:#e7c56c}.hub-league .tile-art{color:#8dc3ff}
+@media(max-width:900px){.hub-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Visual league selector: country tabs + league cards (the hidden select keeps the value). */
+.league-picker{margin:2px 0 4px}
+.league-country-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.league-country-tab{min-height:34px;padding:7px 12px;border:1px solid #91b9ff30;border-radius:999px;background:#0c1932;color:#adc2df;font:600 12px Manrope,system-ui,sans-serif;cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+.league-country-tab.has-selection{border-color:#8dc3ff70;color:#dbeaff}
+.league-country-tab:hover,.league-country-tab:focus-visible{border-color:#8dc3ff;color:#fff;outline:none}
+.league-country-tab.active{background:#dcecff;border-color:#dcecff;color:#0b1c38}
+.league-options{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.league-option{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:0;min-height:88px;padding:11px 12px;border:1px solid #91b9ff30;border-radius:10px;background:#0f1e3b;color:#e6efff;text-align:left;font-family:inherit;cursor:pointer;transition:background .15s,border-color .15s,transform .15s}
+.league-option b{font-size:15px;line-height:1.2;overflow-wrap:anywhere}
+.league-option-tier{font:10px var(--mono);letter-spacing:.07em;color:#91abd1;line-height:1.35}
+.league-option-meta{margin-top:auto;font:11px var(--mono);color:#adc2df}
+.league-option-mine{font:normal 9px var(--mono);letter-spacing:.06em;padding:2px 7px;border-radius:999px;background:#65e6a522;color:#9ff0c5}
+.league-option:hover,.league-option:focus-visible{border-color:#8dc3ff;outline:none;transform:translateY(-1px)}
+.league-option.selected{background:linear-gradient(125deg,#dcecff,#a9cfff);border-color:#dbecff;color:#0b1c38}
+.league-option.selected :is(.league-option-tier,.league-option-meta){color:#203d64}
+.league-option.selected .league-option-mine{background:#0b1c3820;color:#0b1c38}
+@media(max-width:600px){.league-options{grid-template-columns:repeat(2,minmax(0,1fr))}.league-option{min-height:84px;padding:10px}.league-option b{font-size:14px}}
+@media(prefers-reduced-motion:reduce){.league-option{transition:none}.league-option:hover,.league-option:focus-visible{transform:none}}

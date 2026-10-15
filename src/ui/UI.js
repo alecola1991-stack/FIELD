@@ -289,6 +289,13 @@ export class UI {
     document.getElementById('controller-reset').addEventListener('click',()=>this.controller?.resetMapping());
     this.sound_enabled.addEventListener('change', () => { this.settings.sound = this.sound_enabled.checked; this.persist(); });
     this.volume.addEventListener('input', () => { this.settings.volume = Number(this.volume.value); this.volume_value.textContent = `${this.settings.volume}%`; this.persist(); });
+    document.getElementById('league-country-tabs').addEventListener('click', event => {
+      const tab = event.target.closest('[data-league-country]'); if (!tab) return;
+      this.leaguePickerCountry = tab.dataset.leagueCountry; this.renderLeaguePicker(); this.sound?.play('click');
+    });
+    document.getElementById('league-options').addEventListener('click', event => {
+      const option = event.target.closest('[data-league-option]'); if (option) this.selectLeagueOption(option.dataset.leagueOption);
+    });
     this.league_competition.addEventListener('change', () => {
       this.settings.leagueCompetition = this.league_competition.value; this.persist(); this.updateLeaguePreview();
     });
@@ -550,6 +557,8 @@ export class UI {
     }
     if (mode === 'leaderboard') { this.show('leaderboard'); this.loadLeaderboard(); return; }
     if (mode === 'competitions') { this.show('competitions'); this.renderCompetitionPicker(); return; }
+    // Home menu shortcuts reuse the competition picker flow (profile and eligibility checks included).
+    if (mode === 'champions' || mode === 'league') { this.openCompetitionShortcut(mode); return; }
     if (mode === 'online') { this.openOnline(); return; }
     if (!this.profileComplete()) { this.pendingMode = mode; this.openProfile(); return; }
     if (mode === 'tournament') this.openTournamentSetup();
@@ -965,6 +974,59 @@ export class UI {
     if (stat) stat.textContent = String(rounds);
     const subtitle = document.querySelector('#league-screen .editor-copy h2');
     if (subtitle) subtitle.innerHTML = `${rounds}<br><em>jornadas.</em>`;
+    this.renderLeaguePicker();
+  }
+
+  openCompetitionShortcut(id) {
+    const index = CUP_COMPETITIONS.findIndex(item => item.id === id);
+    if (index < 0) return;
+    this.competitionIndex = index; this.renderCompetitionPicker(); this.chooseCompetition();
+  }
+
+  // Visual league selector: country tabs plus one card per league. The hidden
+  // #league-competition select remains the source of truth for the chosen league.
+  renderLeaguePicker() {
+    const tabs = document.getElementById('league-country-tabs'), options = document.getElementById('league-options');
+    if (!tabs || !options) return;
+    const selected = this.league_competition.value || TEAM_LEAGUES[0].id;
+    const leagueIds = new Set(TEAM_LEAGUES.map(league => league.id));
+    const countries = TEAM_COUNTRIES.filter(country => country.groups.some(id => leagueIds.has(id)));
+    const selectedCountry = countries.find(country => country.groups.includes(selected))?.id;
+    // Follow the chosen league when it changes elsewhere (e.g. the player's club); otherwise keep the browsed country.
+    if (selected !== this.leaguePickerSelected || !countries.some(country => country.id === this.leaguePickerCountry)) {
+      this.leaguePickerCountry = selectedCountry || countries[0]?.id; this.leaguePickerSelected = selected;
+    }
+    const team = getTeamById(this.settings.teamId);
+    tabs.replaceChildren(...countries.map(country => {
+      const tab = document.createElement('button'); tab.type = 'button'; tab.className = 'league-country-tab';
+      const active = country.id === this.leaguePickerCountry;
+      tab.dataset.leagueCountry = country.id; tab.setAttribute('role', 'tab'); tab.setAttribute('aria-selected', String(active));
+      tab.classList.toggle('active', active); tab.classList.toggle('has-selection', country.id === selectedCountry);
+      tab.textContent = country.label; return tab;
+    }));
+    const country = countries.find(item => item.id === this.leaguePickerCountry);
+    const leagues = TEAM_LEAGUES.filter(league => country?.groups.includes(league.id));
+    options.replaceChildren(...leagues.map(league => {
+      const count = TEAMS.filter(item => item.league === league.id).length, chosen = league.id === selected;
+      const card = document.createElement('button'); card.type = 'button'; card.className = 'league-option';
+      card.dataset.leagueOption = league.id; card.setAttribute('role', 'radio'); card.setAttribute('aria-checked', String(chosen));
+      card.classList.toggle('selected', chosen);
+      const tier = document.createElement('small'); tier.className = 'league-option-tier'; tier.textContent = leagueTierLabel(league.id);
+      const name = document.createElement('b'); name.textContent = league.label.split(' · ')[0];
+      const meta = document.createElement('span'); meta.className = 'league-option-meta'; meta.textContent = `${count} CLUBES · ${Math.max(0, count - 1)} JORNADAS`;
+      card.append(tier, name, meta);
+      if (team?.league === league.id) { const mine = document.createElement('i'); mine.className = 'league-option-mine'; mine.textContent = 'TU EQUIPO'; card.append(mine); }
+      return card;
+    }));
+  }
+
+  selectLeagueOption(id) {
+    if (!TEAM_LEAGUES.some(league => league.id === id)) return;
+    this.sound?.play('click');
+    if (this.league_competition.value === id) return;
+    this.league_competition.value = id;
+    this.league_competition.dispatchEvent(new Event('change'));
+    document.querySelector(`[data-league-option="${id}"]`)?.focus({ preventScroll: true });
   }
 
   renderMissions() {
@@ -1615,6 +1677,13 @@ function readGuestProfile() {
     career,
     competitionSave: competitionSave?.version === 1 ? competitionSave : null,
   };
+}
+
+function leagueTierLabel(id) {
+  if (id.startsWith('primera-rfef')) return '3ª CATEGORÍA';
+  if (id.startsWith('segunda-rfef')) return '4ª CATEGORÍA';
+  if (['laliga2', 'championship', 'serie-b', 'ligue-2', 'bundesliga-2'].includes(id)) return '2ª CATEGORÍA';
+  return '1ª CATEGORÍA';
 }
 
 function formatMatchDuration(seconds) {

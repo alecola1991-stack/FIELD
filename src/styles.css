@@ -276,8 +276,8 @@ body.blue-theme{--bg:#070f25;--panel:#101e3b;--green:#81baff;--muted:#b1c3de;--l
 .tile-enter{position:absolute;left:19px;bottom:18px;font-size:22px;opacity:.6}
 .hub-play{background:linear-gradient(125deg,#dcecff,#a9cfff);color:#0b1c38;border-color:#dbecff;box-shadow:0 8px 32px #4895ff25}
 .hub-play :is(small,.tile-index,.tile-art){color:#203d64}
-.hub-online{background:linear-gradient(135deg,#183b36ee,#102a2bee);border-color:#65e6a53d}
-.hub-online :is(.tile-art,.tile-index){color:#80dcb3}
+.hub-online{background:linear-gradient(135deg,#0a1a35,#030b1c);border-color:#6089c53d}
+.hub-online :is(.tile-art,.tile-index){color:#83b4ff}
 .hub-tile:hover,.hub-tile:focus-visible{transform:translateY(-3px);background:#e7f1ff;color:#0b1d39;border-color:#fff;box-shadow:0 10px 32px #3b8dff35;z-index:2}
 .hub-tile:is(:hover,:focus-visible) :is(small,.tile-art,.tile-index){color:#254568}
 .hub-progress{display:grid;grid-template-columns:1fr 1fr;gap:35px;align-items:center;border-top:1px solid #91b9ff30;padding-top:16px}

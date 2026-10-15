@@ -482,3 +482,38 @@ body.blue-theme.online-theme{--bg:#020713;--panel:#071329;--green:#83b4ff;--mute
 .settings-keys kbd{display:inline-block;min-width:24px;margin-right:3px;padding:3px 6px;border:1px solid #91b9ff45;border-bottom-width:2px;border-radius:6px;background:#0f1e3b;color:#e6efff;font:600 11px var(--mono);text-align:center}
 @media(max-width:420px){.settings-tabs button{font-size:13px;padding:8px 2px}}
 @media(prefers-reduced-motion:reduce){.settings-tabs button{transition:none}}
+
+/* Final scoreboard (replaces the plain Victoria/Derrota heading). */
+.game-screen .result-panel{width:min(640px,94vw);max-width:none;text-align:left}
+.result-panel>.eyebrow{text-align:center}
+.result-scoreboard{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:start;gap:6px 14px;margin:6px 0 12px;padding:16px 14px 12px;border:1px solid #91b9ff30;border-radius:16px;background:radial-gradient(ellipse at 50% 0%,#2a4f8f55,transparent 70%),#0a1530}
+.result-scoreboard .score-side{display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0;gap:4px}
+.result-crest.player-circle-preview{width:82px;height:82px;box-shadow:0 8px 24px #0006,inset 0 0 0 2px #ffffff22}
+.result-team-name{margin-top:4px;font-size:15px;line-height:1.2;color:#eef4ff;overflow-wrap:anywhere}
+.result-player-name{font:11px var(--mono);color:#9fb4d4;letter-spacing:.04em}
+.score-side.winner .result-team-name{color:#ffd678}
+.goal-list{list-style:none;display:flex;flex-wrap:wrap;justify-content:center;gap:4px;margin:6px 0 0;padding:0}
+.goal-list li{padding:2px 7px;border-radius:999px;background:#ffffff12;color:#dfe9fb;font:700 11px var(--mono)}
+.goal-list li::before{content:"⚽ ";font-size:9px}
+.goal-list li.empty{background:none;color:#6f84a6;font-weight:400}
+.goal-list li.empty::before{content:""}
+.score-center{display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:14px}
+.score-center .result-outcome{margin:0;padding:4px 12px;border-radius:999px;font:800 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;background:#ffffff14;color:#dfe9fb}
+.result-scoreboard.won .result-outcome{background:#65e6a526;color:#8ff0bd}
+.result-scoreboard.lost .result-outcome{background:#ff6b5a24;color:#ffab9f}
+.result-score{display:flex;align-items:center;gap:10px;font:800 clamp(40px,8vw,58px)/1 Manrope,system-ui,sans-serif;letter-spacing:-.04em;color:#fff;font-variant-numeric:tabular-nums}
+.result-score i{font-style:normal;font-weight:400;color:#6f84a6;font-size:.6em}
+.result-duration{font:10px var(--mono);letter-spacing:.08em;color:#8ea6cc;white-space:nowrap}
+.goal-timeline{grid-column:1/-1;margin-top:8px}
+.goal-timeline-track{position:relative;display:block;height:4px;border-radius:99px;background:linear-gradient(90deg,#ffffff14,#ffffff26)}
+.goal-marker{position:absolute;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:var(--marker-color);box-shadow:0 0 0 2px #0a1530,0 0 0 3px #ffffff55}
+.goal-marker.home{transform:translateY(-7px)}.goal-marker.away{transform:translateY(7px)}
+.result-panel .result-copy{text-align:center}
+.result-panel :is(.result-reward,.result-online-status){text-align:center}
+@media(max-width:600px){
+  .game-screen .result-panel{padding:20px 14px}
+  .result-scoreboard{gap:6px 8px;padding:14px 8px 10px}
+  .result-crest.player-circle-preview{width:62px;height:62px}
+  .result-team-name{font-size:13px}
+  .score-center{padding-top:10px}
+}

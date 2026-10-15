@@ -4,6 +4,17 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-15 · Claude · Marcador final con equipos y minutos de gol
+**Commit:** rama `claude/marcador-clasificacion-revancha`, commit "Marcador final…" (pendiente de aprobación de Ale)
+**Archivos:** `index.html`, `src/ui/UI.js`, `src/styles.css`, `NOTAS_IA.md`
+**Qué y por qué:** Ale pidió sustituir la pantalla de Victoria/Derrota por un marcador con los dos equipos, el resultado y los minutos de los goles.
+**Cómo:**
+- `#result-overlay`: nuevo bloque `#result-scoreboard`. Cada lado (`.score-side.home` y `.score-side.away`) tiene un emblema con la camiseta, el nombre y el dorsal (`paintPlayerPreview`), el equipo, el jugador y la lista de minutos de gol (`#result-home-goals` y `#result-away-goals`). En el centro van el resultado (`#result-score`), la etiqueta de resultado y la duración y los tiros. Debajo hay una línea temporal (`#result-timeline`) con un marcador por gol.
+- `#result-title` **se mantiene**: ahora se muestra como etiqueta ("VICTORIA", "DERROTA", "¡Ganaste la copa!"…). `#result-copy` ya no repite el marcador, solo la XP y los mensajes.
+- `UI.renderScoreboard(result, won)` se llama desde `handleMatchEnd`. Los minutos salen de `result.stats.goals` (`minute`, `elapsedSeconds`, `side`), que en online ya llegan mapeados para el invitado. `UI.matchEyebrow(mode)` da el texto superior para partido rápido, online o Leyendas; liga y torneo siguen poniendo el suyo.
+- CSS: bloque nuevo al final; `.result-panel` es más ancho (640 px).
+**Para el otro asistente:** si añades datos al resultado, hazlo dentro de `.result-scoreboard` o debajo de `#result-copy`. No vuelvas a meter el marcador en `#result-copy`.
+
 ## 2026-10-15 · Claude · Ajustes divididos en secciones (Juego, Audio, Vídeo, Mandos)
 **Commit:** `74cfe0f` (fusionado en `main` el 2026-10-15 con la aprobación de Ale). Para deshacerlo: `git revert 74cfe0f`.
 **Archivos:** `index.html`, `src/ui/UI.js`, `src/styles.css`, `NOTAS_IA.md`

@@ -46,7 +46,7 @@ export class UI {
       'player-name','player-number','preview-name','preview-number','preview-ball','preview-team','saved-note','save-player',
       'difficulty','play-difficulty','settings-difficulty','sound-enabled','volume','volume-value','score','timer','hud-player-name','hud-opponent-name','player-dot','opponent-dot',
       'goal-banner','countdown-banner','pause-overlay','result-overlay','result-eyebrow','result-title','result-copy','result-xp','result-level','result-xp-fill',
-      'result-next','result-finish','result-rematch','result-online-status','result-stats','result-stat-duration','result-stat-goals','result-stat-shots','result-trophy','result-season-summary','league-standings-panel','league-standings-title','league-standings-body','connection-banner','replay-banner','replay-status','replay-skip','leaderboard-message','leaderboard-list','leaderboard-refresh','training-tools','trajectory-toggle','mode-label','game-canvas','level-value','xp-label','wins-label','xp-fill','missions-list',
+      'result-next','result-finish','result-scoreboard','result-home-crest','result-home-team','result-home-player','result-home-goals','result-away-crest','result-away-team','result-away-player','result-away-goals','result-score','result-duration','result-timeline','tournament-bracket-panel','tournament-bracket-title','tournament-bracket','result-rematch','result-online-status','result-stats','result-stat-duration','result-stat-goals','result-stat-shots','result-trophy','result-season-summary','league-standings-panel','league-standings-title','league-standings-body','connection-banner','replay-banner','replay-status','replay-skip','leaderboard-message','leaderboard-list','leaderboard-refresh','training-tools','trajectory-toggle','mode-label','game-canvas','level-value','xp-label','wins-label','xp-fill','missions-list',
       'team-position','league-competition','league-competition-summary','country-tabs','countries-prev','countries-next','country-position','league-tabs','team-grid','teams-prev','teams-next','chosen-team-label','tournament-roster',
       'competition-trophy','competition-eyebrow','competition-title','competition-description','competition-dots','competition-select','competition-prev','competition-next',
       'competition-picker-card',
@@ -1509,9 +1509,10 @@ export class UI {
     this.result_xp.textContent = reward ? (reward.gained ? `+${reward.gained} XP` : 'NIVEL MÁXIMO') : '0 XP';
     this.result_level.textContent = `NIVEL ${this.progression.level}`;
     this.result_xp_fill.style.width = `${this.progression.progressRatio() * 100}%`;
-    this.result_copy.textContent = `${result.playerScore} – ${result.botScore}. ${rewardText}${levelText}`;
+    this.result_copy.textContent = `${rewardText}${levelText}`;
+    this.renderScoreboard(result, won);
     this.result_next.classList.add('hidden'); this.result_rematch.classList.add('hidden'); this.result_online_status.classList.add('hidden'); this.league_standings_panel.classList.add('hidden'); this.result_finish.textContent = 'Volver al menú';
-    this.result_eyebrow.textContent = 'FINAL DEL PARTIDO'; this.result_title.textContent = won ? 'Victoria' : 'Derrota';
+    this.result_eyebrow.textContent = this.matchEyebrow(result.mode); this.result_title.textContent = won ? 'Victoria' : 'Derrota';
 
     let cupFinal = false, cupChampion = false, leagueFinished = false, leagueChampion = false;
     if (result.mode === 'tournament' && this.tournament) {
@@ -1607,6 +1608,43 @@ export class UI {
     if ((this.league?.status === 'next') || (this.tournament?.status === 'next')) this.saveCurrentCompetition();
     else if (result.mode === 'league' || result.mode === 'tournament') { clearCompetitionSave(); this.refreshContinueButton(null); }
     this.syncAccount(true);
+  }
+
+  // Final scoreboard: both teams (kit crest, team, player), the score and the
+  // minute of every goal, plus a timeline of the match.
+  renderScoreboard(result, won) {
+    const options = this.currentMatchOptions || {}, online = result.mode === 'online';
+    const stats = result.stats || { goals: [] }, total = Math.max(1, Number(result.elapsedSeconds) || 0);
+    const homeTeam = getTeamById(this.settings.teamId), awayTeam = options.opponentTeam || null;
+    const player = this.game?.player, rival = this.game?.bot;
+    const sides = {
+      home: { team: homeTeam, body: player, title: homeTeam?.name || 'Tu equipo', subtitle: `${online && this.hub?.identity ? '@' + this.hub.identity.username : this.settings.name} · #${player?.number ?? this.settings.number}`, goals: 'player' },
+      away: { team: awayTeam, body: rival, title: awayTeam?.name || options.opponentName || 'Rival', subtitle: `${online ? '@' + (options.opponentUsername || options.opponentName || 'rival') : 'IA · ' + ({ easy: 'FÁCIL', normal: 'NORMAL', hard: 'DIFÍCIL', legend: 'LEYENDA' })[this.game?.botAI?.difficulty] || 'IA'} · #${rival?.number ?? 10}`, goals: 'opponent' },
+    };
+    for (const [key, side] of Object.entries(sides)) {
+      this.paintPlayerPreview(this[`result_${key}_crest`], side.team, { name: side.body?.name || '', number: side.body?.number ?? '' });
+      this[`result_${key}_team`].textContent = side.title; this[`result_${key}_player`].textContent = side.subtitle;
+      const list = this[`result_${key}_goals`], goals = (stats.goals || []).filter(goal => goal.side === side.goals);
+      list.replaceChildren(...goals.map(goal => { const item = document.createElement('li'); item.textContent = `${goal.minute}'`; return item; }));
+      if (!goals.length) { const empty = document.createElement('li'); empty.className = 'empty'; empty.textContent = 'Sin goles'; list.append(empty); }
+    }
+    this.result_scoreboard.classList.toggle('won', won); this.result_scoreboard.classList.toggle('lost', !won);
+    this.result_scoreboard.querySelector('.score-side.home').classList.toggle('winner', won); this.result_scoreboard.querySelector('.score-side.away').classList.toggle('winner', !won);
+    this.result_score.innerHTML = `${result.playerScore}<i>–</i>${result.botScore}`;
+    this.result_score.setAttribute('aria-label', `${sides.home.title} ${result.playerScore}, ${sides.away.title} ${result.botScore}`);
+    this.result_duration.textContent = `${formatMatchDuration(result.elapsedSeconds)} · TIROS ${stats.shotsPlayer || 0}–${stats.shotsOpponent || 0}`;
+    const track = this.result_timeline.querySelector('.goal-timeline-track');
+    track.replaceChildren(...(stats.goals || []).map(goal => {
+      const marker = document.createElement('i'); marker.className = `goal-marker ${goal.side === 'player' ? 'home' : 'away'}`;
+      marker.style.left = `${Math.max(2, Math.min(98, (Number(goal.elapsedSeconds) || 0) / total * 100))}%`;
+      marker.style.setProperty('--marker-color', (goal.side === 'player' ? homeTeam?.primary : awayTeam?.primary) || (goal.side === 'player' ? '#65e6a5' : '#f19676'));
+      marker.title = `${goal.minute}'`; return marker;
+    }));
+  }
+
+  matchEyebrow(mode) {
+    const label = { bot: 'PARTIDO RÁPIDO', online: this.hub?.lobby?.kind === 'ranked' ? 'ONLINE · RANKED' : this.hub?.lobby?.kind === 'tournament' ? 'ONLINE · TORNEO' : 'ONLINE · PARTIDO RÁPIDO', legends: 'LEYENDAS' }[mode];
+    return label ? `${label} · FINAL` : 'FINAL DEL PARTIDO';
   }
 
   showCompetitionResultStats(result, champion, season = null, leagueChampion = false) {

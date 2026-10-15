@@ -1,4 +1,4 @@
-# FIELD — fútbol arcade
+# Project FIELD — Fútbol arcade / Vibecoded - Alejandro Sánchez Gómez
 
 Juego de fútbol 2D original para navegador, construido con Canvas 2D, JavaScript y CSS. No necesita paquetes, compilación ni motor externo.
 

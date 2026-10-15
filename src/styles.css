@@ -383,8 +383,8 @@ body.blue-theme{--bg:#070f25;--panel:#101e3b;--green:#81baff;--muted:#b1c3de;--l
 #customize-screen .menu-team-picker :is(.country-tab,.league-tab){background:none;border:0;box-shadow:none;color:#e8f2ff;font-size:16px;padding:2px 4px;white-space:normal;text-align:center}
 #customize-screen #country-position{display:none}
 #customize-screen .menu-team-picker .selection-team{margin:0;padding:10px 14px 0;align-items:center}
-#customize-screen .menu-team-picker #team-grid{padding:0;margin:0;overflow:visible;display:block}
-#customize-screen .menu-team-picker .single-team-card{width:100%;min-height:0;padding:0 4px 12px;border:0;box-shadow:none;background:none;gap:10px;transform:none;border-radius:0}
+#customize-screen .menu-team-picker #team-grid{height:auto;min-height:0;padding:0;margin:0;overflow:visible;display:block}
+#customize-screen .menu-team-picker .single-team-card{width:100%;height:auto;min-height:0;padding:0 4px 12px;border:0;box-shadow:none;background:none;gap:10px;transform:none;border-radius:0}
 #customize-screen .menu-team-picker .single-team-card.selected{background:none;border:0;box-shadow:none}
 #customize-screen .selection-team-name{font-size:26px;min-height:40px;white-space:normal;overflow-wrap:anywhere}
 #customize-screen .selection-choice-status{font:12px var(--mono);color:#b9d6ff;padding:8px 12px;border:1px solid #91b9ff40;border-radius:4px}

@@ -200,7 +200,7 @@ export class UI {
     this.play_difficulty.value = this.settings.difficulty;
     this.trajectory_enabled.checked = !!this.settings.trajectory;
     this.shot_preview_enabled.checked = !!this.settings.shotPreview;
-    for(const [id,key,value] of [['music-enabled','musicEnabled',true],['ambience-enabled','ambienceEnabled',true],['controller-vibration','controllerVibration',true]]) document.getElementById(id).checked=this.settings[key]??value;
+    for(const [id,key,value] of [['music-enabled','musicEnabled',true],['ambience-enabled','ambienceEnabled',true],['controller-vibration','controllerVibration',true],['goal-replays-enabled','goalReplays',true],['vertical-field-enabled','verticalField',true]]) document.getElementById(id).checked=this.settings[key]??value;
     for(const [id,key,value] of [['music-volume','musicVolume',35],['ambience-volume','ambienceVolume',50],['effects-volume','effectsVolume',100]]) { document.getElementById(id).value=this.settings[key]??value;document.getElementById(id+'-value').textContent=(this.settings[key]??value)+'%'; }
     this.league_goal_target.value = String([2, 3, 5].includes(Number(this.settings.leagueGoalTarget)) ? this.settings.leagueGoalTarget : 2);
     this.renderTeamNavigation(); this.renderTeamCarousel(); this.updateProfilePreview(); this.updateHomeClub(); this.updateProfileValidity();
@@ -284,7 +284,23 @@ export class UI {
       this.settings.trajectory = this.trajectory_enabled.checked; this.trajectory_toggle.checked = this.settings.trajectory;
       this.persist();
     });
-    for(const [id,key] of [['music-enabled','musicEnabled'],['ambience-enabled','ambienceEnabled'],['controller-vibration','controllerVibration']]) document.getElementById(id).addEventListener('change',event=>{this.settings[key]=event.target.checked;this.persist();this.sound?.tick?.();});
+    for(const [id,key] of [['music-enabled','musicEnabled'],['ambience-enabled','ambienceEnabled'],['controller-vibration','controllerVibration'],['goal-replays-enabled','goalReplays'],['vertical-field-enabled','verticalField']]) document.getElementById(id).addEventListener('change',event=>{this.settings[key]=event.target.checked;this.persist();this.sound?.tick?.();});
+    document.querySelector('.settings-tabs').addEventListener('click', event => {
+      const tab = event.target.closest('[data-settings-tab]'); if (tab) { this.showSettingsTab(tab.dataset.settingsTab); this.sound?.play('click'); }
+    });
+    document.querySelector('.settings-tabs').addEventListener('keydown', event => {
+      if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+      const tabs = [...document.querySelectorAll('[data-settings-tab]')], index = tabs.indexOf(document.activeElement);
+      if (index < 0) return;
+      event.preventDefault(); const next = tabs[(index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length];
+      this.showSettingsTab(next.dataset.settingsTab); next.focus();
+    });
+    this.showSettingsTab('game');
+    const fullscreen = document.getElementById('fullscreen-toggle');
+    document.getElementById('fullscreen-line').hidden = !document.fullscreenEnabled;
+    const syncFullscreen = () => { fullscreen.textContent = document.fullscreenElement ? 'Salir' : 'Activar'; };
+    fullscreen.addEventListener('click', () => { (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen())?.catch?.(() => {}); });
+    document.addEventListener('fullscreenchange', syncFullscreen); syncFullscreen();
     for(const [id,key] of [['music-volume','musicVolume'],['ambience-volume','ambienceVolume'],['effects-volume','effectsVolume']]) document.getElementById(id).addEventListener('input',event=>{this.settings[key]=Number(event.target.value);document.getElementById(id+'-value').textContent=event.target.value+'%';this.persist();this.sound?.tick?.();});
     document.getElementById('music-next').addEventListener('click',()=>{this.sound?.unlock?.();this.sound?.nextTrack?.();});
     document.getElementById('controller-remap').addEventListener('click',()=>this.controller?.startMapping());
@@ -322,6 +338,14 @@ export class UI {
     window.addEventListener('keydown', e => { if (e.code !== 'Escape') return; if (this.currentView === 'modifiers') { e.preventDefault(); this.closeModifiers(); } else if (this.currentView === 'game' && this.game?.state.running) { e.preventDefault(); this.pause(!this.game.state.paused); } });
     window.addEventListener('pagehide', () => { this.saveCurrentCompetition(); this.syncAccount(true); });
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { this.saveCurrentCompetition(); this.syncAccount(true); } });
+  }
+
+  showSettingsTab(name) {
+    for (const tab of document.querySelectorAll('[data-settings-tab]')) {
+      const active = tab.dataset.settingsTab === name;
+      tab.classList.toggle('active', active); tab.setAttribute('aria-selected', String(active)); tab.tabIndex = active ? 0 : -1;
+    }
+    for (const panel of document.querySelectorAll('[data-settings-panel]')) panel.hidden = panel.dataset.settingsPanel !== name;
   }
 
   toggleAccountMode() {

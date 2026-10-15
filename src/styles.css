@@ -465,3 +465,20 @@ body.blue-theme.online-theme{--bg:#020713;--panel:#071329;--green:#83b4ff;--mute
 .game-screen .pause-overlay{overflow-y:auto;align-items:safe center;padding:12px 0}
 .replay-banner.at-bottom{top:auto;bottom:12px}
 @media (pointer:coarse), (max-width:700px){.replay-banner.at-bottom{bottom:184px}}
+
+/* Settings split into sections (Juego, Audio, Vídeo, Mandos). */
+.settings-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:4px;margin:0 0 16px;border:1px solid #91b9ff30;border-radius:12px;background:#0a1530}
+.settings-tabs button{min-height:40px;padding:8px 6px;border:0;border-radius:9px;background:transparent;color:#adc2df;font:700 14px Manrope,system-ui,sans-serif;cursor:pointer;transition:background .15s,color .15s}
+.settings-tabs button:hover,.settings-tabs button:focus-visible{color:#fff;background:#18294a;outline:none}
+.settings-tabs button.active{background:#dcecff;color:#0b1c38}
+.settings-panel[hidden]{display:none}
+.settings-panel-title{margin:14px 0 2px;font:10px var(--mono);letter-spacing:.14em;color:#8eabd6}
+.settings-panel-title:first-child{margin-top:0}
+.settings-panel .rules-entry{margin-top:14px}
+.settings-panel .controller-settings{margin:12px 0 0}
+.settings-keys{display:grid;grid-template-columns:auto minmax(0,1fr);gap:9px 16px;align-items:center;padding:12px 0 4px}
+.settings-keys span{white-space:nowrap;font-size:13px;color:#c9d8ef}
+.settings-keys small{font-size:13px;color:#adc2df}
+.settings-keys kbd{display:inline-block;min-width:24px;margin-right:3px;padding:3px 6px;border:1px solid #91b9ff45;border-bottom-width:2px;border-radius:6px;background:#0f1e3b;color:#e6efff;font:600 11px var(--mono);text-align:center}
+@media(max-width:420px){.settings-tabs button{font-size:13px;padding:8px 2px}}
+@media(prefers-reduced-motion:reduce){.settings-tabs button{transition:none}}

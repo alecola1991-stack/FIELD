@@ -233,3 +233,57 @@ export function pickChampionsOpponent(draw, round, random = Math.random) {
   const start = 2 ** (round - 1), end = 2 ** round;
   return pick(draw.slice(start, end), random);
 }
+
+// ---- Knockout bracket -------------------------------------------------------
+// Slots follow the draw order: round 1 pairs (0,1), (2,3)…; each later match
+// takes the winners of two consecutive matches. The player (slot 0) therefore
+// meets the winner of slots [2^(r-1), 2^r) in round r, as the draw intended.
+export function createBracket(teams) {
+  const ids = teams.map(team => team.id ?? team), rounds = Math.log2(ids.length);
+  if (!Number.isInteger(rounds) || rounds < 1) throw new Error('El cuadro necesita 2, 4, 8, 16 o 32 equipos.');
+  return {
+    size: ids.length,
+    rounds: Array.from({ length: rounds }, (_, round) => Array.from({ length: ids.length / 2 ** (round + 1) }, (_, index) => ({
+      home: round === 0 ? ids[index * 2] : null, away: round === 0 ? ids[index * 2 + 1] : null, homeGoals: null, awayGoals: null, winner: null,
+    }))),
+  };
+}
+
+export function simulateKnockoutMatch(homeId, awayId, random = Math.random, goalTarget = 3) {
+  const home = getTeamById(homeId)?.stars || 3, away = getTeamById(awayId)?.stars || 3;
+  const homeWins = random() < Math.max(.15, Math.min(.85, .5 + (home - away) * .12));
+  const loserGoals = Math.min(goalTarget - 1, Math.floor(random() * goalTarget));
+  return homeWins ? [goalTarget, loserGoals] : [loserGoals, goalTarget];
+}
+
+function advanceWinner(bracket, roundIndex, matchIndex) {
+  const next = bracket.rounds[roundIndex + 1]?.[matchIndex >> 1];
+  if (next) next[matchIndex % 2 ? 'away' : 'home'] = bracket.rounds[roundIndex][matchIndex].winner;
+}
+
+// Records the player's result and simulates every other match of that round.
+export function playBracketRound(bracket, roundIndex, playerId, playerGoals, opponentGoals, random = Math.random, goalTarget = 3) {
+  bracket.rounds[roundIndex]?.forEach((match, index) => {
+    if (match.winner || !match.home || !match.away) return;
+    if (match.home === playerId || match.away === playerId) {
+      const playerHome = match.home === playerId;
+      [match.homeGoals, match.awayGoals] = playerHome ? [playerGoals, opponentGoals] : [opponentGoals, playerGoals];
+    } else [match.homeGoals, match.awayGoals] = simulateKnockoutMatch(match.home, match.away, random, goalTarget);
+    match.winner = match.homeGoals > match.awayGoals ? match.home : match.away;
+    advanceWinner(bracket, roundIndex, index);
+  });
+  return bracket;
+}
+
+// After an elimination (or to preview), simulate every remaining round.
+export function simulateRemainingBracket(bracket, fromRound, random = Math.random, goalTarget = 3) {
+  for (let round = fromRound; round < bracket.rounds.length; round++) playBracketRound(bracket, round, null, 0, 0, random, goalTarget);
+  return bracket;
+}
+
+export function bracketOpponent(bracket, roundIndex, playerId) {
+  const match = bracket?.rounds[roundIndex]?.find(item => item.home === playerId || item.away === playerId);
+  return match ? (match.home === playerId ? match.away : match.home) : null;
+}
+
+export function bracketChampion(bracket) { return bracket?.rounds.at(-1)?.[0]?.winner || null; }

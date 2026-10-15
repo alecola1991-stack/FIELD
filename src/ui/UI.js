@@ -7,7 +7,7 @@ import { Progression } from '../game/Progression.js';
 import { CareerProfile } from '../game/CareerProfile.js';
 import { TROPHY_CATALOG, formatPlayTime } from '../game/Achievements.js';
 import { TEAM_LEAGUES, NATIONAL_GROUPS, TEAM_GROUPS, TEAM_CLUB_GROUPS, TEAM_COUNTRIES, PROFILE_TEAMS, TEAMS, getTeamById, getKitBackground } from '../config/teams.js';
-import { CUP_COMPETITIONS, createChampionsDraw, createInternationalDraw, createLibertadoresDraw, createClubWorldCupDraw, isLibertadoresEligibleTeam, isClubWorldCupEligibleTeam, createLeagueSchedule, createLeagueStandings, updateLeagueStandings, sortLeagueStandings, pickChampionsOpponent } from '../game/Competitions.js';
+import { CUP_COMPETITIONS, createChampionsDraw, createInternationalDraw, createLibertadoresDraw, createClubWorldCupDraw, isLibertadoresEligibleTeam, isClubWorldCupEligibleTeam, createLeagueSchedule, createLeagueStandings, updateLeagueStandings, sortLeagueStandings, pickChampionsOpponent, createBracket, playBracketRound, simulateRemainingBracket, bracketOpponent, bracketChampion } from '../game/Competitions.js';
 import { MenuBackdrop } from './MenuBackdrop.js';
 import { Confetti } from './Confetti.js';
 import { clearCompetitionSave, loadCompetitionSave, setCompetitionSaveScope, storeCompetitionSave } from '../game/CompetitionSave.js';
@@ -769,7 +769,7 @@ export class UI {
       : competition.id === 'copa-libertadores' ? createLibertadoresDraw(this.settings.teamId)
         : competition.id === 'club-world-cup' ? createClubWorldCupDraw(this.settings.teamId) : createChampionsDraw(this.settings.teamId);
     const size = teams.length, totalRounds = Math.log2(size);
-    this.tournament = { size, teams, totalRounds, round: 0, status: 'setup', competitionId: competition.id };
+    this.tournament = { size, teams, totalRounds, round: 0, status: 'setup', competitionId: competition.id, bracket: createBracket(teams) };
     this.renderTournamentSetup(competition);
     this.renderTournamentRoster(); this.show('tournament');
   }
@@ -1110,23 +1110,60 @@ export class UI {
   }
 
   renderTournamentRoster() {
+    // The setup screen shows the drawn bracket (first-round ties) instead of a plain list.
     this.tournament_roster.replaceChildren();
-    for (const team of this.tournament.teams) {
-      const item = document.createElement('div'); item.className = 'roster-team';
-      if (team.id === this.settings.teamId) item.classList.add('user-team');
-      const colors = document.createElement('span'); colors.className = 'roster-colors';
-      colors.style.background = getKitBackground(team);
-      const name = document.createElement('span'); name.textContent = team.name;
-      const flag = document.createElement('small'); flag.textContent = team.id === this.settings.teamId ? 'TÚ' : (team.type === 'national' ? 'SELECCIÓN' : 'CLUB');
-      item.append(colors, name, flag); this.tournament_roster.append(item);
-    }
+    this.tournament_roster.classList.add('bracket', 'bracket-setup');
+    this.renderBracket(this.tournament_roster, this.tournament, 0);
+  }
+
+  renderBracketPanel(cup) {
+    const champion = bracketChampion(cup.bracket), competition = CUP_COMPETITIONS.find(item => item.id === cup.competitionId);
+    const championTeam = champion && (cup.teams.find(team => team.id === champion) || getTeamById(champion));
+    this.tournament_bracket_title.textContent = `${(competition?.name || 'TORNEO').toUpperCase()} · CUADRO${championTeam ? ' · CAMPEÓN: ' + championTeam.name.toUpperCase() : ''}`;
+    // Between rounds, show the round just played and what is left.
+    const current = Math.max(0, Math.min(cup.round, cup.totalRounds) - 1);
+    this.renderBracket(this.tournament_bracket, cup, current, current);
+    this.tournament_bracket_panel.classList.remove('hidden');
+  }
+
+  // Knockout bracket: one column per round; the player's path is highlighted
+  // and the view scrolls to `focusRound`.
+  renderBracket(container, cup, focusRound = 0, fromRound = 0) {
+    const bracket = cup?.bracket; container.replaceChildren(); if (!bracket) return;
+    const teamOf = id => id && (cup.teams.find(team => team.id === id) || getTeamById(id));
+    const columns = bracket.rounds.map((matches, roundIndex) => {
+      if (roundIndex < fromRound) return null;
+      const column = document.createElement('section'); column.className = 'bracket-round'; column.dataset.round = String(roundIndex);
+      const title = document.createElement('h4'); title.textContent = roundName(bracket.size, roundIndex + 1);
+      const list = document.createElement('div'); list.className = 'bracket-matches'; column.append(title, list);
+      for (const match of matches) {
+        const card = document.createElement('div'); card.className = 'bracket-match';
+        const mine = [match.home, match.away].includes(this.settings.teamId);
+        card.classList.toggle('mine', mine); card.classList.toggle('pending', !match.winner);
+        for (const side of ['home', 'away']) {
+          const id = match[side], team = teamOf(id), row = document.createElement('div'); row.className = 'bracket-team';
+          row.classList.toggle('winner', !!match.winner && match.winner === id); row.classList.toggle('loser', !!match.winner && !!id && match.winner !== id);
+          row.classList.toggle('you', id === this.settings.teamId);
+          const chip = document.createElement('i'); chip.className = 'bracket-chip'; chip.style.background = team ? getKitBackground(team) : 'transparent';
+          const name = document.createElement('span'); name.textContent = team ? team.name.replace(/\s+CF$/i, '') : 'Por decidir'; name.title = team?.name || '';
+          const goals = document.createElement('b'); goals.textContent = match[`${side}Goals`] ?? '';
+          row.append(chip, name, goals); card.append(row);
+        }
+        list.append(card);
+      }
+      return column;
+    }).filter(Boolean);
+    container.append(...columns);
+    requestAnimationFrame(() => { const focus = container.querySelector(`[data-round="${focusRound}"]`); if (focus) container.scrollLeft = Math.max(0, focus.offsetLeft - 12); });
   }
 
   launchTournamentRound() {
     const cup = this.tournament;
     cup.round++;
     const stage = roundName(cup.size, cup.round);
-    const opponentTeam = pickChampionsOpponent(cup.teams, cup.round);
+    // Saves made before the bracket existed keep the original random pick.
+    const bracketRival = cup.bracket ? bracketOpponent(cup.bracket, cup.round - 1, this.settings.teamId) : null;
+    const opponentTeam = (bracketRival && (cup.teams.find(team => team.id === bracketRival) || getTeamById(bracketRival))) || pickChampionsOpponent(cup.teams, cup.round);
     const competition = CUP_COMPETITIONS.find(item => item.id === cup.competitionId) || CUP_COMPETITIONS[0];
     this.start('tournament', { opponentName: opponentTeam.name, opponentTeam, label: `${competition.name.toUpperCase()} · ${stage} · ${cup.round}/${cup.totalRounds}`, fieldTheme: competition.fieldTheme, competitionRound: cup.round }, true);
   }
@@ -1518,6 +1555,10 @@ export class UI {
     if (result.mode === 'tournament' && this.tournament) {
       const cup = this.tournament;
       cupFinal = cup.round >= cup.totalRounds;
+      if (cup.bracket) {
+        playBracketRound(cup.bracket, cup.round - 1, this.settings.teamId, result.playerScore, result.botScore, Math.random, this.game?.goalTarget || 3);
+        if (!won) simulateRemainingBracket(cup.bracket, cup.round, Math.random, this.game?.goalTarget || 3);
+      }
       if (!won) { cup.status = 'eliminated'; this.result_eyebrow.textContent = 'TORNEO TERMINADO'; this.result_title.textContent = 'Fin del camino'; this.result_copy.textContent = `El torneo acaba en ${roundName(cup.size, cup.round).toLowerCase()}. ${rewardText}${levelText}`; }
       else if (cup.round >= cup.totalRounds) {
         cup.status = 'champion';
@@ -1563,6 +1604,8 @@ export class UI {
       }
       this.renderLeagueStandings(season, previousRanks);
     }
+    this.tournament_bracket_panel.classList.add('hidden');
+    if (result.mode === 'tournament' && this.tournament?.bracket) this.renderBracketPanel(this.tournament);
     const team = getTeamById(this.settings.teamId);
     const newMissions = this.career.processMissionEvent({
       competitionMode: result.mode === 'tournament' || result.mode === 'league', won,

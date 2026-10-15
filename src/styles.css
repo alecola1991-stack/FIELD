@@ -550,3 +550,24 @@ body.blue-theme.online-theme{--bg:#020713;--panel:#071329;--green:#83b4ff;--mute
   .form-dot{width:6px;height:6px;margin-right:2px}
   .league-table-wrap{max-height:230px}
 }
+
+/* Knockout bracket (tournament setup and result screen). */
+.bracket,.tournament-roster.bracket{display:flex;align-items:stretch;gap:10px;max-height:none;overflow-x:auto;overflow-y:visible;padding:2px 2px 8px;scroll-behavior:smooth;scrollbar-width:thin;grid-template-columns:none}
+.bracket,.tournament-roster.bracket{position:relative}
+.bracket-round{flex:0 0 156px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.bracket-matches{flex:1;display:flex;flex-direction:column;justify-content:space-around;gap:6px}
+.bracket-round h4{margin:0 0 2px;font:10px var(--mono);letter-spacing:.1em;color:#8eabd6;text-align:center;white-space:nowrap}
+.bracket-match{border:1px solid #91b9ff2e;border-radius:8px;background:#0f1e3b;overflow:hidden}
+.bracket-match.pending{border-style:dashed}
+.bracket-match.mine{border:1px solid #65e6a580;box-shadow:0 0 0 2px #65e6a520}
+.bracket-team{display:grid;grid-template-columns:12px minmax(0,1fr) 16px;gap:6px;align-items:center;min-height:24px;padding:3px 7px;font-size:12px;color:#c9d8ef}
+.bracket-team+.bracket-team{border-top:1px solid #ffffff10}
+.bracket-team span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bracket-team b{font:700 12px var(--mono);text-align:right;color:#eef4ff}
+.bracket-team.winner span{color:#fff;font-weight:700}
+.bracket-team.loser{opacity:.5}
+.bracket-team.you span{color:#8ff0bd;font-weight:700}
+.bracket-chip{width:12px;height:12px;border-radius:50%;box-shadow:inset 0 0 0 1px #ffffff40}
+.tournament-bracket-panel{margin:0 0 14px;padding:11px 12px;border:1px solid #91b9ff30;border-radius:12px;background:linear-gradient(135deg,#152746,#0c1932)}
+.tournament-bracket-panel h3{margin:0 0 8px;color:#b8d4ff;font:12px var(--mono);letter-spacing:.06em}
+@media(max-width:600px){.bracket-round{flex-basis:136px}.bracket-team{font-size:11px;gap:5px;padding:3px 6px}}

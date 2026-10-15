@@ -4,6 +4,16 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-15 · Claude · Cuadro de eliminatorias para torneos
+**Commit:** rama `claude/marcador-clasificacion-revancha`, commit "Cuadro de eliminatorias…" (pendiente de aprobación de Ale)
+**Archivos:** `src/game/Competitions.js`, `src/ui/UI.js`, `index.html`, `src/styles.css`, `tests/Bracket.test.js` (nuevo), `NOTAS_IA.md`
+**Qué y por qué:** Ale pidió una pantalla de clasificación para las competiciones de tipo torneo. Antes no existía un cuadro real: el rival de cada ronda se sorteaba del bloque correspondiente del sorteo.
+**Cómo:**
+- `Competitions.js`: `createBracket(teams)`, `playBracketRound(bracket, roundIndex, playerId, playerGoals, opponentGoals, random, goalTarget)`, `simulateRemainingBracket()`, `bracketOpponent()`, `bracketChampion()` y `simulateKnockoutMatch()` (probabilidad según las estrellas). Los cruces siguen el orden del sorteo: (0,1), (2,3)… Así el rival de la ronda r es el ganador del bloque [2^(r-1), 2^r), igual que hacía `pickChampionsOpponent`. El cuadro guarda solo IDs y se serializa en el guardado de competición (`tournament.bracket`).
+- `UI.openTournamentSetup` crea `tournament.bracket`. `launchTournamentRound` toma el rival de `bracketOpponent` y, si un guardado antiguo no tiene cuadro, vuelve a `pickChampionsOpponent`. En `handleMatchEnd` se registra el resultado y se simula el resto de la ronda; si el jugador cae, se simula el resto del torneo y el título muestra al campeón.
+- Vistas: `UI.renderBracket(container, cup, focusRound, fromRound)` dibuja columnas por ronda (`.bracket-round`) con tarjetas `.bracket-match`, y resalta tu camino. En el resultado (`#tournament-bracket-panel`, nuevo en `index.html`) se ve desde la ronda recién jugada; en la pantalla previa del torneo, `#tournament-roster` muestra ahora el cuadro completo del sorteo en lugar de la lista de equipos.
+**Para el otro asistente:** no cambies el orden de `tournament.teams`, porque define los cruces. El modo liga no usa nada de esto.
+
 ## 2026-10-15 · Claude · Clasificación de liga mejorada entre jornadas
 **Commit:** rama `claude/marcador-clasificacion-revancha`, commit "Clasificación de liga…" (pendiente de aprobación de Ale)
 **Archivos:** `src/game/Competitions.js`, `src/ui/UI.js`, `index.html`, `src/styles.css`, `tests/LeagueTable.test.js` (nuevo), `NOTAS_IA.md`

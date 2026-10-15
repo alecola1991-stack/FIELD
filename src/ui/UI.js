@@ -1534,6 +1534,7 @@ export class UI {
       this.ensureLeagueState(season);
       const playerTeamId = season.playerTeamId || this.settings.teamId;
       const fixtures = season.schedule[season.jornada - 1] || [];
+      const previousRanks = season.jornada > 1 ? new Map(sortLeagueStandings(season.standings, playerTeamId).map((row, index) => [row.teamId, index + 1])) : null;
       season.standings = updateLeagueStandings(season.standings, fixtures, playerTeamId, result.playerScore, result.botScore);
       const playedFixture = fixtures.find(item => item.homeId === playerTeamId || item.awayId === playerTeamId);
       const opponentId = playedFixture?.homeId === playerTeamId ? playedFixture.awayId : playedFixture?.homeId;
@@ -1544,7 +1545,6 @@ export class UI {
       const playerRow = season.standings.find(row => row.teamId === playerTeamId);
       season.wins = playerRow?.wins || 0; season.losses = playerRow?.losses || 0; season.points = playerRow?.points || 0;
       const totalRounds = season.schedule.length;
-      this.renderLeagueStandings(season);
       if (season.jornada >= totalRounds) {
         leagueFinished = true;
         season.status = 'complete'; this.result_eyebrow.textContent = 'TEMPORADA COMPLETADA'; this.result_title.textContent = 'Fin de la liga';
@@ -1561,6 +1561,7 @@ export class UI {
         season.status = 'next'; this.result_eyebrow.textContent = `JORNADA ${season.jornada}/${totalRounds}`; this.result_next.textContent = `Jugar jornada ${season.jornada + 1} →`; this.result_next.classList.remove('hidden'); this.result_finish.textContent = 'Abandonar liga';
         this.result_copy.textContent = `${season.points} puntos · ${season.wins} victorias · ${season.losses} derrotas. ${rewardText}${levelText}`;
       }
+      this.renderLeagueStandings(season, previousRanks);
     }
     const team = getTeamById(this.settings.teamId);
     const newMissions = this.career.processMissionEvent({
@@ -1696,25 +1697,41 @@ export class UI {
     this.result_stats.classList.remove('hidden');
   }
 
-  renderLeagueStandings(season) {
+  // League table between matchdays: club colours, position change since the
+  // previous jornada, recent form, leader marker, the player's row and the
+  // next rival. `previousRanks` maps teamId → position before this jornada.
+  renderLeagueStandings(season, previousRanks = null) {
     const competition = TEAM_LEAGUES.find(item => item.id === season.competitionId);
-    this.league_standings_title.textContent = `${competition?.label.split(' · ')[0] || 'LIGA'} · JORNADA ${season.jornada}`;
+    const total = season.schedule?.length || season.opponents?.length || 0;
+    this.league_standings_title.textContent = `${competition?.label.split(' · ')[0] || 'LIGA'} · CLASIFICACIÓN · JORNADA ${season.jornada}${total ? '/' + total : ''}`;
     const rows = sortLeagueStandings(season.standings, season.playerTeamId);
+    const nextRival = season.status === 'next' ? season.opponents?.[season.jornada]?.id : null;
+    const cell = (text, className = '') => { const td = document.createElement('td'); td.textContent = text; if (className) td.className = className; return td; };
     this.league_standings_body.replaceChildren(...rows.map((entry, index) => {
-      const team = getTeamById(entry.teamId), row = document.createElement('tr');
-      if (entry.teamId === season.playerTeamId) { row.className = 'your-league-team'; row.setAttribute('aria-current', 'true'); }
-      const position = document.createElement('td'); position.textContent = String(index + 1);
-      const name = document.createElement('th'); name.scope = 'row'; name.textContent = team?.name || entry.teamId;
-      const played = document.createElement('td'); played.textContent = String(entry.played);
-      const wins = document.createElement('td'); wins.textContent = String(entry.wins);
-      const draws = document.createElement('td'); draws.textContent = String(entry.draws);
-      const losses = document.createElement('td'); losses.textContent = String(entry.losses);
-      const goals = document.createElement('td'); goals.textContent = `${entry.goalsFor}:${entry.goalsAgainst}`;
-      const difference = document.createElement('td'); difference.textContent = `${entry.goalDifference > 0 ? '+' : ''}${entry.goalDifference}`;
-      const points = document.createElement('td'); points.textContent = String(entry.points);
-      row.append(position, name, played, wins, draws, losses, goals, difference, points); return row;
+      const team = getTeamById(entry.teamId), row = document.createElement('tr'), position = index + 1;
+      row.classList.toggle('your-league-team', entry.teamId === season.playerTeamId);
+      row.classList.toggle('league-leader', position === 1);
+      if (entry.teamId === season.playerTeamId) row.setAttribute('aria-current', 'true');
+      const pos = cell(String(position), 'col-pos');
+      const before = previousRanks?.get(entry.teamId);
+      if (before && before !== position) { const arrow = document.createElement('i'); arrow.className = before > position ? 'rank-up' : 'rank-down'; arrow.textContent = before > position ? '▲' : '▼'; arrow.title = `${before > position ? 'Sube' : 'Baja'} ${Math.abs(before - position)}`; pos.append(arrow); }
+      const name = document.createElement('th'); name.scope = 'row'; name.className = 'col-team';
+      const chip = document.createElement('span'); chip.className = 'league-team-chip'; chip.style.background = getKitBackground(team);
+      const label = document.createElement('span'); label.className = 'league-team-name'; label.textContent = team?.name || entry.teamId;
+      name.append(chip, label);
+      if (entry.teamId === season.playerTeamId) { const tag = document.createElement('b'); tag.className = 'league-tag mine'; tag.textContent = 'TÚ'; name.append(tag); }
+      else if (entry.teamId === nextRival) { const tag = document.createElement('b'); tag.className = 'league-tag next'; tag.textContent = 'PRÓX.'; name.append(tag); }
+      const form = cell('', 'col-form');
+      for (const result of entry.form || []) { const dot = document.createElement('i'); dot.className = `form-dot form-${result}`; dot.title = ({ W: 'Victoria', D: 'Empate', L: 'Derrota' })[result]; form.append(dot); }
+      row.append(pos, name, cell(String(entry.played)), cell(String(entry.wins), 'col-wdl'), cell(String(entry.draws), 'col-wdl'), cell(String(entry.losses), 'col-wdl'),
+        cell(`${entry.goalDifference > 0 ? '+' : ''}${entry.goalDifference}`), cell(String(entry.points), 'col-pts'), form);
+      return row;
     }));
     this.league_standings_panel.classList.remove('hidden');
+    requestAnimationFrame(() => {
+      const wrap = this.league_standings_body.closest('.league-table-wrap'), mine = this.league_standings_body.querySelector('.your-league-team');
+      if (wrap && mine) wrap.scrollTop = Math.max(0, mine.offsetTop - wrap.clientHeight / 2);
+    });
   }
 
   advanceCompetition() {

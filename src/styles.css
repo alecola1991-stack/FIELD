@@ -517,3 +517,36 @@ body.blue-theme.online-theme{--bg:#020713;--panel:#071329;--green:#83b4ff;--mute
   .result-team-name{font-size:13px}
   .score-center{padding-top:10px}
 }
+
+/* League table between matchdays: club colours, rank changes, form, leader. */
+.league-standings-panel h3{letter-spacing:.06em}
+.league-table-wrap{max-height:260px}
+.league-table-wrap table{min-width:0;table-layout:fixed}
+.league-table-wrap :is(th,td):nth-child(n){width:34px;text-align:center}
+.league-table-wrap :is(th,td).col-pos{width:44px;text-align:left;padding-left:6px;white-space:nowrap}
+.league-table-wrap :is(th,td).col-team{width:auto;text-align:left}
+.league-table-wrap :is(th,td).col-pts{width:38px;color:#eef4ff;font-weight:700}
+.league-table-wrap :is(th,td).col-form{width:78px;text-align:left}
+.league-table-wrap tbody th.col-team{display:flex;align-items:center;gap:7px;min-width:0}
+.league-team-chip{flex:0 0 auto;width:14px;height:14px;border-radius:50%;box-shadow:inset 0 0 0 1px #ffffff40}
+.league-team-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.league-tag{flex:0 0 auto;padding:1px 5px;border-radius:5px;font:700 9px var(--mono);letter-spacing:.06em}
+.league-tag.mine{background:#65e6a530;color:#8ff0bd}
+.league-tag.next{background:#ffd67826;color:#ffd678}
+.rank-up,.rank-down{margin-left:4px;font-style:normal;font-size:8px;vertical-align:1px}
+.rank-up{color:#65e6a5}.rank-down{color:#ff8a7a}
+.form-dot{display:inline-block;width:9px;height:9px;margin-right:3px;border-radius:50%;vertical-align:middle}
+.form-W{background:#4fd18b}.form-D{background:#8ea6cc}.form-L{background:#ff6b5a}
+.league-table-wrap tr.league-leader td.col-pos{box-shadow:inset 3px 0 0 #ffd678;color:#ffd678}
+.league-table-wrap tr.your-league-team{background:#65e6a51c}
+.blue-theme .league-table-wrap thead{background:#132544}
+@media(max-width:600px){
+  .league-table-wrap :is(th,td).col-wdl,.league-table-wrap :is(th,td):nth-child(3){display:none}
+  .league-table-wrap :is(th,td).col-pos{width:34px;padding-left:4px}
+  .league-table-wrap :is(th,td).col-pts{width:32px}
+  .league-table-wrap :is(th,td).col-form{width:48px}
+  .league-table-wrap tbody th.col-team{gap:5px}
+  .league-tag{padding:1px 3px;font-size:8px}
+  .form-dot{width:6px;height:6px;margin-right:2px}
+  .league-table-wrap{max-height:230px}
+}

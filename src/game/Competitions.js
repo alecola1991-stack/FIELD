@@ -211,6 +211,10 @@ export function updateLeagueStandings(standings, fixtures, playerTeamId, playerG
     if (homeGoals > awayGoals) { homeRow.wins++; homeRow.points += 3; awayRow.losses++; }
     else if (awayGoals > homeGoals) { awayRow.wins++; awayRow.points += 3; homeRow.losses++; }
     else { homeRow.draws++; awayRow.draws++; homeRow.points++; awayRow.points++; }
+    // Recent form (last five results) for the standings table: W / D / L.
+    const outcome = homeGoals > awayGoals ? ['W', 'L'] : awayGoals > homeGoals ? ['L', 'W'] : ['D', 'D'];
+    homeRow.form = [...(homeRow.form || []), outcome[0]].slice(-5);
+    awayRow.form = [...(awayRow.form || []), outcome[1]].slice(-5);
     homeRow.goalDifference = homeRow.goalsFor - homeRow.goalsAgainst;
     awayRow.goalDifference = awayRow.goalsFor - awayRow.goalsAgainst;
   }

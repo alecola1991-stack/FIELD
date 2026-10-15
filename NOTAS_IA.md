@@ -4,6 +4,16 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-15 · Claude · Clasificación de liga mejorada entre jornadas
+**Commit:** rama `claude/marcador-clasificacion-revancha`, commit "Clasificación de liga…" (pendiente de aprobación de Ale)
+**Archivos:** `src/game/Competitions.js`, `src/ui/UI.js`, `index.html`, `src/styles.css`, `tests/LeagueTable.test.js` (nuevo), `NOTAS_IA.md`
+**Qué y por qué:** Ale pidió mejorar la tabla de clasificación que se ve entre partidos de liga.
+**Cómo:**
+- `updateLeagueStandings()` guarda ahora en cada fila `form`, un array con los últimos 5 resultados (`'W'`, `'D'` o `'L'`). Las temporadas guardadas sin `form` siguen funcionando: se rellena desde la siguiente jornada.
+- `UI.renderLeagueStandings(season, previousRanks)`: chip con los colores de cada club, flecha ▲/▼ según la posición de la jornada anterior (se calcula en `handleMatchEnd` antes de actualizar), líder marcado en dorado, etiquetas **TÚ** y **PRÓX.** (rival de la siguiente jornada), columna FORMA con puntos de color y desplazamiento automático hasta tu fila. Se pinta después de fijar `season.status`, para saber el próximo rival.
+- Cabecera de la tabla en `index.html`: POS, EQUIPO, PJ, G, E, P, DG, PTS, FORMA. Desaparece GF:GC y se añade FORMA. Las columnas tienen clases (`col-pos`, `col-team`, `col-wdl`, `col-pts`, `col-form`). En móvil se ocultan PJ, G, E y P.
+**Para el otro asistente:** si añades columnas, hazlo a la vez en el `thead` de `index.html` y en `renderLeagueStandings`. El CSS usa clases, no `nth-child`, salvo PJ (columna 3) en móvil.
+
 ## 2026-10-15 · Claude · Marcador final con equipos y minutos de gol
 **Commit:** rama `claude/marcador-clasificacion-revancha`, commit "Marcador final…" (pendiente de aprobación de Ale)
 **Archivos:** `index.html`, `src/ui/UI.js`, `src/styles.css`, `NOTAS_IA.md`

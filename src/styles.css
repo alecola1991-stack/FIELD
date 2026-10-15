@@ -372,3 +372,34 @@ body.blue-theme{--bg:#070f25;--panel:#101e3b;--green:#81baff;--muted:#b1c3de;--l
 #quick-screen .rules-entry{margin-top:12px;min-height:40px}
 #quick-screen .match-setup-actions{width:100%;margin-top:12px}
 @media(max-width:600px){#quick-screen .editor-copy h2{font-size:28px}#quick-screen .selection-crest{width:76px;height:92px}#quick-screen .selection-team-name{min-height:60px}#quick-screen .match-team-count{padding:10px 2px}}
+
+/* Shared quick-match and menu team selector. */
+.selection-crest,#quick-screen .selection-crest,#customize-screen .single-team-card .selection-crest{width:112px;height:112px;aspect-ratio:1;border-radius:50%;clip-path:none;border:4px solid #d4e6ffb0;overflow:hidden;box-shadow:inset 0 0 0 3px #ffffff35,0 8px 22px #0004}
+.selection-crest b{border-radius:6px}
+#customize-screen .menu-team-picker{padding:0;overflow:hidden;margin-top:18px;background:#102342;border:1px solid #91b9ff30;border-radius:5px}
+#customize-screen .menu-team-picker .selection-filter{display:grid;grid-template-columns:42px minmax(0,1fr) 42px;min-height:62px;padding:4px 14px;margin:0;border:0;border-bottom:1px solid #91b9ff26;background:#0c1c35;text-align:center}
+#customize-screen .menu-team-picker .selection-filter>div{min-width:0;display:grid;justify-items:center;gap:3px}
+#customize-screen .menu-team-picker :is(.country-tabs,.league-tabs){margin:0;padding:0;display:flex;justify-content:center;border:0;min-width:0;width:100%}
+#customize-screen .menu-team-picker :is(.country-tab,.league-tab){background:none;border:0;box-shadow:none;color:#e8f2ff;font-size:16px;padding:2px 4px;white-space:normal;text-align:center}
+#customize-screen #country-position{display:none}
+#customize-screen .menu-team-picker .selection-team{margin:0;padding:10px 14px 0;align-items:center}
+#customize-screen .menu-team-picker #team-grid{padding:0;margin:0;overflow:visible;display:block}
+#customize-screen .menu-team-picker .single-team-card{width:100%;min-height:0;padding:0 4px 12px;border:0;box-shadow:none;background:none;gap:10px;transform:none;border-radius:0}
+#customize-screen .menu-team-picker .single-team-card.selected{background:none;border:0;box-shadow:none}
+#customize-screen .selection-team-name{font-size:26px;min-height:40px;white-space:normal;overflow-wrap:anywhere}
+#customize-screen .selection-choice-status{font:12px var(--mono);color:#b9d6ff;padding:8px 12px;border:1px solid #91b9ff40;border-radius:4px}
+#customize-screen .single-team-card.selected .selection-choice-status{background:#91c3ff;color:#08172f}
+#customize-screen .menu-team-picker .selection-kit{margin:12px 0;flex-direction:row}
+#customize-screen .menu-team-picker .match-team-preview{width:50px;height:50px;min-width:50px;min-height:50px}
+#customize-screen .menu-team-picker .match-team-count{padding:9px}
+body.blue-theme.online-theme{--bg:#020713;--panel:#071329;--green:#83b4ff;--muted:#9fafd0;--line:#6188c433;background:radial-gradient(ellipse at 80% 12%,#0a2246 0,transparent 55%),#020713;color:#e7efff}
+.online-theme :is(.online-card,.leaderboard-card,.result-panel,.pause-panel){background:linear-gradient(145deg,#0b1b36,#040c1d);border-color:#6089c53d;box-shadow:0 18px 60px #0007}
+.online-theme :is(.online-mode-tabs button,.tiny-button,.online-create,.online-room-code-wrap>button){background:#0c1d39;border-color:#6089c548;color:#c4d9fa}
+.online-theme :is(.online-mode-tabs button.active,.primary-button){background:#7eaeef;color:#030d20;border-color:#a7caff}
+.online-theme :is(.online-mode-tabs button,.primary-button,.tiny-button):hover{background:#244571;color:#f0f6ff}
+.online-theme :is(.online-footnote,.online-status,.online-room-code-wrap>span,.leaderboard-message,.leaderboard-row small,.leaderboard-casual-note,.editor-copy>p){color:#a4b8d9}
+.online-theme .online-status.error{color:#ffaaa1}
+.online-theme :is(.online-matchmaking-status,.lobby-player,.social-row,.bracket-match){background:#07162d;border-color:#6089c53d;color:#d6e6ff}
+.online-theme :is(.text-input,select){background:#040d20;border-color:#6089c54a}
+.online-theme :focus-visible{outline-color:#b8d4ff!important}
+@media(max-width:600px){#quick-screen .selection-crest{width:76px;height:76px}#customize-screen .menu-team-picker .selection-crest{width:100px;height:100px}#customize-screen .menu-team-picker .selection-filter{grid-template-columns:30px minmax(0,1fr) 30px!important;padding:6px;min-height:60px}#customize-screen .menu-team-picker .selection-filter small{font-size:10px}#customize-screen .menu-team-picker .selection-team{grid-template-columns:30px minmax(0,1fr) 30px!important}#customize-screen .selection-team-name{font-size:22px!important;min-height:40px}#customize-screen .menu-team-picker .selection-stars svg{width:22px;height:22px}#customize-screen .menu-team-picker .selection-kit{font-size:11px}}

@@ -570,6 +570,15 @@ export class UI {
     crest.append(label); crest.setAttribute('aria-hidden', 'true'); return crest;
   }
 
+  fillTeamSelectionCard(card, team, player = {}) {
+    const name = document.createElement('b'); name.className = 'selection-team-name'; name.textContent = team.name;
+    const kit = document.createElement('span'); kit.className = 'selection-kit';
+    const circle = document.createElement('span'); circle.className = 'match-team-preview';
+    this.paintPlayerPreview(circle, team, player);
+    const caption = document.createElement('span'); caption.textContent = 'EQUIPACIÓN'; kit.append(circle, caption);
+    card.append(name, this.teamEmblem(team), this.teamStars(team), kit);
+  }
+
   renderQuickSetup() {
     this.quick_pickers.replaceChildren(...['player', 'rival'].map(side => {
       const { country, league, team } = selectionFor(this.quickChoices[side]);
@@ -587,15 +596,10 @@ export class UI {
       };
       const carousel = document.createElement('div'); carousel.className = 'match-category-carousel selection-team';
       const card = document.createElement('div'); card.className = 'match-team-display'; card.setAttribute('aria-live', 'polite');
-      const name = document.createElement('b'); name.className = 'selection-team-name'; name.textContent = team.name;
-      card.append(name, this.teamEmblem(team), this.teamStars(team));
+      this.fillTeamSelectionCard(card, team, { name: side === 'player' ? this.settings.name : teamAbbreviation(team.name), number: side === 'player' ? this.settings.number : 10 });
       carousel.append(makeArrow('team', -1, 'Equipo anterior'), card, makeArrow('team', 1, 'Equipo siguiente'));
-      const kit = document.createElement('div'); kit.className = 'selection-kit';
-      const circle = document.createElement('span'); circle.className = 'match-team-preview';
-      this.paintPlayerPreview(circle, team, { name: side === 'player' ? this.settings.name : teamAbbreviation(team.name), number: side === 'player' ? this.settings.number : 10 });
-      const caption = document.createElement('span'); caption.textContent = 'EQUIPACIÓN'; kit.append(circle, caption);
       const count = document.createElement('small'); count.className = 'match-team-count'; count.textContent = `EQUIPO ${teams.findIndex(item => item.id === team.id) + 1} / ${teams.length}`;
-      panel.append(title, row('country', 'País / categoría', country.label), row('league', 'Liga / grupo', league.label.split(' · ')[0], country.groups.length < 2), carousel, kit, count); return panel;
+      panel.append(title, row('country', 'País / categoría', country.label), row('league', 'Liga / grupo', league.label.split(' · ')[0], country.groups.length < 2), carousel, count); return panel;
     }));
     this.updateDifficultyControls();
   }
@@ -770,14 +774,11 @@ export class UI {
     const chosen = team.id === this.selectedTeamId;
     card.setAttribute('aria-label', `${team.name}. Valoración ${team.stars || 3} de 5 estrellas. ${chosen ? 'Equipo elegido' : 'Elegir este equipo'}`);
     card.setAttribute('aria-pressed', String(chosen)); card.classList.toggle('selected', chosen);
-    const strip = document.createElement('span'); strip.className = 'team-card-colors';
-    this.paintPlayerPreview(strip, team);
-    strip.setAttribute('aria-label', `Camiseta: ${team.kitPattern.replaceAll('-', ' ')}`);
-    const details = document.createElement('span'); details.className = 'team-card-details';
-    const name = document.createElement('span'); name.className = 'team-card-name'; name.textContent = team.name;
-    const rating = this.teamStars(team);
-    const league = document.createElement('small'); league.textContent = chosen ? 'EQUIPO ELEGIDO ✓' : 'PULSA PARA ELEGIR';
-    details.append(name, rating, league); card.append(this.teamEmblem(team), strip, details); this.team_grid.append(card);
+    card.classList.add('match-team-display');
+    this.fillTeamSelectionCard(card, team, { name: this.player_name.value.trim() || 'TU NOMBRE', number: this.player_number.value || 10 });
+    const status = document.createElement('small'); status.className = 'selection-choice-status';
+    status.textContent = chosen ? 'EQUIPO ELEGIDO ✓' : 'ELEGIR ESTE EQUIPO';
+    card.append(status); this.team_grid.append(card);
     this.team_position.textContent = `${index + 1} / ${leagueTeams.length}`;
     this.teams_prev.disabled = this.teams_next.disabled = leagueTeams.length < 2;
   }
@@ -885,7 +886,8 @@ export class UI {
   show(view) {
     this.currentView = view;
     const onlineTheme = ['online', 'leaderboard'].includes(view) || view === 'game' && this.currentMatchMode === 'online';
-    document.body.classList.toggle('blue-theme', !onlineTheme);
+    document.body.classList.add('blue-theme');
+    document.body.classList.toggle('online-theme', onlineTheme);
     this.sound?.setScene?.(view === 'game' && !this.game?.state.paused ? 'game' : 'menu');
     document.querySelector('.rules-game-button')?.classList.toggle('hidden', this.currentMatchMode === 'online');
     if (this.game) {

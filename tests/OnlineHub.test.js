@@ -61,3 +61,43 @@ test('an old polling response cannot restore a room after cancellation or an acc
   resolve({ identity: hub.identity, lobby }); await refresh;
   assert.equal(applied, 0); assert.equal(hub.lobby, null);
 });
+
+function element() {
+  const classes = new Set(['hidden']);
+  return { disabled: false, innerHTML: '', textContent: '', classList: { contains: name => classes.has(name), add: name => classes.add(name), remove: name => classes.delete(name), toggle: (name, on) => (on ? classes.add(name) : classes.delete(name)) } };
+}
+function rematchFixture(room) {
+  const hub = fixture();
+  Object.assign(hub.ui, { currentView: 'game', currentMatchMode: 'online', result_rematch: element(), result_rematch_status: element() });
+  hub.lobby = room; return hub;
+}
+const finishedRoom = (votes = [], extra = {}) => ({ id: 'old', kind: 'quick', state: 'finished', rematch: { votes, next: null },
+  players: [{ id: user, username: 'first', active: true }, { id: 'two', username: 'second', active: true }], matches: [{ id: 'm1', p1: user, p2: 'two', state: 'finished' }], ...extra });
+
+test('rematch button follows both votes, the rival leaving and unsupported rooms', () => {
+  let hub = rematchFixture(finishedRoom()); hub.updateRematch();
+  assert.equal(hub.ui.result_rematch.classList.contains('hidden'), false); assert.equal(hub.ui.result_rematch.disabled, false);
+  assert.match(hub.ui.result_rematch.innerHTML, /Pedir revancha/);
+  hub.lobby = finishedRoom(['two']); hub.updateRematch();
+  assert.match(hub.ui.result_rematch.innerHTML, /Aceptar revancha/); assert.match(hub.ui.result_rematch_status.textContent, /@second quiere la revancha/);
+  hub.lobby = finishedRoom([user]); hub.updateRematch();
+  assert.equal(hub.ui.result_rematch.disabled, true); assert.match(hub.ui.result_rematch.innerHTML, /Esperando/);
+  hub.lobby = finishedRoom([], { players: [{ id: user, username: 'first', active: true }, { id: 'two', username: 'second', active: false }] }); hub.updateRematch();
+  assert.equal(hub.ui.result_rematch.disabled, true); assert.match(hub.ui.result_rematch_status.textContent, /ha salido/);
+  hub.lobby = finishedRoom([], { state: 'playing' }); hub.updateRematch(); assert.equal(hub.ui.result_rematch.disabled, true);
+  hub.lobby = finishedRoom([], { kind: 'tournament' }); hub.updateRematch(); assert.equal(hub.ui.result_rematch.classList.contains('hidden'), true);
+  const { rematch, ...legacy } = finishedRoom(); hub.lobby = legacy; hub.updateRematch();
+  assert.equal(hub.ui.result_rematch.classList.contains('hidden'), true, 'hidden until the database supports rematches');
+});
+
+test('accepting a rematch connects to the new room straight from the result screen', async () => {
+  const hub = rematchFixture(finishedRoom(['two']));
+  let connected = null; hub.connect = async match => { connected = match.id; hub.connectedMatchId = match.id; hub.rematchRequested = false; };
+  const next = { id: 'new', kind: 'quick', state: 'playing', rematch: { votes: [], next: null }, players: finishedRoom().players, matches: [{ id: 'm2', p1: user, p2: 'two', state: 'playing' }] };
+  hub.rpc = async (command, payload) => { assert.equal(command, 'rematch'); assert.equal(payload.lobbyId, 'old'); return { identity: hub.identity, lobby: next }; };
+  await hub.requestRematch();
+  assert.equal(connected, 'm2'); assert.equal(hub.lobby.id, 'new');
+  // Without a rematch request, a new assignment still waits for the online screen.
+  const idle = rematchFixture(finishedRoom()); let idleConnected = false; idle.connect = async () => { idleConnected = true; };
+  await idle.consume({ identity: idle.identity, lobby: next }); assert.equal(idleConnected, false);
+});

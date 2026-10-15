@@ -571,3 +571,4 @@ body.blue-theme.online-theme{--bg:#020713;--panel:#071329;--green:#83b4ff;--mute
 .tournament-bracket-panel{margin:0 0 14px;padding:11px 12px;border:1px solid #91b9ff30;border-radius:12px;background:linear-gradient(135deg,#152746,#0c1932)}
 .tournament-bracket-panel h3{margin:0 0 8px;color:#b8d4ff;font:12px var(--mono);letter-spacing:.06em}
 @media(max-width:600px){.bracket-round{flex-basis:136px}.bracket-team{font-size:11px;gap:5px;padding:3px 6px}}
+.result-rematch-status{margin:6px 0 10px;text-align:center;font:12px var(--mono);color:#a9c0e4}

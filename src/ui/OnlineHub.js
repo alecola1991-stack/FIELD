@@ -4,7 +4,7 @@ const element = (tag, text, className = '') => { const node = document.createEle
 export class OnlineHub {
   constructor(ui) {
     this.ui = ui; this.identity = null; this.lobby = null; this.mode = 'ranked'; this.friends = []; this.invites = [];
-    this.revision = 0; this.connectedMatchId = null; this.busy = false; this.polling = false; this.lastPoll = 0; this.nameSequence = 0;
+    this.revision = 0; this.connectedMatchId = null; this.busy = false; this.polling = false; this.lastPoll = 0; this.nameSequence = 0; this.rematchRequested = false;
     this.screen = document.getElementById('online-screen');
     this.screen.addEventListener('click', event => {
       const tab = event.target.closest('[data-online-tab]');
@@ -50,7 +50,8 @@ export class OnlineHub {
   }
   tick() {
     if (!this.ui.user) return;
-    if (this.lobby?.state === 'playing' || this.lobby?.state === 'waiting' || this.ui.currentView === 'online' || Date.now() - this.lastPoll > 15000) this.refresh();
+    const onResult = !this.ui.result_overlay.classList.contains('hidden') && this.ui.currentMatchMode === 'online';
+    if (this.lobby?.state === 'playing' || this.lobby?.state === 'waiting' || this.ui.currentView === 'online' || onResult || Date.now() - this.lastPoll > 15000) this.refresh();
   }
   async action(command, payload = {}) {
     if (this.busy) return;
@@ -100,14 +101,15 @@ export class OnlineHub {
       this.connectedMatchId = null; return;
     }
     const match = assignedMatch(this.lobby, this.identity?.id);
-    if (match && match.id !== this.connectedMatchId && ['online'].includes(this.ui.currentView)) await this.connect(match);
+    // A rematch starts straight from the result screen; otherwise matches start from the online screen.
+    if (match && match.id !== this.connectedMatchId && (this.ui.currentView === 'online' || this.rematchRequested)) await this.connect(match);
     this.updateResultStatus();
   }
   async connect(match) {
     if (!this.identity || this.connectedMatchId === match.id) return;
     const other = this.lobby.players.find(player => player.id === opponentId(match, this.identity.id));
     if (!other) return;
-    this.connectedMatchId = match.id;
+    this.connectedMatchId = match.id; this.rematchRequested = false;
     try {
       const opponent = { ...other.profile, userId: other.id, username: other.username, elo: other.elo, modifiers: ONLINE_RULES };
       await this.ui.onlineMatch.connectAssigned(match, this.ui.onlinePlayer(), opponent);
@@ -141,8 +143,36 @@ export class OnlineHub {
       const won = match.winner === this.identity.id;
       this.ui.result_online_status.textContent = this.lobby.kind === 'ranked' ? `Resultado confirmado · ${this.identity.elo} ELO · ${won ? 'Victoria' : 'Derrota'}` : 'Resultado confirmado. Sin cambios de ELO.';
     } else if (match.state === 'disputed') this.ui.result_online_status.textContent = 'Los resultados no coinciden. El partido no puntúa.';
+    this.updateRematch();
+  }
+  // Rematch on the result screen (quick and ranked rooms). Shown only when the
+  // database supports it (`lobby.rematch`, from supabase/online-rematch.sql).
+  updateRematch() {
+    const button = this.ui.result_rematch, status = this.ui.result_rematch_status, room = this.lobby;
+    if (typeof button?.classList?.toggle !== 'function' || !status?.classList) return;
+    const supported = room?.rematch && ['quick', 'ranked'].includes(room.kind) && this.ui.currentMatchMode === 'online';
+    button.classList.toggle('hidden', !supported); status.classList.toggle('hidden', !supported);
+    if (!supported) return;
+    const me = this.identity?.id, votes = room.rematch.votes || [], rival = room.players.find(player => player.id !== me);
+    const name = rival ? `@${rival.username}` : 'tu rival';
+    let label = 'Pedir revancha', icon = '↻', disabled = false, text = room.kind === 'ranked' ? 'La revancha Ranked también cuenta ELO.' : 'Juega otra vez contra el mismo rival.';
+    if (room.state !== 'finished') { disabled = true; text = 'Disponible cuando se confirme el resultado.'; }
+    else if (rival?.active === false) { disabled = true; label = 'Revancha no disponible'; icon = '✕'; text = `${name} ha salido de la sala.`; }
+    else if (votes.includes(me)) { disabled = true; label = 'Esperando al rival…'; icon = '⌛'; text = `Revancha pedida. Empezará en cuanto ${name} acepte.`; }
+    else if (rival && votes.includes(rival.id)) { label = 'Aceptar revancha'; text = `${name} quiere la revancha.`; }
+    button.disabled = Boolean(disabled || this.busy); button.innerHTML = `${label} <span>${icon}</span>`; status.textContent = text;
+  }
+  async requestRematch() {
+    if (!this.lobby || this.busy) return;
+    const userId = this.ui.user?.id; this.rematchRequested = true; this.busy = true; this.updateRematch();
+    try {
+      const data = await this.rpc('rematch', { lobbyId: this.lobby.id });
+      if (this.ui.user?.id === userId) await this.consume(data);
+    } catch (error) { this.rematchRequested = false; this.ui.result_rematch_status.textContent = error.message || 'No se pudo pedir la revancha.'; }
+    finally { this.busy = false; this.updateRematch(); }
   }
   async returnToLobby() {
+    this.rematchRequested = false;
     this.ui.game.stop(); await this.ui.onlineMatch.leave(false); this.ui.currentMatchMode = null; this.ui.currentMatchOptions = null;
     this.ui.result_overlay.classList.add('hidden'); this.ui.goal_banner.classList.add('hidden'); this.ui.countdown_banner.classList.add('hidden'); this.ui.hideConnectionStatus();
     this.ui.show('online'); await this.refresh();

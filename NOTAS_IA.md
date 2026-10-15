@@ -4,6 +4,16 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-15 · Claude · Revancha online (partido rápido y Ranked)
+**Commit:** rama `claude/marcador-clasificacion-revancha`, commit "Revancha online…" (pendiente de aprobación de Ale)
+**Archivos:** `supabase/online-rematch.sql` (nuevo), `supabase/online-rematch-test.sql` (nuevo), `src/ui/OnlineHub.js`, `src/ui/UI.js`, `index.html`, `src/styles.css`, `tests/OnlineHub.test.js`, `NOTAS_IA.md`
+**Qué y por qué:** Ale pidió la opción de revancha en la pantalla final de los partidos online. Decidió que valga para partidos rápidos y Ranked, y que en Ranked la revancha también cuente ELO.
+**Cómo:**
+- **SQL (`supabase/online-rematch.sql`):** añade las columnas `field_private.members.rematch` (boolean) y `field_private.lobbies.rematch_lobby` (uuid). `room_data()` devuelve `rematch: { votes: [userId…], next }`. `field_private.action` incorpora el comando `rematch`, solo para salas `quick` o `ranked` en estado `finished`, con los dos jugadores aún en la sala: el primer voto espera; el segundo crea una sala privada del mismo tipo con los mismos asientos y perfiles, y la arranca con `launch_room`. Además, `poll` sobre una sala terminada con revancha redirige a la sala nueva. El cambio es aditivo y compatible con los clientes antiguos. El archivo se generó a partir de `online.sql`, y comprobé que la función de producción coincidía con ese archivo antes de escribirlo.
+- **Test SQL:** `supabase/online-rematch-test.sql`, en una transacción que se revierte. Cubre doble voto, redirección, voto repetido, persona ajena a la sala, ELO de la revancha Ranked y rival que se va.
+- **Cliente:** `OnlineHub.updateRematch()` gestiona el botón `#result-rematch` y el texto `#result-rematch-status` (nuevo): pedir, esperar, aceptar o rival desconectado. **Solo se muestra si la sala trae `lobby.rematch`**, es decir, si la base de datos ya tiene la migración, así que el cliente es seguro de desplegar antes. `requestRematch()` llama al RPC `rematch`. `consume()` conecta un partido nuevo desde la pantalla de resultado si hay una revancha pedida (`rematchRequested`). `tick()` sondea cada 3 s mientras se ve el resultado online. `UI.requestOnlineRematch` usa la revancha de base de datos cuando hay sala del hub, y si no, la antigua por Realtime.
+**Para el otro asistente:** **PENDIENTE (paso manual):** ejecutar `supabase/online-rematch.sql` en el SQL Editor de Supabase, después de `online.sql`. Si tocas `field_private.action`, parte de la versión de `online-rematch.sql`, que es la vigente tras aplicarla, no de la de `online.sql`.
+
 ## 2026-10-15 · Claude · Cuadro de eliminatorias para torneos
 **Commit:** rama `claude/marcador-clasificacion-revancha`, commit "Cuadro de eliminatorias…" (pendiente de aprobación de Ale)
 **Archivos:** `src/game/Competitions.js`, `src/ui/UI.js`, `index.html`, `src/styles.css`, `tests/Bracket.test.js` (nuevo), `NOTAS_IA.md`

@@ -46,7 +46,7 @@ export class UI {
       'player-name','player-number','preview-name','preview-number','preview-ball','preview-team','saved-note','save-player',
       'difficulty','play-difficulty','settings-difficulty','sound-enabled','volume','volume-value','score','timer','hud-player-name','hud-opponent-name','player-dot','opponent-dot',
       'goal-banner','countdown-banner','pause-overlay','result-overlay','result-eyebrow','result-title','result-copy','result-xp','result-level','result-xp-fill',
-      'result-next','result-finish','result-scoreboard','result-home-crest','result-home-team','result-home-player','result-home-goals','result-away-crest','result-away-team','result-away-player','result-away-goals','result-score','result-duration','result-timeline','tournament-bracket-panel','tournament-bracket-title','tournament-bracket','result-rematch','result-online-status','result-stats','result-stat-duration','result-stat-goals','result-stat-shots','result-trophy','result-season-summary','league-standings-panel','league-standings-title','league-standings-body','connection-banner','replay-banner','replay-status','replay-skip','leaderboard-message','leaderboard-list','leaderboard-refresh','training-tools','trajectory-toggle','mode-label','game-canvas','level-value','xp-label','wins-label','xp-fill','missions-list',
+      'result-next','result-finish','result-rematch-status','result-scoreboard','result-home-crest','result-home-team','result-home-player','result-home-goals','result-away-crest','result-away-team','result-away-player','result-away-goals','result-score','result-duration','result-timeline','tournament-bracket-panel','tournament-bracket-title','tournament-bracket','result-rematch','result-online-status','result-stats','result-stat-duration','result-stat-goals','result-stat-shots','result-trophy','result-season-summary','league-standings-panel','league-standings-title','league-standings-body','connection-banner','replay-banner','replay-status','replay-skip','leaderboard-message','leaderboard-list','leaderboard-refresh','training-tools','trajectory-toggle','mode-label','game-canvas','level-value','xp-label','wins-label','xp-fill','missions-list',
       'team-position','league-competition','league-competition-summary','country-tabs','countries-prev','countries-next','country-position','league-tabs','team-grid','teams-prev','teams-next','chosen-team-label','tournament-roster',
       'competition-trophy','competition-eyebrow','competition-title','competition-description','competition-dots','competition-select','competition-prev','competition-next',
       'competition-picker-card',
@@ -1429,6 +1429,8 @@ export class UI {
   }
 
   requestOnlineRematch() {
+    // Server rooms (quick / ranked) use the database rematch; legacy direct rooms keep the realtime vote.
+    if (this.hub?.lobby) { this.hub.requestRematch(); return; }
     this.result_rematch.disabled = true;
     this.result_rematch.innerHTML = 'Esperando al rival… <span>⌛</span>';
     this.result_online_status.textContent = 'Se iniciará cuando ambos aceptéis.';
@@ -1548,7 +1550,7 @@ export class UI {
     this.result_xp_fill.style.width = `${this.progression.progressRatio() * 100}%`;
     this.result_copy.textContent = `${rewardText}${levelText}`;
     this.renderScoreboard(result, won);
-    this.result_next.classList.add('hidden'); this.result_rematch.classList.add('hidden'); this.result_online_status.classList.add('hidden'); this.league_standings_panel.classList.add('hidden'); this.result_finish.textContent = 'Volver al menú';
+    this.result_next.classList.add('hidden'); this.result_rematch.classList.add('hidden'); this.result_rematch_status.classList.add('hidden'); this.result_online_status.classList.add('hidden'); this.league_standings_panel.classList.add('hidden'); this.result_finish.textContent = 'Volver al menú';
     this.result_eyebrow.textContent = this.matchEyebrow(result.mode); this.result_title.textContent = won ? 'Victoria' : 'Derrota';
 
     let cupFinal = false, cupChampion = false, leagueFinished = false, leagueChampion = false;

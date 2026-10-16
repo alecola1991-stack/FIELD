@@ -632,3 +632,4 @@ body.blue-theme.online-theme{--bg:#020713;--panel:#071329;--green:#83b4ff;--mute
 .room-byes{margin:0 0 8px;font:12px var(--mono);color:#ffd678}
 @media(max-width:520px){.online-lobby-roster.teams{grid-template-columns:1fr}.online-lobby-roster.teams .room-versus{padding:2px 0}}
 .online-bracket .room-byes{grid-column:1/-1}
+.room-seat .room-swap{margin-left:auto;flex:none;padding:6px 9px;font-size:12px}

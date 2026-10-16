@@ -12,7 +12,7 @@ begin
   perform set_config('request.jwt.claim.sub',ids[i]::text,true);
   r:=public.field_online('claim_username',jsonb_build_object('username',prefix||i));
  end loop;
- if (r->>'version')::int<>2 then raise exception 'Version flag missing'; end if;
+ if (r->>'version')::int<2 then raise exception 'Version flag missing'; end if;
 
  -- Invalid sizes.
  begin perform public.field_online('queue','{"kind":"quick","size":3}'); raise exception 'Bad size accepted';

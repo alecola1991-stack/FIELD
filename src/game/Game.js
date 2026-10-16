@@ -470,6 +470,26 @@ export class Game {
     }
     return true;
   }
+  // ---- Online resume ------------------------------------------------------------
+  // When the host reloads mid-match, a guest sends where the match was so the host
+  // continues it instead of starting at 0-0. Always in host order (left / right).
+  resumeState(matchId) {
+    if (this.state.mode !== 'online' || !matchId) return null;
+    const flip = this.localSide === 'right';
+    const left = flip ? this.state.scoreBot : this.state.scorePlayer, right = flip ? this.state.scorePlayer : this.state.scoreBot;
+    const goals = (this.matchStats?.goals || []).slice(-9).map(goal => ({ side: (goal.side === 'player') !== flip ? 'player' : 'opponent', minute: goal.minute, elapsedSeconds: goal.elapsedSeconds }));
+    return { matchId, left, right, elapsed: Math.round(this.state.elapsed * 10) / 10, goals };
+  }
+  applyResume(resume) {
+    const score = value => Math.max(0, Math.min(this.goalTarget - 1, Math.floor(Number(value) || 0)));
+    if (!resume || !this.onlineAuthority || this.state.mode !== 'online') return false;
+    this.state.scorePlayer = score(resume.left); this.state.scoreBot = score(resume.right);
+    this.state.elapsed = Math.max(0, Math.min(3600, Number(resume.elapsed) || 0));
+    const goals = Array.isArray(resume.goals) ? resume.goals.slice(-9) : [];
+    this.matchStats.goals = goals.filter(goal => ['player', 'opponent'].includes(goal?.side)).map(goal => ({ side: goal.side, minute: Math.max(1, Math.floor(Number(goal.minute) || 1)), elapsedSeconds: Math.max(0, Number(goal.elapsedSeconds) || 0) }));
+    this.hooks.onScore?.(this.state.scorePlayer, this.state.scoreBot); this.hooks.onTime?.(this.state.formatTime());
+    return true;
+  }
   // ---- 2v2 online ------------------------------------------------------------
   // Seats in host order: 0 = left captain (host), 1 = left teammate,
   // 2 = right captain, 3 = right teammate. `player` is the local seat, `bot`

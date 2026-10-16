@@ -1,0 +1,11 @@
+{
+  "name": "field-e2e-online",
+  "private": true,
+  "description": "End-to-end tests of the online modes with several browsers (not part of npm test).",
+  "dependencies": {
+    "@sparticuz/chromium": "153.0.0",
+    "pg": "8.13.1",
+    "puppeteer-core": "25.14.0",
+    "ws": "8.18.0"
+  }
+}

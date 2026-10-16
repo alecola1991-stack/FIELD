@@ -129,3 +129,25 @@ test('tournament rounds are named by size and the 2v2 rematch needs every vote',
   hub.lobby.rematch.votes.push(user); hub.updateRematch();
   assert.match(hub.ui.result_rematch.innerHTML, /Esperando a los demás… \(3\/4\)/); assert.equal(hub.ui.result_rematch.disabled, true);
 });
+
+test('a room the player was removed from is dropped instead of failing every poll', async () => {
+  const hub = fixture(); hub.lobby = { id: 'gone', state: 'waiting', players: [], matches: [] };
+  let calls = 0;
+  hub.rpc = async action => { calls++; if (action === 'poll') throw new Error('No perteneces a esta sala.'); return { identity: hub.identity, lobby: null }; };
+  let shown = ''; hub.message = text => { shown = text; };
+  await hub.refresh();
+  assert.equal(hub.lobby, null); assert.match(shown, /Ya no estás en esa sala/);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.ok(calls >= 2, 'it refreshes the player state afterwards');
+});
+
+test('a match settled by the server while still being played ends the game with the outcome', async () => {
+  const hub = fixture(); let stopped = false, left = false, shown = '';
+  Object.assign(hub.ui, { currentMatchMode: 'online', currentView: 'game', game: { state: { running: true, matchOver: false }, stop() { stopped = true; } },
+    onlineMatch: { leave: async () => { left = true; } }, hideConnectionStatus() {}, result_overlay: { classList: { contains: () => true } } });
+  hub.message = text => { shown = text; };
+  hub.connectedMatchId = 'm1';
+  await hub.consume({ identity: hub.identity, lobby: { id: 'r', kind: 'ranked', state: 'finished', players: [], matches: [{ id: 'm1', p1: user, p2: 'two', state: 'finished', winner: user }] } });
+  assert.equal(stopped, true); assert.equal(left, true); assert.equal(hub.ui.currentView, 'online');
+  assert.match(shown, /Victoria/);
+});

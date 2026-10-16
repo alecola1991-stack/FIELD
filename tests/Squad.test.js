@@ -133,3 +133,17 @@ test('the match ends on all four peers with each side seeing its own result', ()
   assert.equal(ends.get(2).winner, 'player'); assert.equal(ends.get(3).winner, 'player');
   assert.equal(ends.get(2).playerScore, 5); assert.equal(ends.get(1).playerScore, 4);
 });
+
+test('resume state round-trips in host order from either side', () => {
+  const host = peer(0), guest = peer(2);
+  guest.state.scorePlayer = 1; guest.state.scoreBot = 3; guest.state.elapsed = 81.27;
+  guest.matchStats.goals = [{ side: 'opponent', minute: 1, elapsedSeconds: 30 }, { side: 'player', minute: 2, elapsedSeconds: 70 }];
+  const resume = guest.resumeState('m');
+  assert.deepEqual([resume.left, resume.right, resume.elapsed], [3, 1, 81.3], 'right-side guest reports left/right');
+  assert.deepEqual(resume.goals.map(goal => goal.side), ['player', 'opponent'], 'goal sides in host order');
+  assert.equal(host.applyResume(resume), true);
+  assert.deepEqual([host.state.scorePlayer, host.state.scoreBot], [3, 1]);
+  assert.equal(guest.applyResume(resume), false, 'only the host applies a resume');
+  assert.equal(host.applyResume({ left: 9, right: -2 }), true);
+  assert.deepEqual([host.state.scorePlayer, host.state.scoreBot], [4, 0], 'scores are clamped below the target');
+});

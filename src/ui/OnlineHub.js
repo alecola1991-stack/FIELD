@@ -22,7 +22,7 @@ export class OnlineHub {
       const format = event.target.closest('[data-format-group]');
       if (format) { this.setFormat(format.dataset.formatGroup, Number(format.dataset.size)); return; }
       const button = event.target.closest('[data-online-command]');
-      if (button) this.action(button.dataset.onlineCommand, { kind: button.dataset.kind, userId: button.dataset.userId, inviteId: button.dataset.inviteId, team: button.dataset.team ? Number(button.dataset.team) : undefined,
+      if (button) this.action(button.dataset.onlineCommand, { kind: button.dataset.kind, userId: button.dataset.userId, inviteId: button.dataset.inviteId, team: button.dataset.team ? Number(button.dataset.team) : undefined, swapWith: button.dataset.swapWith,
         size: button.dataset.sizeFrom ? this.formats[button.dataset.sizeFrom] : undefined,
         code: button.dataset.codeInput ? document.getElementById(button.dataset.codeInput).value : undefined });
     });
@@ -56,7 +56,10 @@ export class OnlineHub {
   async activate() {
     this.identity = null; this.lobby = null; this.connectedMatchId = null;
     await this.refresh();
-    if (!this.identity) { this.ui.show('online'); this.message('Elige un nombre de usuario único para identificarte en el online.'); }
+    if (!this.identity) { this.ui.show('online'); this.message('Elige un nombre de usuario único para identificarte en el online.'); return; }
+    // Back after a reload or a closed app with a match still being played: go straight to it.
+    const match = assignedMatch(this.lobby, this.identity.id);
+    if (match && this.ui.currentView !== 'game') { this.ui.show('online'); this.message('Tienes un partido en curso. Volviendo a él…'); await this.connect(match); }
   }
   async open() { this.render(); if (this.ui.user) await this.refresh(); }
   async refresh() {
@@ -66,8 +69,17 @@ export class OnlineHub {
       const data = await this.rpc(this.lobby ? 'poll' : 'state', this.lobby ? { lobbyId: this.lobby.id } : {});
       if (this.ui.user?.id === userId && (this.revision || 0) === revision) await this.consume(data);
       this.lastPoll = Date.now();
-    } catch (error) { if (this.ui.currentView === 'online') this.message(error.message || 'No se pudo conectar.', true); }
+    } catch (error) {
+      // Removed from a waiting room (inactive) or the room vanished: stop polling it instead of looping on the error.
+      if (/No perteneces a esta sala/.test(error?.message || '') && this.lobby) { this.dropLobby('Ya no estás en esa sala (por inactividad o porque se cerró). Puedes buscar otra.'); return; }
+      if (this.ui.currentView === 'online') this.message(error.message || 'No se pudo conectar.', true);
+    }
     finally { this.polling = false; }
+  }
+  dropLobby(text) {
+    this.lobby = null; this.connectedMatchId = null; this.pendingResult = null; this.render();
+    if (text) this.message(text, true);
+    setTimeout(() => this.refresh(), 0); // after the current poll has released the lock
   }
   tick() {
     if (!this.ui.user) return;
@@ -113,17 +125,32 @@ export class OnlineHub {
       else if (command === 'invite_decline') this.message('Invitación declinada.');
       else if (command === 'team') this.message('Equipo cambiado.');
       else if (!this.lobby) this.message('Listo.');
-    } catch (error) { this.message(error.message || 'No se pudo completar la acción.', true); }
+    } catch (error) {
+      if (command === 'leave' && /No perteneces a esta sala/.test(error?.message || '')) {
+        await this.ui.onlineMatch.leave(false); this.ui.game.stop(); this.ui.currentMatchMode = null; this.ui.show('online');
+        this.busy = false; this.dropLobby(''); this.message('Has salido de la sala.'); return;
+      }
+      this.message(error.message || 'No se pudo completar la acción.', true);
+    }
     finally { this.busy = false; this.render(); }
   }
   async consume(data) {
     this.identity = data?.identity || null; this.friends = data?.friends || []; this.invites = data?.invites || []; this.lobby = data?.lobby || null;
-    if (data) this.supportsTeams = Number(data.version) >= 2;
+    if (data) { this.supportsTeams = Number(data.version) >= 2; this.supportsSwap = Number(data.version) >= 3; }
     this.render();
     if (this.lobby?.state === 'cancelled') {
       this.message('La sala se ha cancelado o el resultado no coincide. No se aplica ELO por un resultado discrepante.', true);
       if (this.ui.currentMatchMode === 'online') { this.ui.game.stop(); await this.ui.onlineMatch.leave(false); this.ui.currentMatchMode = null; this.ui.show('online'); }
       this.connectedMatchId = null; return;
+    }
+    // The server settled our match while we were still playing it (a rival left or timed out).
+    const current = this.lobby?.matches.find(item => item.id === this.connectedMatchId);
+    if (current && current.state !== 'playing') {
+      const game = this.ui.game, playing = this.ui.currentMatchMode === 'online' && game?.state.running && !game.state.matchOver && this.ui.result_overlay.classList.contains('hidden');
+      if (playing) {
+        game.stop(); await this.ui.onlineMatch.leave(false); this.ui.currentMatchMode = null; this.ui.hideConnectionStatus(); this.ui.show('online');
+        this.message(current.state === 'disputed' ? 'El partido no se ha podido confirmar.' : wonMatch(current, this.identity?.id) ? 'El partido ha terminado: el rival ha abandonado o se ha desconectado. ¡Victoria!' : 'El partido ha terminado por abandono o desconexión.', current.state !== 'finished' || !wonMatch(current, this.identity?.id));
+      } else if (!this.ui.currentMatchMode && this.ui.onlineMatch?.assignment?.matchId === current.id) await this.ui.onlineMatch.leave(false);
     }
     const match = assignedMatch(this.lobby, this.identity?.id);
     // A rematch starts straight from the result screen; otherwise matches start from the online screen.
@@ -357,7 +384,14 @@ export class OnlineHub {
       const column = element('div', '', 'room-team'); column.dataset.team = String(team);
       const members = room.players.filter(player => teamOf(player) === team);
       const head = element('div', '', 'room-team-head'); head.append(element('b', drawPending ? 'SORTEO' : team === 1 ? 'EQUIPO A' : 'EQUIPO B'), element('small', drawPending ? 'AL COMPLETAR' : `${members.length}/2`));
-      column.append(head, ...members.map(player => this.seatCard(player)));
+      column.append(head, ...members.map(player => {
+        const card = this.seatCard(player);
+        // Full private room: swap sides with a player of the other team (server version 3+).
+        if (privateWaiting && this.supportsSwap && mine && teamOf(mine) !== team && members.length >= 2) {
+          const swap = this.button(`Cambiar con @${player.username}`, 'team', { swapWith: player.id }); swap.classList.add('room-swap'); card.append(swap);
+        }
+        return card;
+      }));
       for (let index = members.length; index < 2; index++) column.append(this.emptySeat());
       if (privateWaiting && mine && teamOf(mine) !== team && members.length < 2) column.append(this.button(`Unirme al equipo ${team === 1 ? 'A' : 'B'}`, 'team', { team: String(team) }));
       return column;

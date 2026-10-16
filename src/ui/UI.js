@@ -1,7 +1,7 @@
 import { readAuthRedirectError, cleanAuthUrl } from '../account/AuthErrors.js';
 import { rankBadge, rankIconSvg } from './RankIcon.js';
 import { ProfileSocial } from './ProfileSocial.js';
-import { rankJourney, rankProgress, rankIndex, RANKS } from '../config/ranks.js';
+import { rankFor, rankJourney, rankProgress, rankIndex, RANKS } from '../config/ranks.js';
 import { selectionFor, cycleTeamSelection, teamAbbreviation } from './TeamSelection.js';
 import { GamepadController } from '../game/GamepadController.js';
 import { OnlineHub } from './OnlineHub.js';
@@ -339,6 +339,12 @@ export class UI {
     this.competition_prev.addEventListener('click', () => this.moveCompetition(-1));
     this.competition_next.addEventListener('click', () => this.moveCompetition(1));
     this.competition_select.addEventListener('click', () => this.chooseCompetition());
+    document.getElementById('competition-grid')?.addEventListener('click', event => {
+      const tile = event.target.closest('[data-competition-index], [data-competition-team]'); if (!tile) return;
+      this.sound?.play('click');
+      if (tile.dataset.competitionTeam) { this.pendingMode = null; this.pendingCompetition = null; this.pendingTeamType = 'all'; this.pendingLeagueId = ''; this.openProfile(); return; }
+      this.competitionIndex = Number(tile.dataset.competitionIndex); this.renderCompetitionPicker(); this.chooseCompetition();
+    });
     document.getElementById('pause-button').addEventListener('click', () => this.pause(true));
     document.getElementById('resume-button').addEventListener('click', () => this.pause(false));
     document.getElementById('quit-button').addEventListener('click', () => this.saveAndQuit());
@@ -798,9 +804,44 @@ export class UI {
     this.competition_eyebrow.textContent = item.eyebrow;
     this.competition_title.textContent = item.name;
     this.competition_description.textContent = item.description;
+    this.renderCompetitionGrid(trophies);
     this.competition_dots.replaceChildren(...CUP_COMPETITIONS.map((competition, i) => {
       const dot = document.createElement('i'); dot.className = i === this.competitionIndex ? 'active' : ''; dot.setAttribute('aria-label', competition.name); return dot;
     }));
+  }
+
+  // Panel grid with every competition (clubs first, then national teams) plus a
+  // shortcut to change team, since each cup asks for a club or a national team.
+  renderCompetitionGrid(trophies) {
+    const grid = document.getElementById('competition-grid'); if (!grid) return;
+    const accents = { champions: '#78ddb0', league: '#73a9ed', 'world-cup': '#e7c56c', euro: '#7ab6ef', 'copa-america': '#69d2a0', 'copa-libertadores': '#e4a66d', 'club-world-cup': '#e7c56c' };
+    const order = ['champions', 'copa-libertadores', 'club-world-cup', 'league', 'world-cup', 'euro', 'copa-america'];
+    const team = getTeamById(this.settings.teamId);
+    const tiles = order.map((id, index) => {
+      const at = CUP_COMPETITIONS.findIndex(item => item.id === id); if (at < 0) return null;
+      const item = CUP_COMPETITIONS[at], tile = document.createElement('button');
+      tile.type = 'button'; tile.className = 'hub-tile panel-tile competition-tile'; tile.dataset.competitionIndex = String(at);
+      tile.style.setProperty('--competition-accent', accents[id] || '#78ddb0');
+      const national = item.type !== 'club', group = item.type === 'europe' ? 'europe' : item.type === 'america' ? 'america' : '';
+      const fits = Boolean(team) && (national ? team.type === 'national' : team.type !== 'national') && (!group || team.league === group)
+        && (id !== 'copa-libertadores' || isLibertadoresEligibleTeam(team.id)) && (id !== 'club-world-cup' || isClubWorldCupEligibleTeam(team.id));
+      const tag = document.createElement('span'); tag.className = 'tile-index'; tag.textContent = `${String(index + 1).padStart(2, '0')} / ${national ? 'SELECCIONES' : 'CLUBES'}`;
+      const name = document.createElement('strong'); name.textContent = item.name;
+      const text = document.createElement('small'); text.textContent = item.description;
+      const art = document.createElement('span'); art.className = 'tile-art competition-tile-art'; art.setAttribute('aria-hidden', 'true');
+      art.innerHTML = trophies[id] || (id === 'club-world-cup' ? trophies['world-cup'] : trophies.champions);
+      tile.append(tag, name, text, art);
+      if (!fits) { const hint = document.createElement('i'); hint.className = 'competition-tile-hint'; hint.textContent = national ? 'ELEGIRÁS UNA SELECCIÓN' : 'ELEGIRÁS UN CLUB ADMITIDO'; tile.append(hint); }
+      return tile;
+    }).filter(Boolean);
+    const change = document.createElement('button'); change.type = 'button'; change.className = 'hub-tile panel-tile competition-tile competition-team-tile'; change.dataset.competitionTeam = 'true';
+    const tag = document.createElement('span'); tag.className = 'tile-index'; tag.textContent = '08 / TU EQUIPO';
+    const name = document.createElement('strong'); name.textContent = team ? team.name : 'Elige equipo';
+    const text = document.createElement('small'); text.textContent = 'Cambia de club o selección antes de empezar.';
+    const art = document.createElement('span'); art.className = 'tile-art competition-team-kit match-team-preview'; art.setAttribute('aria-hidden', 'true');
+    if (team) this.paintPlayerPreview(art, team, { name: (this.settings.name || '').slice(0, 10).toUpperCase(), number: this.settings.number });
+    change.append(tag, name, text, art);
+    grid.replaceChildren(...tiles, change);
   }
 
   moveCompetition(direction) {
@@ -1142,27 +1183,31 @@ export class UI {
     const team = getTeamById(this.settings.teamId);
     const definitions = [...MISSION_DEFINITIONS, ...(team && TEAM_LEAGUES.some(league => league.id === team.league) ? [{ ...getLeagueMission(team.id), description: `Gana la liga con ${team.name}.` }] : [])];
     this.missions_list.replaceChildren();
-    for (const mission of definitions) {
+    const done = definitions.filter(mission => this.career.missions[mission.id]?.completed).length;
+    const summary = document.getElementById('missions-summary');
+    if (summary) summary.innerHTML = `<b>${done}/${definitions.length}</b><span>COMPLETADAS</span><small>${definitions.filter(mission => !this.career.missions[mission.id]?.completed).reduce((sum, mission) => sum + mission.xp, 0)} XP por ganar</small>`;
+    definitions.forEach((mission, index) => {
       const state = this.career.missions[mission.id] || { progress: 0, completed: false };
       const card = document.createElement('article'); card.className = `mission-card${state.completed ? ' completed' : ''}`;
       const heading = document.createElement('div'); heading.className = 'mission-card-heading';
       const copy = document.createElement('div'); const title = document.createElement('b'); title.textContent = mission.title;
       const description = document.createElement('p'); description.textContent = mission.description; copy.append(title, description);
+      const number = document.createElement('span'); number.className = 'tile-index mission-index'; number.textContent = `${String(index + 1).padStart(2, '0')} / MISIÓN`; card.append(number);
       const status = document.createElement('span'); status.className = 'mission-status'; status.textContent = state.completed ? 'COMPLETADA' : `${Math.min(state.progress, mission.goal)}/${mission.goal}`;
       heading.append(copy, status);
       const track = document.createElement('div'); track.className = 'mission-progress'; const fill = document.createElement('i'); fill.style.width = `${Math.min(100, state.progress / mission.goal * 100)}%`; track.append(fill);
       const reward = document.createElement('small'); reward.textContent = `RECOMPENSA · ${mission.xp} XP`;
       card.append(heading, track, reward); this.missions_list.append(card);
-    }
+    });
   }
 
   renderTournamentSetup(competition) {
     const international = competition.type !== 'club';
-    const title = competition.id === 'champions' ? 'Camino a<br><em>Champions.</em>'
-      : competition.id === 'copa-libertadores' ? 'Rumbo a<br><em>la Gloria Eterna.</em>'
-        : competition.id === 'club-world-cup' ? 'Campeones<br><em>del mundo.</em>'
-      : competition.id === 'world-cup' ? 'El sueño<br><em>mundial.</em>'
-        : competition.id === 'euro' ? 'Camino a<br><em>la Euro.</em>'
+    const title = competition.id === 'champions' ? 'Camino a<br> <em>Champions.</em>'
+      : competition.id === 'copa-libertadores' ? 'Rumbo a<br> <em>la Gloria Eterna.</em>'
+        : competition.id === 'club-world-cup' ? 'Campeones<br> <em>del mundo.</em>'
+      : competition.id === 'world-cup' ? 'El sueño<br> <em>mundial.</em>'
+        : competition.id === 'euro' ? 'Camino a<br> <em>la Euro.</em>'
           : 'Rumbo a<br><em>América.</em>';
     this.tournament_header_tag.textContent = competition.eyebrow;
     this.tournament_eyebrow.textContent = competition.eyebrow;
@@ -1196,7 +1241,9 @@ export class UI {
     // The setup screen shows the drawn bracket (first-round ties) instead of a plain list.
     this.tournament_roster.replaceChildren();
     this.tournament_roster.classList.add('bracket', 'bracket-setup');
-    this.renderBracket(this.tournament_roster, this.tournament, 0);
+    const stages = document.querySelector('#tournament-screen .champions-card-heading>div>span');
+    if (stages && this.tournament?.bracket) stages.textContent = this.tournament.bracket.rounds.map((_, index) => roundName(this.tournament.bracket.size, index + 1).replace(/ DE FINAL$/i, '')).join(' · ').toUpperCase();
+    this.renderBracket(this.tournament_roster, this.tournament, 0, 0, { mirror: Boolean(window.matchMedia?.('(min-width: 1024px)').matches) });
   }
 
   renderBracketPanel(cup) {
@@ -1210,33 +1257,44 @@ export class UI {
   }
 
   // Knockout bracket: one column per round; the player's path is highlighted
-  // and the view scrolls to `focusRound`.
-  renderBracket(container, cup, focusRound = 0, fromRound = 0) {
+  // and the view scrolls to `focusRound`. With `mirror` (wide screens) each round
+  // is split in two halves that meet at the final, so big draws fit in height.
+  renderBracket(container, cup, focusRound = 0, fromRound = 0, { mirror = false } = {}) {
     const bracket = cup?.bracket; container.replaceChildren(); if (!bracket) return;
     const teamOf = id => id && (cup.teams.find(team => team.id === id) || getTeamById(id));
-    const columns = bracket.rounds.map((matches, roundIndex) => {
-      if (roundIndex < fromRound) return null;
-      const column = document.createElement('section'); column.className = 'bracket-round'; column.dataset.round = String(roundIndex);
-      const title = document.createElement('h4'); title.textContent = roundName(bracket.size, roundIndex + 1);
-      const list = document.createElement('div'); list.className = 'bracket-matches'; column.append(title, list);
-      for (const match of matches) {
-        const card = document.createElement('div'); card.className = 'bracket-match';
-        const mine = [match.home, match.away].includes(this.settings.teamId);
-        card.classList.toggle('mine', mine); card.classList.toggle('pending', !match.winner);
-        for (const side of ['home', 'away']) {
-          const id = match[side], team = teamOf(id), row = document.createElement('div'); row.className = 'bracket-team';
-          row.classList.toggle('winner', !!match.winner && match.winner === id); row.classList.toggle('loser', !!match.winner && !!id && match.winner !== id);
-          row.classList.toggle('you', id === this.settings.teamId);
-          const chip = document.createElement('i'); chip.className = 'bracket-chip'; chip.style.background = team ? getKitBackground(team) : 'transparent';
-          const name = document.createElement('span'); name.textContent = team ? team.name.replace(/\s+CF$/i, '') : 'Por decidir'; name.title = team?.name || '';
-          const goals = document.createElement('b'); goals.textContent = match[`${side}Goals`] ?? '';
-          row.append(chip, name, goals); card.append(row);
-        }
-        list.append(card);
+    const matchCard = match => {
+      const card = document.createElement('div'); card.className = 'bracket-match';
+      const mine = [match.home, match.away].includes(this.settings.teamId);
+      card.classList.toggle('mine', mine); card.classList.toggle('pending', !match.winner);
+      for (const side of ['home', 'away']) {
+        const id = match[side], team = teamOf(id), row = document.createElement('div'); row.className = 'bracket-team';
+        row.classList.toggle('winner', !!match.winner && match.winner === id); row.classList.toggle('loser', !!match.winner && !!id && match.winner !== id);
+        row.classList.toggle('you', id === this.settings.teamId);
+        const chip = document.createElement('i'); chip.className = 'bracket-chip'; chip.style.background = team ? getKitBackground(team) : 'transparent';
+        const name = document.createElement('span'); name.textContent = team ? team.name.replace(/\s+CF$/i, '') : mirror ? '—' : 'Por decidir'; name.title = team?.name || '';
+        const goals = document.createElement('b'); goals.textContent = match[`${side}Goals`] ?? '';
+        row.append(chip, name, goals); card.append(row);
       }
-      return column;
-    }).filter(Boolean);
-    container.append(...columns);
+      return card;
+    };
+    const column = (roundIndex, matches, side = '') => {
+      const section = document.createElement('section'); section.className = `bracket-round${side ? ` bracket-${side}` : ''}`; section.dataset.round = String(roundIndex);
+      const title = document.createElement('h4'); title.textContent = roundName(bracket.size, roundIndex + 1);
+      const list = document.createElement('div'); list.className = 'bracket-matches'; list.append(...matches.map(matchCard));
+      section.append(title, list); return section;
+    };
+    const rounds = bracket.rounds.map((matches, roundIndex) => ({ matches, roundIndex })).filter(item => item.roundIndex >= fromRound);
+    const split = mirror && rounds.length >= 2 && rounds[0].matches.length >= 2;
+    container.classList.toggle('bracket-mirror', split);
+    if (split) {
+      const last = rounds[rounds.length - 1], early = rounds.slice(0, -1);
+      const half = matches => Math.ceil(matches.length / 2);
+      container.append(...early.map(({ matches, roundIndex }) => column(roundIndex, matches.slice(0, half(matches)), 'left')),
+        column(last.roundIndex, last.matches, 'final'),
+        ...early.reverse().map(({ matches, roundIndex }) => column(roundIndex, matches.slice(half(matches)), 'right')));
+      return;
+    }
+    container.append(...rounds.map(({ matches, roundIndex }) => column(roundIndex, matches)));
     requestAnimationFrame(() => { const focus = container.querySelector(`[data-round="${focusRound}"]`); if (focus) container.scrollLeft = Math.max(0, focus.offsetLeft - 12); });
   }
 
@@ -1679,7 +1737,7 @@ export class UI {
   async loadLeaderboard() {
     this.leaderboard_refresh.disabled = true;
     this.leaderboard_message.textContent = 'Cargando resultados…';
-    this.leaderboard_list.replaceChildren();
+    this.leaderboard_list.replaceChildren(); this.renderLeaderboardPodium([]);
     try {
       const rows = await this.accountService?.onlineAction('leaderboard');
       if (!Array.isArray(rows)) throw new Error('No se pudo conectar con la clasificación.');
@@ -1694,9 +1752,28 @@ export class UI {
         const record = document.createElement('small'); record.textContent = `${row.elo} ELO · ${row.ranked_wins}V · ${row.ranked_played}P`;
         item.append(place, name, record); this.leaderboard_list.append(item);
       });
+      this.renderLeaderboardPodium(rows);
     } catch (error) {
       this.leaderboard_message.textContent = error?.message || 'No se pudo cargar la clasificación.';
     } finally { this.leaderboard_refresh.disabled = false; }
+  }
+
+  // Top three as panels plus the signed-in player's position (when in the top 50).
+  renderLeaderboardPodium(rows) {
+    const podium = document.getElementById('leaderboard-podium'), you = document.getElementById('leaderboard-you');
+    if (!podium || !you) return;
+    podium.replaceChildren(...rows.slice(0, 3).map((row, index) => {
+      const tile = document.createElement('div'); tile.className = `podium-tile podium-${index + 1}`;
+      const place = document.createElement('b'); place.className = 'podium-place'; place.textContent = String(index + 1);
+      const name = document.createElement('span'); name.className = 'podium-name'; name.textContent = `@${row.username}`;
+      const detail = document.createElement('small'); detail.textContent = `${rankFor(row.elo).name} · ${row.elo} ELO · ${row.ranked_wins}V`;
+      const badge = document.createElement('span'); badge.className = 'podium-badge'; badge.innerHTML = rankIconSvg(row.elo, 40);
+      tile.append(place, badge, name, detail); return tile;
+    }));
+    if (!rows.length) podium.append(Object.assign(document.createElement('p'), { className: 'online-match-hint', textContent: 'El podio aparecerá con los primeros resultados Ranked.' }));
+    const identity = this.hub?.identity, at = identity ? rows.findIndex(row => row.username === identity.username) : -1;
+    you.classList.toggle('hidden', !identity);
+    if (identity) you.textContent = at >= 0 ? `Tu posición: ${at + 1}.º de ${rows.length} · ${identity.elo} ELO` : `Aún no estás en el top ${rows.length || 50} · ${identity.elo} ELO`;
   }
 
   async cancelOnlineRoom() { return this.hub.action('leave'); }

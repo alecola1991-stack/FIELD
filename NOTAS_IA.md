@@ -4,6 +4,20 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-16 · Claude · Resto de submenús en paneles y sin scroll en PC
+**Commit:** rama `submenus-paneles-2` (pendiente de aprobación de Ale)
+**Archivos:** `index.html`, `src/styles.css`, `src/ui/UI.js`
+**Qué y por qué:** Ale pidió hacer lo mismo con los demás submenús: paneles y sin scroll en PC. Comprobado sin scroll en 1366×657, 1366×768, 1280×720 y 1920×960 en todas las pantallas y en sus estados secundarios (pestañas de Ajustes, cuenta conectada, cuadros de 16 y 32 equipos, clasificación con 50 filas, misiones, vitrina desplegada).
+**Cómo:**
+- Competiciones: el carrusel se sustituye por paneles en `#competition-grid`, generados en `renderCompetitionGrid()`. Hay 7 competiciones con su trofeo y color, más un panel «Tu equipo». Si tu equipo no vale para esa copa, el panel avisa con «ELEGIRÁS…». El carrusel antiguo (`#competition-picker-card`) sigue en el DOM, oculto, porque `renderTournamentSetup` toma de él el emblema y el color; `competitionIndex` y `chooseCompetition()` no cambian.
+- Cuadro de copa: `renderBracket(container, cup, focus, from, { mirror })` admite un modo espejo, con dos mitades que se encuentran en la final. Solo se usa en la pantalla previa (`renderTournamentRoster`) en PC (≥1024 px), así que el cuadro de 32 equipos cabe sin scroll. El cuadro del resultado de partido no cambia. La etiqueta de rondas se genera según el tamaño del cuadro.
+- Clasificación: título arriba y dos paneles. El nuevo `renderLeaderboardPodium(rows)` dibuja el podio con el top 3 y tu posición; la lista tiene scroll interno. Se importa `rankFor` en UI.js.
+- Misiones: paneles al estilo del menú y un resumen `#missions-summary` (completadas y XP por ganar).
+- Ajustes: título en una línea (se oculta en alturas ≤820 px) y opciones en dos columnas; en Mandos, el teclado a la izquierda y el mando a la derecha.
+- Perfil: la vitrina desplegada tiene scroll interno, en 6 columnas en PC.
+**Para el otro asistente:** sin SQL. Los estilos van al final de `src/styles.css`. Para medir el scroll hay que esperar más de 0,4 s, porque la animación `appear` mueve 7 px la pantalla al entrar.
+
+
 ## 2026-10-16 · Claude · Submenús en paneles y pantallas sin scroll en PC
 **Commit:** fusionado en main (rama `submenus-paneles`, merge 1b857f8). Para deshacerlo: `git revert -m 1 1b857f8`
 **Archivos:** `index.html`, `src/styles.css`, `src/ui/UI.js`, `src/ui/OnlineHub.js`, `src/ui/ProfileSocial.js`

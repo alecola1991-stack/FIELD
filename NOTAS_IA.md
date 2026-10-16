@@ -4,6 +4,27 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-16 · Claude · Rangos por ELO con iconos y pantalla de progreso tras el Ranked
+**Commit:** rama `rangos-elo`
+**Archivos:** `src/config/ranks.js` y `src/ui/RankIcon.js` (nuevos), `src/ui/OnlineHub.js`, `src/ui/UI.js`, `index.html`, `src/styles.css`, `tests/Ranks.test.js` (nuevo)
+**Qué y por qué:** Ale pidió rangos según el ELO, con un icono al lado del nombre de los jugadores en las salas y en los partidos, y una pantalla con una barra animada de progreso entre rangos tras cada partido Ranked. Rangos: Amateur (desde el inicio, 500), Profesional 550, Experto 600, Campeón 750 y Leyenda 800.
+**Cómo:**
+- `ranks.js` contiene `RANKS` (id, nombre, `min`, `floor` y colores), `rankFor(elo)`, `rankProgress(elo)` y `rankJourney(antes, después)`.
+  - `rankProgress` va de 0 en el suelo del rango a 1 en el siguiente. Por debajo de 500 se queda en 0 y en Leyenda la barra está llena.
+  - `rankJourney` devuelve los tramos que hay que animar: llenar y subir, o vaciar y bajar.
+  - Todo se calcula en el cliente a partir del ELO; no hay SQL.
+- `RankIcon.js` contiene `rankIconSvg(rank|elo, size)` y `rankBadge(elo, {size, withName})`. Son escudos SVG originales, de colores planos y sin degradados, para que no choquen ids al repetirse. Cuanto más alto el rango, más adornado: un galón, dos galones, estrella, laurel y corona, y alas y corona.
+- **Dónde salen los iconos:**
+  - En `OnlineHub`: identidad online y de cuenta, amigos, cada plaza de la sala (`seatCard`) y las líneas de los partidos (`playerNames()`, nuevo).
+  - En `UI`: clasificación, nombres del marcador durante el partido y subtítulos del marcador final. Estos dos últimos usan `UI.setRankedNames(node, [{name, elo}], separador)`; en 2v2 los dos compañeros salen apilados (`.ranked-stack`).
+  - `currentMatchOptions.rankedNames` guarda los nombres con su ELO para el marcador final.
+- **Pantalla de progreso** (`#rank-overlay`, al final de `<main>`, `position:fixed`, z-index 60):
+  - La abre `UI.showRankProgress(antes, después)` cuando `OnlineHub` confirma un partido Ranked (en `updateResultStatus`, o en `consume()` si el servidor lo resuelve por abandono mientras se juega). Se muestra una sola vez por partido (`rankShownFor`).
+  - El ELO anterior es el actual menos el `eloDelta` de tu equipo (en el servidor, `eloDelta` es el del equipo izquierdo).
+  - Anima tramo a tramo: el icono grande «salta» (`rank-pop`) al subir y «cae» (`rank-drop`) al bajar, el contador de ELO avanza y al final sale el mensaje (ascenso, descenso o «te faltan N ELO para…»). Respeta `prefers-reduced-motion`.
+  - «Continuar» o Escape la cierran (`hideRankProgress`); también se cierra al empezar otro partido.
+**Para el otro asistente:** los umbrales y nombres de los rangos están solo en `RANKS`. No pongas nombres de rango fijos en la UI; usa `rankFor`/`rankBadge`.
+
 ## 2026-10-16 · Claude · Dificultades de la IA: nombres nuevos, Profesional y Champions
 **Commit:** fusionado en `main` el 2026-10-16 con la aprobación de Ale (merge `e490884`). Para deshacerlo: `git revert -m 1 e490884`.
 **Archivos:** `src/config/settings.js`, `src/game/BotAI.js`, `src/ui/UI.js`, `index.html`, `tests/BotSkills.test.js` (nuevo)

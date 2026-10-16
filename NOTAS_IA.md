@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-16 · Claude · Rangos por ELO con iconos y pantalla de progreso tras el Ranked
-**Commit:** rama `rangos-elo`
+**Commit:** fusionado en `main` el 2026-10-16 con la aprobación de Ale (merge `506ace1`). Para deshacerlo: `git revert -m 1 506ace1`.
 **Archivos:** `src/config/ranks.js` y `src/ui/RankIcon.js` (nuevos), `src/ui/OnlineHub.js`, `src/ui/UI.js`, `index.html`, `src/styles.css`, `tests/Ranks.test.js` (nuevo)
 **Qué y por qué:** Ale pidió rangos según el ELO, con un icono al lado del nombre de los jugadores en las salas y en los partidos, y una pantalla con una barra animada de progreso entre rangos tras cada partido Ranked. Rangos: Amateur (desde el inicio, 500), Profesional 550, Experto 600, Campeón 750 y Leyenda 800.
 **Cómo:**

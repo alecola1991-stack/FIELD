@@ -1,6 +1,7 @@
 import { ONLINE_RULES, ONLINE_MODES, ONLINE_SIZES, normalizeUsername, validUsername, assignedMatch, opponentId, roomSize, isTeamRoom, matchSeats, matchPlayers, onLeftTeam, wonMatch, roundName } from '../game/OnlineRules.js';
 import { getTeamById, getKitBackground } from '../config/teams.js';
 import { teamAbbreviation } from './TeamSelection.js';
+import { rankBadge } from './RankIcon.js';
 
 const element = (tag, text, className = '') => { const node = document.createElement(tag); node.textContent = text; node.className = className; return node; };
 const FORMATS_KEY = 'field-online-formats';
@@ -149,6 +150,11 @@ export class OnlineHub {
       const game = this.ui.game, playing = this.ui.currentMatchMode === 'online' && game?.state.running && !game.state.matchOver && this.ui.result_overlay.classList.contains('hidden');
       if (playing) {
         game.stop(); await this.ui.onlineMatch.leave(false); this.ui.currentMatchMode = null; this.ui.hideConnectionStatus(); this.ui.show('online');
+        if (this.lobby.kind === 'ranked' && current.state === 'finished' && Number.isFinite(current.eloDelta) && this.rankShownFor !== current.id) {
+          this.rankShownFor = current.id;
+          const mine = onLeftTeam(current, this.identity.id) ? current.eloDelta : -current.eloDelta;
+          this.ui.showRankProgress?.(Number(this.identity.elo) - mine, Number(this.identity.elo));
+        }
         this.message(current.state === 'disputed' ? 'El partido no se ha podido confirmar.' : wonMatch(current, this.identity?.id) ? 'El partido ha terminado: el rival ha abandonado o se ha desconectado. ¡Victoria!' : 'El partido ha terminado por abandono o desconexión.', current.state !== 'finished' || !wonMatch(current, this.identity?.id));
       } else if (!this.ui.currentMatchMode && this.ui.onlineMatch?.assignment?.matchId === current.id) await this.ui.onlineMatch.leave(false);
     }
@@ -199,6 +205,12 @@ export class OnlineHub {
     this.ui.result_finish.disabled = match.state === 'playing';
     if (match.state === 'finished') {
       const won = wonMatch(match, this.identity.id);
+      // Ranked: animate the rank bar once per match (old ELO = new ELO minus our side's change).
+      if (this.lobby.kind === 'ranked' && Number.isFinite(match.eloDelta) && this.rankShownFor !== match.id) {
+        this.rankShownFor = match.id;
+        const mine = onLeftTeam(match, this.identity.id) ? match.eloDelta : -match.eloDelta, after = Number(this.identity.elo);
+        setTimeout(() => this.ui.showRankProgress?.(after - mine, after), 700);
+      }
       this.ui.result_online_status.textContent = this.lobby.kind === 'ranked' ? `Resultado confirmado · ${this.identity.elo} ELO · ${won ? 'Victoria' : 'Derrota'}` : 'Resultado confirmado. Sin cambios de ELO.';
     } else if (match.state === 'disputed') this.ui.result_online_status.textContent = 'Los resultados no coinciden. El partido no puntúa.';
     this.updateRematch();
@@ -242,8 +254,11 @@ export class OnlineHub {
     document.getElementById('online-login-needed').classList.toggle('hidden', signedIn);
     document.getElementById('online-username-needed').classList.toggle('hidden', !signedIn || registered);
     document.getElementById('online-content').classList.toggle('hidden', !signedIn || !registered);
-    document.getElementById('online-identity').textContent = registered ? `@${this.identity.username} · ${this.identity.elo} ELO` : signedIn ? 'Elige tu nombre de usuario' : 'Inicia sesión para jugar online';
-    const account = document.getElementById('account-username'); if (account) account.textContent = registered ? `@${this.identity.username} · ${this.identity.elo} ELO` : 'Nombre de usuario pendiente';
+    const identityNode = document.getElementById('online-identity');
+    identityNode.textContent = registered ? `@${this.identity.username} · ${this.identity.elo} ELO` : signedIn ? 'Elige tu nombre de usuario' : 'Inicia sesión para jugar online';
+    if (registered) identityNode.prepend(rankBadge(this.identity.elo, { size: 26, withName: true }));
+    const account = document.getElementById('account-username');
+    if (account) { account.textContent = registered ? `@${this.identity.username} · ${this.identity.elo} ELO` : 'Nombre de usuario pendiente'; if (registered) account.prepend(rankBadge(this.identity.elo, { size: 22 })); }
     const pending = this.invites.filter(item => item.incoming && item.state === 'pending').length + this.friends.filter(item => item.incoming && !item.accepted).length;
     document.getElementById('online-friends-count').textContent = pending ? ` (${pending})` : '';
     this.screen.querySelectorAll('[data-online-tab]').forEach(button => { const active = button.dataset.onlineTab === this.mode; button.classList.toggle('active', active); button.setAttribute('aria-selected', String(active)); });
@@ -280,7 +295,8 @@ export class OnlineHub {
     const list = document.getElementById('online-friends-list'); list.replaceChildren();
     for (const friend of this.friends) {
       const row = element('div', '', 'social-row'); const text = element('div', '', 'social-person');
-      text.append(element('b', `@${friend.username}`), element('small', friend.accepted ? `${friend.elo} ELO` : friend.incoming ? 'Te ha enviado una solicitud de amistad' : 'Solicitud de amistad enviada'));
+      const friendName = element('b', `@${friend.username}`); friendName.prepend(rankBadge(friend.elo));
+      text.append(friendName, element('small', friend.accepted ? `${friend.elo} ELO` : friend.incoming ? 'Te ha enviado una solicitud de amistad' : 'Solicitud de amistad enviada'));
       const actions = element('div', '', 'social-actions');
       if (friend.accepted) actions.append(this.button('Invitar a jugar', 'invite', { userId: friend.id }), this.button('Eliminar', 'friend_remove', { userId: friend.id }));
       else if (friend.incoming) actions.append(this.button('Aceptar', 'friend_accept', { userId: friend.id }), this.button('Declinar', 'friend_decline', { userId: friend.id }));
@@ -365,7 +381,7 @@ export class OnlineHub {
         const line = element('div', '', 'room-match-line');
         line.classList.toggle('winner', match.state === 'finished' && match.winner === captain);
         line.classList.toggle('you', ids.includes(me));
-        line.append(element('span', names(ids)), element('b', match.state === 'finished' ? String(score ?? '') : ''));
+        line.append(this.playerNames(room, ids), element('b', match.state === 'finished' ? String(score ?? '') : ''));
         card.append(line);
       }
       card.append(element('em', match.state === 'finished' ? (room.kind === 'ranked' && match.eloDelta ? `±${Math.abs(match.eloDelta)} ELO` : 'Final') : match.state === 'disputed' ? 'Resultado discrepante' : match.reported1 || match.reported2 ? 'Confirmando resultado…' : 'En juego'));
@@ -404,12 +420,23 @@ export class OnlineHub {
     }
     return nodes;
   }
+  // "@a y @b" with each player's rank badge.
+  playerNames(room, ids) {
+    const node = element('span', '', 'room-names');
+    ids.forEach((id, index) => {
+      const player = room.players.find(item => item.id === id);
+      if (index) node.append(' y ');
+      const name = element('span', `@${player?.username || 'jugador'}`, 'room-name'); if (player) name.prepend(rankBadge(player.elo, { size: 15 }));
+      node.append(name);
+    });
+    return node;
+  }
   seatCard(player) {
     const profile = player.profile || {}, team = getTeamById(profile.teamId), mine = player.id === this.identity?.id;
     const card = element('div', '', 'room-seat'); card.classList.toggle('you', mine); card.classList.toggle('left', player.active === false);
     const crest = element('span', team ? teamAbbreviation(team.name) : '?', 'room-crest'); crest.style.background = team ? getKitBackground(team) : '#1b2b48';
     const info = element('div', '', 'room-seat-info');
-    const name = element('b', `@${player.username}`); if (mine) name.append(element('i', 'TÚ', 'room-you'));
+    const name = element('b', `@${player.username}`); name.prepend(rankBadge(player.elo)); if (mine) name.append(element('i', 'TÚ', 'room-you'));
     info.append(name, element('small', `${player.elo} ELO · NIVEL ${profile.level || 1}`), element('small', player.active === false ? 'Ha salido de la sala' : team?.name || 'Equipo sin elegir'));
     card.append(crest, info); return card;
   }

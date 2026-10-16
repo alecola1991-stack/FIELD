@@ -1,4 +1,6 @@
 import { readAuthRedirectError, cleanAuthUrl } from '../account/AuthErrors.js';
+import { rankBadge, rankIconSvg } from './RankIcon.js';
+import { rankJourney, rankProgress } from '../config/ranks.js';
 import { selectionFor, cycleTeamSelection, teamAbbreviation } from './TeamSelection.js';
 import { GamepadController } from '../game/GamepadController.js';
 import { OnlineHub } from './OnlineHub.js';
@@ -46,7 +48,7 @@ export class UI {
     const ids = [
       'player-name','player-number','preview-name','preview-number','preview-ball','preview-team','saved-note','save-player',
       'difficulty','play-difficulty','settings-difficulty','sound-enabled','volume','volume-value','score','timer','hud-player-name','hud-opponent-name','player-dot','opponent-dot',
-      'goal-banner','countdown-banner','pause-overlay','result-overlay','result-eyebrow','result-title','result-copy','result-xp','result-level','result-xp-fill',
+      'goal-banner','countdown-banner','pause-overlay','result-overlay','rank-overlay','result-eyebrow','result-title','result-copy','result-xp','result-level','result-xp-fill',
       'result-next','result-finish','result-rematch-status','result-scoreboard','result-home-crest','result-home-team','result-home-player','result-home-goals','result-away-crest','result-away-team','result-away-player','result-away-goals','result-score','result-duration','result-timeline','tournament-bracket-panel','tournament-bracket-title','tournament-bracket','result-rematch','result-online-status','result-stats','result-stat-duration','result-stat-goals','result-stat-shots','result-trophy','result-season-summary','league-standings-panel','league-standings-title','league-standings-body','connection-banner','replay-banner','replay-status','replay-skip','leaderboard-message','leaderboard-list','leaderboard-refresh','training-tools','trajectory-toggle','mode-label','game-canvas','level-value','xp-label','wins-label','xp-fill','missions-list',
       'team-position','league-competition','league-competition-summary','country-tabs','countries-prev','countries-next','country-position','league-tabs','team-grid','teams-prev','teams-next','chosen-team-label','tournament-roster',
       'competition-trophy','competition-eyebrow','competition-title','competition-description','competition-dots','competition-select','competition-prev','competition-next',
@@ -339,6 +341,8 @@ export class UI {
     document.getElementById('quit-button').addEventListener('click', () => this.saveAndQuit());
     this.result_next.addEventListener('click', () => this.advanceCompetition());
     this.result_finish.addEventListener('click', () => this.finishToMenu());
+    document.getElementById('rank-continue').addEventListener('click', () => this.hideRankProgress());
+    this.rank_overlay.addEventListener('keydown', event => { if (event.key === 'Escape') this.hideRankProgress(); });
     document.getElementById('reset-ball').addEventListener('click', () => this.game.resetBall());
     document.getElementById('reset-player').addEventListener('click', () => this.game.resetPlayer());
     this.trajectory_toggle.addEventListener('change', () => {
@@ -1239,7 +1243,7 @@ export class UI {
     if (!this.profileComplete()) { this.pendingMode = mode; this.openProfile(); return; }
     if (!preserveCompetition) { this.tournament = null; this.league = null; }
     options = { ...options, modifiers: mode === 'online' ? DEFAULT_MODIFIERS : normalizeModifiers(snapshot?.modifiers || options.modifiers || this.settings.modifiers) };
-    this.currentMatchMode = mode; this.currentMatchOptions = options; this.result_finish.disabled = false;
+    this.currentMatchMode = mode; this.currentMatchOptions = options; this.result_finish.disabled = false; this.hideRankProgress();
     document.querySelector('.game-header').classList.toggle('online-game-header', mode === 'online');
     this.countdown_banner.classList.add('hidden'); this.goal_banner.classList.add('hidden');
     this.pause_overlay.classList.add('hidden'); this.result_overlay.classList.add('hidden');
@@ -1247,6 +1251,7 @@ export class UI {
     this.show('game'); this.game.start(mode, mode === 'legends' ? 'legend' : snapshot?.difficulty || options.difficulty || this.settings.difficulty, options);
     if (snapshot) this.game.restoreSnapshot(snapshot);
     this.trajectory_toggle.checked = this.game.trajectory; this.trajectory_enabled.checked = this.game.trajectory;
+    this.hud_player_name.classList.remove('ranked-stack'); this.hud_opponent_name.classList.remove('ranked-stack');
     this.hud_player_name.textContent = this.settings.name.toUpperCase(); this.player_dot.style.background = getTeamById(this.settings.teamId)?.primary || '#68746e';
     this.opponent_dot.style.background = options.opponentTeam?.primary || '#f19676';
     this.hud_opponent_name.textContent = mode === 'training' ? 'PRÁCTICA' : (options.opponentName || 'BOT');
@@ -1408,14 +1413,80 @@ export class UI {
       modifiers: DEFAULT_MODIFIERS, localSide: info.localSide, opponentName: other.name || 'RIVAL', opponentNumber: other.number, opponentLevel: other.level || 1,
       opponentTeam: team, opponentUsername: other.username, opponentElo: other.elo, roomCode: info.roomCode, label, ...teamExtras,
     });
-    this.hud_player_name.textContent = `@${teamExtras.playerUsername || this.hub?.identity?.username || this.settings.name}`;
-    this.hud_opponent_name.textContent = `@${teamExtras.opponentUsername || other.username || other.name || 'rival'}`;
+    // Names with rank badges: both teammates in 2v2.
+    const people = seats => seats.map(seat => ({ name: squad.seats[seat]?.username || squad.seats[seat]?.name || 'jugador', elo: squad.seats[seat]?.elo }));
+    const mine = squad ? people(squad.localSeat < 2 ? [0, 1] : [2, 3]) : [{ name: this.hub?.identity?.username || this.settings.name, elo: this.hub?.identity?.elo }];
+    const rivals = squad ? people(squad.localSeat < 2 ? [2, 3] : [0, 1]) : [{ name: other.username || other.name || 'rival', elo: other.elo }];
+    this.setRankedNames(this.hud_player_name, mine, ''); this.setRankedNames(this.hud_opponent_name, rivals, '');
+    this.currentMatchOptions.rankedNames = { player: mine, opponent: rivals };
     if (teamExtras.playerTeam) this.player_dot.style.background = teamExtras.playerTeam.primary;
     // Reconnected or reloaded host: continue from the last known score and time.
     const resume = info.resume || (info.role === 'host' && this.lastOnlineResume?.matchId === this.onlineMatch?.assignment?.matchId ? this.lastOnlineResume : null);
     if (info.role === 'host' && resume && this.game.applyResume(resume)) this.hub?.message('Partido reanudado.');
     this.lastOnlineResume = null;
   }
+
+  // "@a + @b" with rank badges (HUD, final scoreboard).
+  setRankedNames(node, people, separator = ' + ') {
+    node.replaceChildren(); node.classList.toggle('ranked-stack', !separator && people.length > 1);
+    people.forEach((person, index) => {
+      if (index && separator) node.append(separator);
+      const name = document.createElement('span'); name.className = 'ranked-name';
+      name.append(rankBadge(person.elo, { size: 16 }), `@${person.name}`);
+      node.append(name);
+    });
+  }
+
+  // Ranked result: animated bar from the old ELO to the new one, tier by tier.
+  showRankProgress(before, after) {
+    const overlay = this.rank_overlay; if (!overlay) return;
+    clearTimeout(this.rankTimer); this.rankAnimation = (this.rankAnimation || 0) + 1;
+    const run = this.rankAnimation, delta = after - before, start = rankProgress(before), end = rankProgress(after);
+    const big = document.getElementById('rank-current-icon'), fill = document.getElementById('rank-bar-fill');
+    const title = document.getElementById('rank-title'), message = document.getElementById('rank-message'), eloNode = document.getElementById('rank-elo');
+    const deltaNode = document.getElementById('rank-delta');
+    deltaNode.textContent = `${delta >= 0 ? '+' : '−'}${Math.abs(delta)} ELO`; deltaNode.dataset.sign = delta > 0 ? 'up' : delta < 0 ? 'down' : 'same';
+    message.textContent = ''; overlay.classList.remove('hidden'); document.getElementById('rank-continue').focus({ preventScroll: true });
+    const paint = progress => {
+      big.innerHTML = rankIconSvg(progress.rank, 104); big.dataset.rank = progress.rank.id;
+      title.textContent = progress.rank.name; overlay.dataset.rank = progress.rank.id;
+      document.getElementById('rank-bar-from').innerHTML = rankIconSvg(progress.rank, 30);
+      document.getElementById('rank-bar-to').innerHTML = progress.next ? rankIconSvg(progress.next, 30) : '';
+      document.getElementById('rank-bar-min').textContent = progress.from;
+      document.getElementById('rank-bar-max').textContent = progress.next ? `${progress.next.name} · ${progress.to}` : 'Rango máximo';
+    };
+    const finish = () => {
+      if (run !== this.rankAnimation) return;
+      eloNode.textContent = `${after} ELO`; fill.style.transition = 'none'; fill.style.width = `${end.ratio * 100}%`; paint(end);
+      const changed = start.rank.id !== end.rank.id, up = after > before;
+      message.textContent = changed ? (up ? `¡Has ascendido a ${end.rank.name}!` : `Has bajado a ${end.rank.name}. ¡A por la revancha!`)
+        : end.next ? `Te faltan ${end.to - after} ELO para ${end.next.name}.` : 'Estás en el rango más alto. ¡Defiéndelo!';
+      overlay.dataset.result = changed ? (up ? 'up' : 'down') : 'same';
+    };
+    paint(start); eloNode.textContent = `${before} ELO`; overlay.dataset.result = '';
+    fill.style.transition = 'none'; fill.style.width = `${start.ratio * 100}%`;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { finish(); return; }
+    // ELO counter.
+    const counterStart = performance.now(), segments = rankJourney(before, after), total = Math.max(1, segments.length) * 1100 + 300;
+    const count = now => { if (run !== this.rankAnimation) return; const t = Math.min(1, (now - counterStart) / total); eloNode.textContent = `${Math.round(before + (after - before) * t)} ELO`; if (t < 1) requestAnimationFrame(count); };
+    requestAnimationFrame(count);
+    const step = (index, entered = null) => {
+      if (run !== this.rankAnimation) return;
+      const segment = segments[index]; if (!segment) { finish(); return; }
+      const progress = rankProgress(segment.rank.min === 0 ? segment.rank.floor : segment.rank.min);
+      paint(progress);
+      // Just changed tier: the new badge pops in (or drops) as the bar restarts.
+      if (entered) {
+        big.classList.remove('rank-pop', 'rank-drop'); void big.offsetWidth; big.classList.add(entered === 'up' ? 'rank-pop' : 'rank-drop');
+        if (entered === 'up') this.sound?.play('goal');
+      }
+      fill.style.transition = 'none'; fill.style.width = `${segment.from * 100}%`; void fill.offsetWidth;
+      fill.style.transition = 'width .9s cubic-bezier(.25,.8,.3,1)'; fill.style.width = `${segment.to * 100}%`;
+      this.rankTimer = setTimeout(() => step(index + 1, segment.change), segment.change ? 1150 : 950);
+    };
+    this.rankTimer = setTimeout(() => step(0), 350);
+  }
+  hideRankProgress() { this.rankAnimation = (this.rankAnimation || 0) + 1; clearTimeout(this.rankTimer); this.rank_overlay?.classList.add('hidden'); }
 
   handleOnlinePeerLeft() {
     const matchId = this.onlineMatch?.assignment?.matchId;
@@ -1504,7 +1575,7 @@ export class UI {
       rows.forEach((row, index) => {
         const item = document.createElement('li'); item.className = 'leaderboard-row';
         const place = document.createElement('b'); place.className = 'leaderboard-place'; place.textContent = String(index + 1).padStart(2, '0');
-        const name = document.createElement('span'); name.className = 'leaderboard-name'; name.textContent = '@' + row.username;
+        const name = document.createElement('span'); name.className = 'leaderboard-name'; name.textContent = '@' + row.username; name.prepend(rankBadge(row.elo, { size: 20 }));
         const record = document.createElement('small'); record.textContent = `${row.elo} ELO · ${row.ranked_wins}V · ${row.ranked_played}P`;
         item.append(place, name, record); this.leaderboard_list.append(item);
       });
@@ -1722,6 +1793,8 @@ export class UI {
     for (const [key, side] of Object.entries(sides)) {
       this.paintPlayerPreview(this[`result_${key}_crest`], side.team, { name: side.body?.name || '', number: side.body?.number ?? '' });
       this[`result_${key}_team`].textContent = side.title; this[`result_${key}_player`].textContent = side.subtitle;
+      const ranked = online && options.rankedNames?.[key === 'home' ? 'player' : 'opponent'];
+      if (ranked) this.setRankedNames(this[`result_${key}_player`], ranked);
       const list = this[`result_${key}_goals`], goals = (stats.goals || []).filter(goal => goal.side === side.goals);
       list.replaceChildren(...goals.map(goal => { const item = document.createElement('li'); item.textContent = `${goal.minute}'`; return item; }));
       if (!goals.length) { const empty = document.createElement('li'); empty.className = 'empty'; empty.textContent = 'Sin goles'; list.append(empty); }

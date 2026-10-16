@@ -3,6 +3,9 @@ const ROOM_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const HELLO_INTERVAL_MS = 500;
 const RECONNECT_GRACE_MS = 15000;
 const MATCHMAKING_TOPIC = 'field-matchmaking-v3';
+// 2v2: the host starts once the three guests have said hello, or after this
+// wait with whoever is connected (an absent seat just stands still).
+const SQUAD_START_WAIT_MS = 12000;
 
 export class OnlineMatch {
   constructor(client) {
@@ -107,8 +110,62 @@ export class OnlineMatch {
     this.connect(message.code, 'guest', profile).catch(error => this.handlers.onStatus?.('error', error?.message));
   }
 
-  async connectAssigned(match, profile, opponent) {
+  async connectAssigned(match, profile, opponent, squad = null) {
+    if (squad) return this.connect(match.id, squad.localSeat === 0 ? 'host' : 'guest', profile, { matchId: match.id, opponent, squad });
     return this.connect(match.id, match.p1 === profile.userId ? 'host' : 'guest', profile, { matchId: match.id, opponent });
+  }
+
+  // ---- 2v2 (four peers, seat 0 hosts) ----------------------------------------
+  squadSeatOf(userId) { return this.assignment?.squad?.seats.findIndex(seat => seat.userId === userId) ?? -1; }
+  handleSquadSignal(message) {
+    const squad = this.assignment.squad, seat = Number(message.seat);
+    if (message.kind === 'leave') {
+      if ([...this.squadPeers.values()].includes(message.clientId) || message.clientId === this.opponent?.clientId) { this.handlers.onStatus?.('peer-left'); this.handlers.onPeerLeft?.(); }
+      return;
+    }
+    if (message.kind === 'replay-skip') {
+      if (this.role === 'host' && this.matched && this.squadPeers.get(seat) === message.clientId && message.matchId === this.matchId) this.handlers.onReplaySkip?.(seat);
+      return;
+    }
+    if (message.kind === 'hello') {
+      const peer = message.profile;
+      if (message.version !== 3 || !Number.isInteger(seat) || seat < 0 || seat > 3 || this.squadSeatOf(peer?.userId) !== seat) return;
+      this.squadPeers.set(seat, message.clientId);
+      if (this.role === 'host' && seat > 0) {
+        if (this.matched) { this.sendStart(); return; }
+        if ([1, 2, 3].every(index => this.squadPeers.has(index))) this.startSquad();
+      } else if (this.role === 'guest' && seat === 0) {
+        this.opponent = { ...safeProfile(squad.seats[0]), clientId: message.clientId };
+        this.markPeerReconnected();
+        if (!this.matched) this.handlers.onStatus?.('waiting');
+      }
+      return;
+    }
+    // The start may arrive before the host's hello: identify the host by its profile.
+    if (message.kind === 'start' && this.role === 'guest' && message.matchId === this.assignment.matchId && message.host?.userId === squad.seats[0].userId) {
+      this.squadPeers.set(0, message.clientId);
+      if (this.matched) { this.markPeerReconnected(); return; }
+      this.matched = true; this.matchId = message.matchId;
+      this.opponent = { ...safeProfile(squad.seats[0]), clientId: message.clientId };
+      clearInterval(this.helloTimer); this.helloTimer = 0;
+      this.handlers.onMatchStart?.({ role: 'guest', localSide: squad.localSeat < 2 ? 'left' : 'right', modifiers: normalizeModifiers({}), opponent: this.squadRival(), roomCode: this.code, squad });
+    }
+  }
+  startSquad() {
+    if (this.role !== 'host' || this.matched) return;
+    clearTimeout(this.squadStartTimer); this.squadStartTimer = 0;
+    const squad = this.assignment.squad;
+    this.matched = true; this.matchId = this.assignment.matchId;
+    clearInterval(this.helloTimer); this.helloTimer = 0;
+    this.sendStart();
+    this.handlers.onMatchStart?.({ role: 'host', localSide: 'left', modifiers: normalizeModifiers({}), opponent: this.squadRival(), roomCode: this.code, squad });
+  }
+  squadRival() { const squad = this.assignment.squad; return { ...safeProfile(squad.seats[squad.localSeat < 2 ? 2 : 0]) }; }
+  getSeatInput(seat) {
+    const input = this.seatInputs.get(seat);
+    if (!input || Date.now() - input.receivedAt > 350) return { x: 0, y: 0, kick: false };
+    const result = { x: input.x, y: input.y, kick: input.kick }; input.kick = false;
+    return result;
   }
 
   async connect(code, role, profile, assignment = null) {
@@ -118,6 +175,8 @@ export class OnlineMatch {
     this.matched = false; this.closedByUser = false; this.matchId = null;
     this.localRematchVote = false; this.remoteRematchVote = false; this.rematchStarting = false;
     this.peerDisconnectedAt = 0; clearInterval(this.disconnectTimer); this.disconnectTimer = 0;
+    this.squadPeers = new Map(); this.seatInputs = new Map(); this.seatSequences = new Map();
+    clearTimeout(this.squadStartTimer); this.squadStartTimer = 0;
     this.latestInput = { x: 0, y: 0, kick: false, receivedAt: 0 };
     this.inputSequence = 0; this.lastInputSequence = 0;
     this.snapshotSequence = 0; this.lastSnapshotSequence = 0;
@@ -139,6 +198,7 @@ export class OnlineMatch {
         channel.track({ clientId: this.clientId, role: this.role }).catch(() => {});
         this.announce();
         this.helloTimer = window.setInterval(() => this.announce(), HELLO_INTERVAL_MS);
+        if (this.assignment?.squad && this.role === 'host' && !this.squadStartTimer) this.squadStartTimer = setTimeout(() => { if (this.squadPeers.size) this.startSquad(); }, SQUAD_START_WAIT_MS);
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
         if (this.matched) this.markPeerDisconnected();
         else this.handlers.onStatus?.('error', 'No se pudo conectar con Supabase Realtime. Revisa la conexión e inténtalo de nuevo.');
@@ -151,11 +211,12 @@ export class OnlineMatch {
   }
 
   announce() {
-    this.send('signal', { kind: 'hello', version: this.assignment ? 3 : 2, clientId: this.clientId, role: this.role, profile: this.profile });
+    this.send('signal', { kind: 'hello', version: this.assignment ? 3 : 2, clientId: this.clientId, role: this.role, profile: this.profile, ...(this.assignment?.squad ? { seat: this.assignment.squad.localSeat } : {}) });
   }
 
   handleSignal(message) {
     if (!message || message.clientId === this.clientId) return;
+    if (this.assignment?.squad) { this.handleSquadSignal(message); return; }
     if (this.assignment && String(message.kind || '').startsWith('rematch')) return;
     // Goal replay: the guest tells the host it skipped; the host ends the replay once both have.
     if (message.kind === 'replay-skip') {
@@ -221,6 +282,15 @@ export class OnlineMatch {
   }
 
   handleInput(message) {
+    if (this.assignment?.squad) {
+      const seat = Number(message?.seat);
+      if (this.role !== 'host' || !this.matched || this.squadPeers.get(seat) !== message?.clientId || message.matchId !== this.matchId) return;
+      if (Number.isInteger(message.sequence) && message.sequence <= (this.seatSequences.get(seat) || 0)) return;
+      if (Number.isInteger(message.sequence)) this.seatSequences.set(seat, message.sequence);
+      const previous = this.seatInputs.get(seat);
+      this.seatInputs.set(seat, { x: clampAxis(message.x), y: clampAxis(message.y), kick: (previous?.kick || false) || message.kick === true, receivedAt: Date.now() });
+      return;
+    }
     if (this.role !== 'host' || !this.matched || message?.clientId !== this.opponent?.clientId) return;
     if ((this.assignment || message.matchId) && message.matchId !== this.matchId) return;
     if (Number.isInteger(message.sequence) && message.sequence <= this.lastInputSequence) return;
@@ -241,6 +311,7 @@ export class OnlineMatch {
   }
 
   handlePresenceLeave(event) {
+    if (this.assignment?.squad && this.role === 'host') return; // a guest seat just stands still
     const left = event?.leftPresences || [];
     if (left.some(presence => presence?.clientId === this.opponent?.clientId)) {
       this.markPeerDisconnected();
@@ -312,12 +383,12 @@ export class OnlineMatch {
 
   sendInput(input) {
     if (this.role !== 'guest' || !this.matched) return;
-    this.send('input', { clientId: this.clientId, matchId: this.matchId, sequence: ++this.inputSequence, x: clampAxis(input.x), y: clampAxis(input.y), kick: input.kick === true });
+    this.send('input', { clientId: this.clientId, matchId: this.matchId, sequence: ++this.inputSequence, x: clampAxis(input.x), y: clampAxis(input.y), kick: input.kick === true, ...(this.assignment?.squad ? { seat: this.assignment.squad.localSeat } : {}) });
   }
 
   sendReplaySkip() {
     if (this.role !== 'guest' || !this.matched) return;
-    this.send('signal', { kind: 'replay-skip', clientId: this.clientId, matchId: this.matchId });
+    this.send('signal', { kind: 'replay-skip', clientId: this.clientId, matchId: this.matchId, ...(this.assignment?.squad ? { seat: this.assignment.squad.localSeat } : {}) });
   }
 
   sendSnapshot(snapshot) {
@@ -334,6 +405,7 @@ export class OnlineMatch {
     this.closedByUser = true;
     clearInterval(this.helloTimer); this.helloTimer = 0;
     clearInterval(this.disconnectTimer); this.disconnectTimer = 0; this.peerDisconnectedAt = 0;
+    clearTimeout(this.squadStartTimer); this.squadStartTimer = 0;
     const channel = this.channel;
     this.channel = null;
     if (notifyPeer && channel && this.matched) channel.send({ type: 'broadcast', event: 'signal', payload: { kind: 'leave', clientId: this.clientId } }).catch(() => {});

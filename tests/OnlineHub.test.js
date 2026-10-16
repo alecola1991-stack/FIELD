@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { OnlineHub } from '../src/ui/OnlineHub.js';
-import { assignedMatch, normalizeUsername, validUsername } from '../src/game/OnlineRules.js';
+import { assignedMatch, normalizeUsername, validUsername, matchSeats, opponentId, wonMatch, roundName } from '../src/game/OnlineRules.js';
 const user = 'one';
 function fixture() {
   const hub = Object.create(OnlineHub.prototype);
@@ -100,4 +100,32 @@ test('accepting a rematch connects to the new room straight from the result scre
   // Without a rematch request, a new assignment still waits for the online screen.
   const idle = rematchFixture(finishedRoom()); let idleConnected = false; idle.connect = async () => { idleConnected = true; };
   await idle.consume({ identity: idle.identity, lobby: next }); assert.equal(idleConnected, false);
+});
+
+test('2v2: teammates share the match, results count by team and seats follow host order', async () => {
+  const match = { id: 'duo', p1: 'one', p2: 'two', p3: 'three', p4: 'four', state: 'playing' };
+  const room = { id: 'r', kind: 'ranked', size: 4, state: 'playing', players: ['one', 'two', 'three', 'four'].map((id, index) => ({ id, username: id, elo: 500, slot: index + 1, profile: { teamId: 'laliga-celta', name: id.toUpperCase(), number: index + 1 } })), matches: [match] };
+  assert.equal(assignedMatch(room, 'three').id, 'duo'); assert.equal(assignedMatch(room, 'four').id, 'duo');
+  assert.deepEqual(matchSeats(match), ['one', 'three', 'two', 'four']);
+  assert.equal(opponentId(match, 'three'), 'two'); assert.equal(opponentId(match, 'four'), 'one');
+  const finished = { ...match, state: 'finished', winner: 'one' };
+  assert.equal(wonMatch(finished, 'three'), true); assert.equal(wonMatch(finished, 'four'), false);
+  const hub = fixture(); hub.identity = { id: 'three', username: 'three', elo: 500 }; hub.lobby = room;
+  let call = null; hub.ui.onlineMatch = { connectAssigned: async (...args) => { call = args; } };
+  hub.ui.onlinePlayer = () => ({ userId: 'three', name: 'ME', number: 8 });
+  await hub.connect(match);
+  const squad = call[3];
+  assert.equal(squad.localSeat, 1); assert.deepEqual(squad.seats.map(seat => seat.userId), ['one', 'three', 'two', 'four']);
+  assert.equal(squad.seats[1].name, 'ME', 'the local seat uses the current profile');
+});
+
+test('tournament rounds are named by size and the 2v2 rematch needs every vote', () => {
+  assert.equal(roundName(4, 1), 'SEMIFINAL'); assert.equal(roundName(4, 2), 'FINAL');
+  assert.equal(roundName(6, 1), 'CUARTOS'); assert.equal(roundName(8, 2), 'SEMIFINAL'); assert.equal(roundName(8, 3), 'FINAL');
+  const players = ['one', 'two', 'three', 'four'].map(id => ({ id, username: id, active: true }));
+  const hub = rematchFixture(finishedRoom(['two', 'three'], { size: 4, players }));
+  hub.updateRematch();
+  assert.match(hub.ui.result_rematch.innerHTML, /Aceptar revancha \(2\/4\)/);
+  hub.lobby.rematch.votes.push(user); hub.updateRematch();
+  assert.match(hub.ui.result_rematch.innerHTML, /Esperando a los demás… \(3\/4\)/); assert.equal(hub.ui.result_rematch.disabled, true);
 });

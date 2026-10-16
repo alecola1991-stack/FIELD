@@ -4,6 +4,53 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-16 · Claude · 2v2 online (rápido y Ranked) y torneos de 4, 6 u 8
+**Commit:** rama `online-2v2-torneos`
+**Archivos:** `supabase/online-teams.sql` y `supabase/online-teams-test.sql` (nuevos), `src/game/Game.js`, `src/game/Renderer.js`, `src/game/OnlineMatch.js`, `src/game/OnlineRules.js`, `src/ui/OnlineHub.js`, `src/ui/UI.js`, `src/main.js`, `index.html`, `src/styles.css`, `README.md`, `tests/Squad.test.js` (nuevo), `tests/OnlineMatch.test.js`, `tests/OnlineHub.test.js`
+**Qué y por qué:** Ale pidió un modo 2v2 online y torneos de 4, 6 u 8 jugadores. Decidió: 2v2 en partido rápido y en Ranked; en la búsqueda pública los equipos se sortean y en la sala privada cada uno elige equipo.
+**Cómo:**
+- **SQL (`online-teams.sql`, se ejecuta DESPUÉS de `online-rematch.sql`):**
+  - Columnas nuevas: `lobbies.size` (quick/ranked: 2 o 4; torneo: 4, 6 u 8; NULL = tamaño antiguo), `lobbies.seeds` (hojas del cuadro, NULL = bye), `members.team` (1 izquierda, 2 derecha) y `matches.p3`/`p4`.
+  - `members_slot_check` pasa a 1..8. Hay checks nuevos `members_team_check` y `lobbies_size_check`.
+  - Funciones nuevas: `room_size()` y `advance_bracket()`. Esta última crea los partidos de cada ronda, salta los byes y corona al campeón.
+  - `launch_room(uuid, manual boolean default false)` sustituye a `launch_room(uuid)`, que se borra con `drop function`.
+  - Se rehacen `finish_match`, `room_data` (añade `size`, `host`, `team`, `p3`, `p4`), `channel_access` (p1..p4) y `action`.
+  - `action` tiene dos comandos nuevos: `team` (cambiar de equipo en la sala privada 2v2 en espera) y `start` (solo el creador, con 4 jugadores y equipos 2-2). Además, `queue`/`create` aceptan `size`, la cola solo empareja salas del mismo tamaño y la respuesta incluye `version: 2`.
+  - En 2v2, equipo izquierdo = p1+p3 y derecho = p2+p4. p1 es el anfitrión del partido en tiempo real. Cualquier miembro informa por su equipo (`report1` es el equipo izquierdo y `report2` el derecho).
+  - Salir de un partido en juego hace perder a todo el equipo.
+  - Si pasan 90 s sin noticias de todo el equipo rival, o del anfitrión (p1), ese equipo pierde.
+  - ELO 2v2: se usa la media de cada equipo y los cuatro suben o bajan lo mismo.
+  - La revancha necesita el voto de todos y conserva los equipos.
+  - Torneo de 6: dos jugadores sorteados pasan directos a semifinales. Hojas `[bye1, NULL, a, b, bye2, NULL, c, d]`, así que los cuartos son la ronda 1, posiciones 2 y 4.
+  - Rondas: con 4 jugadores, 1 = semis y 2 = final. Con 6 u 8, 1 = cuartos, 2 = semis y 3 = final.
+  - Probado en un Postgres 16 local con un auth de Supabase simulado: pasan `online-test.sql`, `online-rematch-test.sql` y `online-teams-test.sql`, y la migración se puede ejecutar dos veces. Antes comprobé con consultas de solo lectura que las funciones de producción tienen el mismo md5 que las del repo.
+- **Motor (`Game.js`):** modo `squad`, que solo existe en el online 2v2; el 1v1 no cambia.
+  - Asientos en orden del anfitrión: 0 = p1, 1 = p3, 2 = p2, 3 = p4. `player` es tu asiento, `bot` el primer rival y `others` los otros dos.
+  - Métodos nuevos: `setupSquad`, `placeSquadBody`, `updateSquad` (el anfitrión simula los 4 con `hooks.getSeatInput(seat)`, con dos pasadas de colisiones) y `replaySkipCount`.
+  - El snapshot online lleva `seats` (los 4 cuerpos), y `replay.seats` con los asientos que han saltado.
+  - `applyOnlineSnapshot` mapea por asiento. Solo invierte marcador y estadísticas si estás en el lado derecho.
+  - En 2v2 la repetición acaba cuando saltan los cuatro (`setRemoteReplaySkip(seat)`) o a los 3 s.
+  - El render y la repetición incluyen `others`. `Renderer.drawLocalMarker` dibuja un anillo bajo tu jugador cuando hay más de dos.
+  - Cada equipo viste la equipación de su capitán (asiento 0 o 2).
+- **Red (`OnlineMatch.js`):**
+  - `connectAssigned(match, profile, opponent, squad)`.
+  - Los mensajes llevan `seat`, y el anfitrión valida que el clientId corresponde al asiento declarado en el hello.
+  - El anfitrión arranca cuando han saludado los 3 invitados, o a los 12 s con los que estén.
+  - Entradas por asiento con `getSeatInput(seat)`.
+  - Si un invitado se desconecta, su jugador se queda quieto. Si se va cualquiera (`leave`), el partido acaba para todos, porque en la base de datos su equipo ha perdido.
+- **UI:**
+  - Selectores `[data-format-picker]` / `[data-format-group]` (1v1/2v2 en Ranked y Rápido; 4/6/8 en Torneo). Se guardan en `localStorage` con la clave `field-online-formats`.
+  - Los botones con `data-size-from` envían el `size` elegido.
+  - IDs nuevos: `online-ranked-kicker`, `online-ranked-search`, `online-quick-kicker`, `online-tournament-kicker`, `online-tournament-copy` y `online-tournament-search`.
+  - La sala 2v2 se pinta con `renderTeams()`: columnas `.room-team` y botones "Unirme al equipo A/B" y "Empezar partido" (`.room-start`). Los torneos de 6 y 8 usan la rejilla `.grid`, nombres de ronda (`roundName`) y el aviso de byes (`.room-byes`).
+  - En `OnlineRules.js` hay helpers nuevos: `roomSize`, `isTeamRoom`, `matchSeats`, `matchPlayers`, `onLeftTeam`, `wonMatch`, `bracketRounds` y `roundName`. `assignedMatch` y `opponentId` ya contemplan p3/p4.
+  - En `UI.startOnlineMatch`, para 2v2 se rellenan `options.squad`, `playerTeam`, `playerUsername` y `playerElo`, que usan la presentación, el HUD y el marcador final.
+**Para el otro asistente:**
+- **HAY QUE EJECUTAR `supabase/online-teams.sql` en el SQL Editor de Supabase** (después de `online-rematch.sql`, que ya está aplicado). Hasta entonces el cliente no muestra nada nuevo: los selectores solo aparecen si el RPC devuelve `version >= 2`, así que es seguro desplegar el cliente antes.
+- Si tocas `field_private.action`, parte de `online-teams.sql`, que pasa a ser la versión vigente.
+- Las invitaciones directas de amigos siguen siendo solo 1v1: el 2v2 privado se hace con código.
+- No cambies el orden de asientos (p1, p3, p2, p4) ni que p1 sea el anfitrión.
+
 ## 2026-10-15 · Claude · Logo FA como marca e icono de la web
 **Commit:** rama `logo-fa`
 **Archivos:** `src/assets/logo.svg` (nuevo), `public/favicon.svg`, `public/favicon.png`, `public/apple-touch-icon.png` (nuevos), `index.html`, `src/styles.css`, `desktop/create-icon.cjs`

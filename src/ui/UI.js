@@ -79,7 +79,7 @@ export class UI {
       onPeerReconnecting: seconds => this.showConnectionStatus(seconds),
       onPeerReconnected: () => this.hideConnectionStatus(),
       onRematchRequested: () => this.showRematchRequest(),
-      onReplaySkip: () => game.setRemoteReplaySkip(),
+      onReplaySkip: seat => game.setRemoteReplaySkip(seat),
     });
     if (this.user && accountService) this.activateAccount(this.user).catch(error => this.setAccountMessage(error.message, true));
     else this.renderAccount();
@@ -1252,14 +1252,14 @@ export class UI {
 
   renderMatchPresentation(mode, options, animate = true) {
     const profiles = [
-      { team: getTeamById(this.settings.teamId), player: this.game.player, level: this.progression.level },
+      { team: options.playerTeam || getTeamById(this.settings.teamId), player: this.game.player, level: this.progression.level },
       { team: options.opponentTeam, player: this.game.bot, level: options.opponentLevel || 1 },
     ];
     for (const [index, node] of [this.online_player_details, this.online_opponent_details].entries()) {
       node.classList.toggle('hidden', mode !== 'online');
       const profile = profiles[index];
-      const username = index === 0 ? this.hub?.identity?.username : options.opponentUsername;
-      const elo = index === 0 ? this.hub?.identity?.elo : options.opponentElo;
+      const username = index === 0 ? options.playerUsername || this.hub?.identity?.username : options.opponentUsername;
+      const elo = index === 0 ? options.playerElo ?? this.hub?.identity?.elo : options.opponentElo;
       node.textContent = `${username ? '@' + username + ' · ' + (elo ?? 500) + ' ELO · ' : ''}${profile.team?.name || 'EQUIPO'} · #${profile.player?.number ?? 10} · NIVEL ${profile.level}`;
     }
     this.match_intro.replaceChildren(); this.match_intro.classList.add('hidden');
@@ -1343,8 +1343,8 @@ export class UI {
     this.autoMatchmaking = false; this.show('online');
     this.hub?.open().catch(error => this.hub.message(error.message, true));
   }
-  createOnlineRoom() { return this.hub.action('create', { kind: 'quick' }); }
-  findOnlineMatch() { return this.hub.action('queue', { kind: 'quick' }); }
+  createOnlineRoom() { return this.hub.action('create', { kind: 'quick', size: this.hub.formats.quick }); }
+  findOnlineMatch() { return this.hub.action('queue', { kind: 'quick', size: this.hub.formats.quick }); }
   joinOnlineRoom() { return this.hub.action('join', { kind: 'quick', code: this.online_room_input.value }); }
   onlinePlayer() { return { name: this.settings.name, number: this.settings.number, teamId: this.settings.teamId, modifiers: DEFAULT_MODIFIERS, level: this.progression.level,
     userId: this.user?.id || '', username: this.hub?.identity?.username || '', elo: this.hub?.identity?.elo ?? 500 }; }
@@ -1380,12 +1380,25 @@ export class UI {
     this.online_room_panel.classList.add('hidden');
     this.result_rematch.disabled = false; this.result_rematch.innerHTML = 'Pedir revancha <span>↻</span>';
     this.result_online_status.classList.add('hidden');
+    const kind = this.hub?.lobby?.kind;
+    let label = kind === 'ranked' ? 'ONLINE · RANKED' : kind === 'tournament' ? 'ONLINE · TORNEO' : 'ONLINE · PARTIDO RÁPIDO';
+    // 2v2: each side wears its captain's kit and shows both usernames.
+    const squad = info.squad || null, teamExtras = {};
+    if (squad) {
+      const mine = squad.localSeat < 2 ? [0, 1] : [2, 3], rivals = squad.localSeat < 2 ? [2, 3] : [0, 1];
+      const names = seats => seats.map(seat => squad.seats[seat]?.username || squad.seats[seat]?.name || 'jugador').join(' + @');
+      const elo = seats => Math.round(seats.reduce((sum, seat) => sum + (Number(squad.seats[seat]?.elo) || 500), 0) / 2);
+      Object.assign(teamExtras, { squad, playerTeam: getTeamById(squad.seats[mine[0]]?.teamId) || null, playerUsername: names(mine), playerElo: elo(mine),
+        opponentTeam: getTeamById(squad.seats[rivals[0]]?.teamId) || null, opponentUsername: names(rivals), opponentElo: elo(rivals), opponentName: squad.seats[rivals[0]]?.name || 'RIVAL', opponentNumber: squad.seats[rivals[0]]?.number });
+      label += ' · 2V2';
+    }
     this.start('online', {
       modifiers: DEFAULT_MODIFIERS, localSide: info.localSide, opponentName: other.name || 'RIVAL', opponentNumber: other.number, opponentLevel: other.level || 1,
-      opponentTeam: team, opponentUsername: other.username, opponentElo: other.elo, roomCode: info.roomCode, label: this.hub?.lobby?.kind === 'ranked' ? 'ONLINE · RANKED' : this.hub?.lobby?.kind === 'tournament' ? 'ONLINE · TORNEO' : 'ONLINE · PARTIDO RÁPIDO',
+      opponentTeam: team, opponentUsername: other.username, opponentElo: other.elo, roomCode: info.roomCode, label, ...teamExtras,
     });
-    this.hud_player_name.textContent = `@${this.hub?.identity?.username || this.settings.name}`;
-    this.hud_opponent_name.textContent = `@${other.username || other.name || 'rival'}`;
+    this.hud_player_name.textContent = `@${teamExtras.playerUsername || this.hub?.identity?.username || this.settings.name}`;
+    this.hud_opponent_name.textContent = `@${teamExtras.opponentUsername || other.username || other.name || 'rival'}`;
+    if (teamExtras.playerTeam) this.player_dot.style.background = teamExtras.playerTeam.primary;
   }
 
   handleOnlinePeerLeft() {
@@ -1409,12 +1422,13 @@ export class UI {
     this.replay_skip.disabled = info.localSkip;
     this.replay_skip.innerHTML = info.localSkip ? 'Saltada <span aria-hidden="true">✓</span>' : 'Saltar <span aria-hidden="true">⏭</span>';
     this.replay_status.textContent = !info.online ? skipHint
+      : info.players ? (info.localSkip ? `Esperando a los demás · ${info.skipped}/${info.players} han saltado` : `Los cuatro debéis saltar · ${info.skipped}/${info.players}`)
       : info.localSkip ? (info.remoteSkip ? 'Continuando…' : 'Esperando a que tu rival salte…')
         : info.remoteSkip ? 'Tu rival ya ha saltado · salta para continuar' : 'Los dos debéis saltar para continuar';
   }
 
   showConnectionStatus(seconds) {
-    this.connection_banner.textContent = `Conexión con tu rival perdida. Reconectando… ${seconds}s`;
+    this.connection_banner.textContent = `${this.currentMatchOptions?.squad ? 'Conexión con el anfitrión de la partida perdida' : 'Conexión con tu rival perdida'}. Reconectando… ${seconds}s`;
     this.connection_banner.classList.remove('hidden');
   }
 
@@ -1661,11 +1675,11 @@ export class UI {
   renderScoreboard(result, won) {
     const options = this.currentMatchOptions || {}, online = result.mode === 'online';
     const stats = result.stats || { goals: [] }, total = Math.max(1, Number(result.elapsedSeconds) || 0);
-    const homeTeam = getTeamById(this.settings.teamId), awayTeam = options.opponentTeam || null;
+    const homeTeam = options.playerTeam || getTeamById(this.settings.teamId), awayTeam = options.opponentTeam || null;
     const player = this.game?.player, rival = this.game?.bot;
     const sides = {
-      home: { team: homeTeam, body: player, title: homeTeam?.name || 'Tu equipo', subtitle: `${online && this.hub?.identity ? '@' + this.hub.identity.username : this.settings.name} · #${player?.number ?? this.settings.number}`, goals: 'player' },
-      away: { team: awayTeam, body: rival, title: awayTeam?.name || options.opponentName || 'Rival', subtitle: `${online ? '@' + (options.opponentUsername || options.opponentName || 'rival') : 'IA · ' + ({ easy: 'FÁCIL', normal: 'NORMAL', hard: 'DIFÍCIL', legend: 'LEYENDA' })[this.game?.botAI?.difficulty] || 'IA'} · #${rival?.number ?? 10}`, goals: 'opponent' },
+      home: { team: homeTeam, body: player, title: homeTeam?.name || 'Tu equipo', subtitle: options.squad ? `@${options.playerUsername}` : `${online && this.hub?.identity ? '@' + this.hub.identity.username : this.settings.name} · #${player?.number ?? this.settings.number}`, goals: 'player' },
+      away: { team: awayTeam, body: rival, title: awayTeam?.name || options.opponentName || 'Rival', subtitle: options.squad ? `@${options.opponentUsername}` : `${online ? '@' + (options.opponentUsername || options.opponentName || 'rival') : 'IA · ' + ({ easy: 'FÁCIL', normal: 'NORMAL', hard: 'DIFÍCIL', legend: 'LEYENDA' })[this.game?.botAI?.difficulty] || 'IA'} · #${rival?.number ?? 10}`, goals: 'opponent' },
     };
     for (const [key, side] of Object.entries(sides)) {
       this.paintPlayerPreview(this[`result_${key}_crest`], side.team, { name: side.body?.name || '', number: side.body?.number ?? '' });
@@ -1689,7 +1703,7 @@ export class UI {
   }
 
   matchEyebrow(mode) {
-    const label = { bot: 'PARTIDO RÁPIDO', online: this.hub?.lobby?.kind === 'ranked' ? 'ONLINE · RANKED' : this.hub?.lobby?.kind === 'tournament' ? 'ONLINE · TORNEO' : 'ONLINE · PARTIDO RÁPIDO', legends: 'LEYENDAS' }[mode];
+    const label = { bot: 'PARTIDO RÁPIDO', online: (this.hub?.lobby?.kind === 'ranked' ? 'ONLINE · RANKED' : this.hub?.lobby?.kind === 'tournament' ? 'ONLINE · TORNEO' : 'ONLINE · PARTIDO RÁPIDO') + (this.currentMatchOptions?.squad ? ' · 2V2' : ''), legends: 'LEYENDAS' }[mode];
     return label ? `${label} · FINAL` : 'FINAL DEL PARTIDO';
   }
 

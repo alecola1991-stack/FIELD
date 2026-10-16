@@ -94,6 +94,8 @@ Todos los modos online usan las reglas por defecto, a cinco goles. Los modificad
 
 `supabase/online.sql` añade el esquema privado y el RPC autenticado. Las tablas no están expuestas al cliente. `supabase/online-test.sql` prueba los flujos con cuentas temporales dentro de una transacción que se revierte. No se asignan usuarios a cuentas existentes automáticamente.
 
+Después se ejecutan, en este orden, `supabase/online-rematch.sql` (revancha) y `supabase/online-teams.sql` (2v2 en partido rápido y Ranked, y torneos de 4, 6 u 8 jugadores). Sus pruebas son `supabase/online-rematch-test.sql` y `supabase/online-teams-test.sql`, que también se revierten. El cliente solo muestra las opciones 2v2 y de tamaño de torneo cuando la base de datos ya tiene `online-teams.sql`.
+
 La simulación sigue siendo entre pares con uno de los jugadores como anfitrión; la confirmación de resultados y ELO evita cambios unilaterales, pero no sustituye un servidor de simulación con protección contra trampas. Una pérdida de presencia superior a 90 segundos puede resolverse como abandono. Para entrar a esta versión del online, todos los participantes deben tener el juego actualizado.
 
 

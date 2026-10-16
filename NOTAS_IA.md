@@ -4,6 +4,13 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-15 · Claude · Logo FA como marca e icono de la web
+**Commit:** rama `logo-fa`
+**Archivos:** `src/assets/logo.svg` (nuevo), `public/favicon.svg`, `public/favicon.png`, `public/apple-touch-icon.png` (nuevos), `index.html`, `src/styles.css`, `desktop/create-icon.cjs`
+**Qué y por qué:** Ale pidió usar su logo "FA" (azul marino #02385e) en la página y como icono. En fondos oscuros se usa en blanco.
+**Cómo:** El PNG original se vectorizó a `src/assets/logo.svg`. Los 16 `<span class="brand-mark">FA</span>` del HTML pasan a `<span class="brand-mark" aria-hidden="true"></span>`; `.brand-mark` ya no es un cuadrado verde con texto: pinta el logo con `mask: url(./assets/logo.svg)` y el color sale de `background` (blanco; `.blue-theme .brand-mark` también blanco). Para cambiar el color del logo basta con cambiar ese `background`. `public/favicon.svg` es azul marino y blanco cuando el navegador está en modo oscuro (`prefers-color-scheme`); `favicon.png` (48) y `apple-touch-icon.png` (180) son el logo azul sobre fondo blanco. `desktop/create-icon.cjs` genera ahora el icono de la Portable con el logo (PNG 256 en base64). Se crea la carpeta `public/` (Vite la copia a la raíz de `dist/` y de `desktop/game/`).
+**Para el otro asistente:** Si añades cabeceras nuevas, usa el `<span class="brand-mark" aria-hidden="true"></span>` vacío, sin texto. No vuelvas a poner fondo de color en `.brand-mark`, porque es la máscara del logo. `desktop/startup.html` sigue mostrando solo el texto "FÚTBOL ARCADE".
+
 ## 2026-10-15 · Claude · Sala online mejorada
 **Commit:** `23682a9` (fusionado en `main` el 2026-10-15 con la aprobación de Ale). Para deshacerlo: `git revert 23682a9`.
 **Archivos:** `src/ui/OnlineHub.js`, `index.html`, `src/styles.css`, `NOTAS_IA.md`

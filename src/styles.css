@@ -1115,3 +1115,122 @@ body.blue-theme.online-theme{--bg:#020713;--panel:#071329;--green:#83b4ff;--mute
 .online-mode-tabs .hub-tile.panel-tile .tile-art{width:28px;height:28px;right:10px;bottom:8px}
 .online-heading p:not(.eyebrow){font-size:13px}
 }
+/* Competiciones en paneles */
+.competition-select-layout.panel-layout{display:flex;grid-template-columns:none}
+.competition-tile .competition-tile-art{display:block;width:58px;height:58px;color:var(--competition-accent,#78ddb0);opacity:1}
+.competition-tile .competition-tile-art svg{width:100%;height:100%;display:block}
+.competition-tile .competition-tile-art svg [fill="#10191b"],.competition-tile .competition-tile-art svg [fill="#122017"]{fill:#0d1a33}
+.competition-tile:hover .competition-tile-art,.competition-tile:focus-visible .competition-tile-art{color:var(--competition-accent,#78ddb0)}
+.competition-tile{border-top:3px solid var(--competition-accent,#78ddb0)}
+.competition-tile-hint{position:absolute;left:16px;bottom:18px;font:normal 10px var(--mono);letter-spacing:.06em;color:#e9c777}
+.competition-team-tile{background:linear-gradient(135deg,#0a1a35,#030b1c);border-top-color:#8dc3ff}
+.competition-team-tile .competition-team-kit{width:62px;height:62px;border-radius:50%;opacity:1}
+.competition-tile .tile-enter{display:none}
+.competition-team-tile .competition-team-kit{position:absolute;right:16px;bottom:16px;margin:0;min-width:0;min-height:0}
+/* Cuadro en espejo (dos mitades que se encuentran en la final) */
+.bracket.bracket-mirror{overflow:visible;gap:6px}
+.bracket.bracket-mirror .bracket-round{flex:1 1 0;min-width:0}
+.bracket.bracket-mirror .bracket-final{flex:1.1 1 0}
+.bracket.bracket-mirror .bracket-final .bracket-matches{justify-content:center}
+.bracket.bracket-mirror .bracket-final .bracket-match{border-color:#e7c56c88;box-shadow:0 0 0 2px #e7c56c1c}
+.bracket.bracket-mirror .bracket-right .bracket-team{grid-template-columns:16px minmax(0,1fr) 12px;text-align:right}
+.bracket.bracket-mirror .bracket-right .bracket-team b{order:-1;text-align:left}
+.bracket.bracket-mirror .bracket-right .bracket-team .bracket-chip{order:2}
+@media(min-width:1024px){
+#tournament-screen .competition-layout{display:flex;flex-direction:column;align-items:stretch;gap:10px}
+#tournament-screen .competition-layout>.editor-copy{display:flex;align-items:baseline;gap:20px;flex-wrap:wrap}
+#tournament-screen .competition-layout>.editor-copy .eyebrow{width:100%;margin:0}
+#tournament-screen .competition-layout>.editor-copy h2{font-size:clamp(34px,3.4vw,46px)}
+#tournament-screen .competition-layout>.editor-copy h2 br{display:none}
+#tournament-screen .competition-layout>.editor-copy>p:last-child{margin:0;max-width:none}
+#tournament-screen .champions-card{width:100%;max-width:none}
+#tournament-screen .tournament-roster.bracket{max-height:none}
+}
+.bracket.bracket-mirror .bracket-round h4{overflow:hidden;text-overflow:ellipsis;letter-spacing:.04em}
+@media(min-width:1024px){
+#tournament-screen .competition-layout{padding-top:0}
+#tournament-screen .competition-layout>.editor-copy{padding:0}
+#tournament-screen .champions-card-heading{margin-bottom:4px}
+#tournament-screen .bracket-mirror .bracket-team{min-height:18px;padding:1px 6px;font-size:11.5px}
+#tournament-screen .bracket-mirror .bracket-matches{gap:3px}
+}
+@media(min-width:1024px){
+#tournament-screen .bracket-mirror .bracket-team{line-height:1.15;min-height:0;padding:2px 6px}
+#tournament-screen .bracket-mirror .bracket-match{padding:1px 6px}
+}
+@media(min-width:1024px) and (max-height:760px){
+#tournament-screen .competition-layout>.editor-copy .eyebrow{display:none}
+#tournament-screen .competition-layout>.editor-copy h2{font-size:34px}
+#tournament-screen .champions-card-heading .card-kicker{display:none}
+#tournament-screen .champions-card>.primary-button{min-height:40px;padding-top:10px;padding-bottom:10px}
+}
+.bracket.bracket-mirror .bracket-round[data-round="0"]{flex-grow:1.8}
+#tournament-screen .bracket.bracket-mirror .bracket-round[data-round="0"]{flex-grow:1.8}
+/* Ajustes: cabecera en una línea y opciones a dos columnas */
+@media(min-width:1024px){
+.settings-wrap{display:flex;flex-direction:column;align-items:stretch;gap:10px;padding-top:0}
+.settings-wrap>.editor-copy{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;padding:0}
+.settings-wrap>.editor-copy .eyebrow{width:100%;margin:0}
+.settings-wrap>.editor-copy h2{font-size:clamp(34px,3.4vw,46px)}
+.settings-wrap>.editor-copy h2 br{display:none}
+.settings-wrap>.editor-copy>p:last-child{margin:0}
+.settings-wrap .settings-card{max-width:none;justify-self:stretch;padding:14px 22px}
+.settings-panel:not([hidden]){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:36px;align-items:start}
+.settings-panel>.settings-panel-title,.settings-panel>.rules-entry,.settings-panel>.settings-note,.settings-panel>.controller-settings,.settings-panel>.settings-keys{grid-column:1/-1}
+#settings-panel-controls:not([hidden]){grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
+#settings-panel-controls>.settings-keys{grid-column:1}
+#settings-panel-controls>.controller-settings{grid-column:2;grid-row:1/4;margin:0}
+.settings-tabs{margin-bottom:10px}
+.settings-card .setting-line{padding-top:12px;padding-bottom:12px}
+}
+@media(min-width:1024px) and (max-height:760px){.settings-wrap>.editor-copy{display:none}}
+/* Clasificación: podio en paneles + lista */
+.leaderboard-layout.panel-layout{display:flex;grid-template-columns:none;padding-bottom:16px}
+.leaderboard-panels{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:12px;align-items:stretch}
+.leaderboard-side{display:flex;flex-direction:column;gap:10px;padding:18px;border:1px solid #6089c548;border-radius:16px;background:linear-gradient(160deg,#0d1f3d,#071228)}
+.leaderboard-side .card-kicker{margin:0}
+.leaderboard-podium{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;align-items:end}
+.podium-tile{display:grid;justify-items:center;gap:4px;padding:12px 8px;border:1px solid #6089c548;border-radius:4px;background:linear-gradient(135deg,#10213fee,#071328ee);text-align:center;min-width:0}
+.podium-tile.podium-1{order:2;padding-top:20px;background:linear-gradient(125deg,#dcecff,#a9cfff);color:#0b1c38;border-color:#dbecff;box-shadow:0 8px 28px #4895ff30}
+.podium-tile.podium-2{order:1}
+.podium-tile.podium-3{order:3}
+.podium-place{font:800 italic 26px Arial,Helvetica,sans-serif}
+.podium-name{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+.podium-tile small{font:10px var(--mono);color:#a9bfdf}
+.podium-1 small{color:#203d64}
+.leaderboard-you{padding:10px 12px;border-radius:10px;background:#65e6a514;color:#9ff0c5;font:12px var(--mono)}
+.leaderboard-side-actions{display:flex;gap:8px;flex-wrap:wrap}
+.leaderboard-side .leaderboard-casual-note{margin-top:auto;color:#8fa6c9;font-size:11px;line-height:1.5}
+.leaderboard-panels .leaderboard-card{max-width:none;justify-self:stretch;padding:16px 20px}
+@media(min-width:1024px){.leaderboard-panels .leaderboard-list{max-height:calc(100vh - 330px);min-height:160px}}
+@media(max-width:800px){.leaderboard-panels{grid-template-columns:1fr}}
+/* Misiones en paneles */
+.missions-layout.panel-layout{display:flex;grid-template-columns:none}
+.missions-layout .missions-list{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px}
+.missions-layout .mission-card{display:flex;flex-direction:column;gap:10px;min-height:clamp(150px,24vh,210px);border-radius:3px;border-color:#77a8e638;background:linear-gradient(135deg,#172749ee,#101b35ee);padding:18px 16px}
+.missions-layout .mission-card .mission-index{margin:0}
+.missions-layout .mission-card-heading b{font:800 italic clamp(18px,1.7vw,22px)/1.1 Arial,Helvetica,sans-serif;text-transform:uppercase;letter-spacing:-.03em}
+.missions-layout .mission-card-heading p{margin-top:6px}
+.missions-layout .mission-card .mission-progress{margin-top:auto}
+.missions-layout .mission-card.completed{background:linear-gradient(125deg,#dcecff,#a9cfff);color:#0b1c38;border-color:#dbecff}
+.missions-layout .mission-card.completed :is(b,p,small,.tile-index,.mission-status){color:#0b1c38}
+.missions-summary{display:grid;justify-items:end;gap:2px;flex:none}
+.missions-summary b{font:800 italic 34px Arial,Helvetica,sans-serif}
+.missions-summary span{font:11px var(--mono);letter-spacing:.12em;color:#a9bfdf}
+.missions-summary small{font:12px var(--mono);color:#8ff0bf}
+@media(max-width:900px){.missions-summary{justify-items:start}}
+@media(min-width:1024px){
+[data-profile-panel=trophies] .trophy-grid{grid-template-columns:repeat(6,minmax(0,1fr));max-height:calc(100vh - 400px);min-height:240px;overflow-y:auto;padding-right:4px;align-content:start}
+[data-profile-panel=trophies] .trophy-grid.collapsed{max-height:none;overflow:visible}
+[data-profile-panel=trophies] .trophy-section{padding:16px 20px}
+[data-profile-panel=trophies] .trophy-heading{margin-bottom:10px}
+[data-profile-panel=trophies] .trophy-card{min-height:96px}
+[data-profile-panel=trophies] .trophy-toggle{margin-top:8px}
+}
+@media(max-width:600px){.missions-layout .mission-card{min-height:0}.missions-summary{grid-template-columns:auto auto;align-items:baseline;column-gap:10px}.missions-summary small{grid-column:1/-1}}
+@media(min-width:1024px){.leaderboard-panels .leaderboard-list{max-height:calc(100vh - 390px)}}
+@media(min-width:1024px) and (max-height:720px){.single-team-card .selection-stars{display:none}.leaderboard-side .leaderboard-casual-note{display:none}}
+@media(min-width:1024px){[data-profile-panel=trophies] .trophy-grid{max-height:calc(100vh - 480px);min-height:150px}}
+@media(min-width:1024px) and (max-height:820px){.settings-wrap>.editor-copy{display:none}}
+@media(min-width:1024px){.leaderboard-panels .leaderboard-list{max-height:calc(100vh - 420px)}[data-profile-panel=trophies] .trophy-grid{max-height:calc(100vh - 510px)}#settings-panel-controls .controller-settings p{margin:6px 0}}
+@media(min-width:1024px) and (max-height:720px){#tournament-screen .competition-layout{gap:6px;padding-bottom:8px}}

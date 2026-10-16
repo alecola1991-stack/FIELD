@@ -261,7 +261,8 @@ export class OnlineHub {
     const account = document.getElementById('account-username');
     if (account) { account.textContent = registered ? `@${this.identity.username} · ${this.identity.elo} ELO` : 'Nombre de usuario pendiente'; if (registered) account.prepend(rankBadge(this.identity.elo, { size: 22 })); }
     const pending = this.invites.filter(item => item.incoming && item.state === 'pending').length + this.friends.filter(item => item.incoming && !item.accepted).length;
-    document.getElementById('online-friends-count').textContent = pending ? ` (${pending})` : '';
+    document.getElementById('online-friends-count').textContent = pending ? String(pending) : '';
+    document.getElementById('online-content').classList.toggle('in-room', Boolean(this.lobby));
     this.screen.querySelectorAll('[data-online-tab]').forEach(button => { const active = button.dataset.onlineTab === this.mode; button.classList.toggle('active', active); button.setAttribute('aria-selected', String(active)); });
     this.screen.querySelectorAll('[data-online-panel]').forEach(panel => panel.classList.toggle('hidden', panel.dataset.onlinePanel !== this.mode));
     this.screen.querySelectorAll('[data-online-command], #online-find-match, #online-create-room, #online-join-room').forEach(button => { button.disabled = this.busy; });

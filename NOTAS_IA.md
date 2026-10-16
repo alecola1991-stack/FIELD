@@ -4,6 +4,24 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-16 · Claude · Dificultades de la IA: nombres nuevos, Profesional y Champions
+**Commit:** rama `dificultades-ia`
+**Archivos:** `src/config/settings.js`, `src/game/BotAI.js`, `src/ui/UI.js`, `index.html`, `tests/BotSkills.test.js` (nuevo)
+**Qué y por qué:** Ale pidió renombrar las dificultades (fácil → Principiante, normal → Avanzado, difícil → Experto) y añadir Profesional y Champions. En estas dos, el rival debe hacer amagos, llevar el balón pegado antes de disparar y usar las paredes para superar al jugador y marcar.
+**Cómo:**
+- **Los ids no cambian** (`easy`, `normal`, `hard`, porque están en guardados y competiciones). Se añaden `pro` y `champions` a `BOT_LEVELS`, con velocidad, reacción y precisión entre `hard` y `legend` y un bloque `skills`.
+- `DIFFICULTIES` (nuevo en `settings.js`) contiene id, nombre visible y nivel de desbloqueo: Experto 5, Profesional 10 y Champions 15. `difficultyLabel(id)` da el nombre, incluido «Leyenda». La UI ya no tiene nombres fijos: `updateDifficultyControls()` recorre `DIFFICULTIES` en los cuatro `<select>` (`#difficulty`, `#play-difficulty`, `#settings-difficulty` y `#quick-difficulty`) y, si la dificultad guardada está bloqueada, pasa a la más alta desbloqueada.
+- `BotAI.skilledAttack()` solo se usa en los niveles con `skills` y en modo ataque. Principiante, Avanzado, Experto y Leyenda conservan exactamente el comportamiento anterior.
+  - **Conducción:** se coloca detrás del balón en la línea de avance y lo empuja con toques suaves, regulando la velocidad para no despegárselo. Si está por delante del balón, lo rodea.
+  - **Disparo:** con el carril libre desde `shootRange` (380 en Profesional, 430 en Champions), o si le presionan cerca de la portería.
+  - **Amago:** si el humano tapa el carril, `feint` se mueve hacia un lado (`show`) y sale por el otro (`cut`, con acelerón).
+  - **Paredes:** si le tapan el carril, `bankShot()` busca un tiro contra la banda que entre en la portería. Tiene en cuenta la restitución de 0,78 de la banda, que el balón pase el palo cercano y el alcance por el rozamiento; si no hay ninguno viable, devuelve null. Lejos de la portería hace una pared con la banda para superar al defensor.
+  - **Balón suelto en su campo:** con el rival lejos, sale a por él en vez de esperar de portero. Antes se quedaba atascado.
+  - `this.random` se puede sustituir en los tests.
+- Leyendas: la etiqueta pasa de «IA MUY DIFÍCIL» a «IA LEYENDA» para no confundirla con los nuevos nombres.
+**Comprobado:** 137 tests. En `tests/BotSkills.test.js` hay un duelo con la física real contra un defensor que tapa y sale a robar, de 4 × 60 s: Experto marca 0, Profesional 5-7 y Champions 8-11, con el balón pegado más del 90 % del tiempo de conducción. Los tiros contra la pared que la IA decide hacer entran siempre (49 de 49 en un barrido de posiciones).
+**Para el otro asistente:** para añadir o ajustar dificultades, edita `DIFFICULTIES` y `BOT_LEVELS`, no la UI. Las competiciones usan `settings.difficulty`, así que también pueden jugarse en Profesional o Champions.
+
 ## 2026-10-16 · Claude · Online más robusto: reconexiones, avisos y pruebas con varios navegadores
 **Commit:** fusionado en `main` el 2026-10-16 con la aprobación de Ale (merge `439a908`). Para deshacerlo: `git revert -m 1 439a908`.
 **Archivos:** `src/game/OnlineMatch.js`, `src/game/Game.js`, `src/ui/OnlineHub.js`, `src/ui/UI.js`, `src/main.js`, `src/styles.css`, `supabase/online-swap.sql` y `supabase/online-swap-test.sql` (nuevos), `supabase/online-teams-test.sql`, `README.md`, `tools/e2e-online/` (nuevo), `tests/OnlineMatch.test.js`, `tests/OnlineHub.test.js`, `tests/Squad.test.js`

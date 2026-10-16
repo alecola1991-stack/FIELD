@@ -1,12 +1,26 @@
 // The pitch keeps its playing dimensions while the wider canvas leaves room
 // for players to step half a center-circle radius beyond each touchline.
 export const WORLD = Object.freeze({ width: 1140, height: 700, left: 66, right: 1074, top: 70, bottom: 630, goalTop: 255, goalBottom: 445, goalBack: 37, centerCircleRadius: 75, goalPostRadius: 6 });
+// `skills` (Profesional and Champions): carry the ball close, feint and use the walls.
 export const BOT_LEVELS = Object.freeze({
   easy: { speed: 165, reaction: .49, accuracy: .385, defense: .266 },
   normal: { speed: 196, reaction: .286, accuracy: .553, defense: .455 },
   hard: { speed: 221, reaction: .156, accuracy: .658, defense: .616 },
+  pro: { speed: 240, reaction: .11, accuracy: .74, defense: .72,
+    skills: { shootRange: 380, feintChance: .55, feintShow: .24, feintCut: .42, feintCooldown: 2.2, wallChance: .45, wallCooldown: 2.6 } },
+  champions: { speed: 262, reaction: .075, accuracy: .84, defense: .82,
+    skills: { shootRange: 430, feintChance: .82, feintShow: .2, feintCut: .45, feintCooldown: 1.4, wallChance: .7, wallCooldown: 1.8 } },
   legend: { speed: 295, reaction: .055, accuracy: .96, defense: .93 },
 });
+// Selectable difficulties (ids are stored in saves; labels are what players see).
+export const DIFFICULTIES = Object.freeze([
+  { id: 'easy', label: 'Principiante', unlock: 1 },
+  { id: 'normal', label: 'Avanzado', unlock: 1 },
+  { id: 'hard', label: 'Experto', unlock: 5 },
+  { id: 'pro', label: 'Profesional', unlock: 10 },
+  { id: 'champions', label: 'Champions', unlock: 15 },
+]);
+export function difficultyLabel(id) { return id === 'legend' ? 'Leyenda' : DIFFICULTIES.find(item => item.id === id)?.label || 'Principiante'; }
 const defaults = { name: 'JUGADOR', number: 10, teamId: '', profileReady: false, leagueCompetition: 'laliga', leagueGoalTarget: 2, difficulty: 'easy', sound: true, volume: 45, musicEnabled: true, musicVolume: 35, ambienceEnabled: true, ambienceVolume: 50, effectsVolume: 100, controllerVibration: true, controllerMap: {}, trajectory: false, shotPreview: false, goalReplays: true, verticalField: true, modifiers: {} };
 let storageScope = 'guest';
 function storageKey() { return storageScope === 'guest' ? 'field-settings' : `field-settings:${storageScope}`; }

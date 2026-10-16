@@ -3,7 +3,7 @@ import { selectionFor, cycleTeamSelection, teamAbbreviation } from './TeamSelect
 import { GamepadController } from '../game/GamepadController.js';
 import { OnlineHub } from './OnlineHub.js';
 import { MODIFIER_OPTIONS, DEFAULT_MODIFIERS, normalizeModifiers, modifiersAreDefault, formatModifier } from '../config/modifiers.js';
-import { loadSettings, saveSettings, setSettingsScope } from '../config/settings.js';
+import { loadSettings, saveSettings, setSettingsScope, DIFFICULTIES, difficultyLabel } from '../config/settings.js';
 import { Progression } from '../game/Progression.js';
 import { CareerProfile } from '../game/CareerProfile.js';
 import { TROPHY_CATALOG, formatPlayTime } from '../game/Achievements.js';
@@ -669,10 +669,11 @@ export class UI {
     if (!this.profileComplete()) { this.selectMode('bot'); return; }
     const player = getTeamById(this.quickChoices.player), rival = getTeamById(this.quickChoices.rival);
     if (!player || !rival) return;
-    const difficulty = ['easy', 'normal', 'hard'].includes(this.quick_difficulty.value) ? this.quick_difficulty.value : 'easy';
-    if (difficulty === 'hard' && this.progression.level < 5) return;
+    const choice = DIFFICULTIES.find(item => item.id === this.quick_difficulty.value);
+    const difficulty = choice ? choice.id : 'easy';
+    if (choice && this.progression.level < choice.unlock) return;
     this.settings.teamId = player.id; this.settings.difficulty = difficulty; this.persist(); this.updateHomeClub();
-    const label = { easy: 'FÁCIL', normal: 'NORMAL', hard: 'DIFÍCIL' }[difficulty];
+    const label = difficultyLabel(difficulty).toUpperCase();
     this.start('bot', { opponentTeam: rival, opponentName: rival.name, difficulty, label: `PARTIDO RÁPIDO · ${label} · A 5 GOLES` });
   }
 
@@ -713,7 +714,7 @@ export class UI {
       this.pendingMode = 'legend-profile'; this.pendingTeamType = 'club'; this.pendingLeagueId = duel.playerTeam.league; this.openProfile(); return;
     }
     this.persist(); this.updateHomeClub();
-    this.start('legends', { legendId: duel.match.id, opponentTeam: duel.opponentTeam, opponentName: duel.opponentTeam.name, difficulty: 'legend', fieldTheme: 'champions', competitionRound: 4, label: `LEYENDAS · ${duel.match.name.toUpperCase()} · IA MUY DIFÍCIL · A 5` });
+    this.start('legends', { legendId: duel.match.id, opponentTeam: duel.opponentTeam, opponentName: duel.opponentTeam.name, difficulty: 'legend', fieldTheme: 'champions', competitionRound: 4, label: `LEYENDAS · ${duel.match.name.toUpperCase()} · IA LEYENDA · A 5` });
   }
 
   renderCompetitionPicker() {
@@ -979,21 +980,21 @@ export class UI {
     this.checkAchievements();
   }
 
+  // Difficulties unlock by level (see DIFFICULTIES); a locked choice falls back to the best unlocked one.
   updateDifficultyControls() {
-    const hardUnlocked = this.progression.level >= 5;
-    if (!hardUnlocked && this.settings.difficulty === 'hard') {
-      this.settings.difficulty = 'easy';
-      saveSettings(this.settings);
+    const level = this.progression.level;
+    const unlocked = id => { const item = DIFFICULTIES.find(entry => entry.id === id); return !!item && level >= item.unlock; };
+    const best = [...DIFFICULTIES].reverse().find(item => level >= item.unlock)?.id || 'easy';
+    if (!unlocked(this.settings.difficulty)) { this.settings.difficulty = best; saveSettings(this.settings); }
+    if (!unlocked(this.quickDifficulty)) this.quickDifficulty = this.settings.difficulty;
+    for (const select of [this.difficulty, this.play_difficulty, this.settings_difficulty, this.quick_difficulty]) {
+      for (const option of select.options) {
+        const item = DIFFICULTIES.find(entry => entry.id === option.value); if (!item) continue;
+        option.disabled = level < item.unlock;
+        option.textContent = level < item.unlock ? `${item.label} · nivel ${item.unlock}` : item.label;
+      }
+      select.value = select === this.quick_difficulty ? this.quickDifficulty || this.settings.difficulty : this.settings.difficulty;
     }
-    for (const select of [this.difficulty, this.play_difficulty, this.settings_difficulty]) {
-      const hard = [...select.options].find(option => option.value === 'hard');
-      if (hard) { hard.disabled = !hardUnlocked; hard.textContent = hardUnlocked ? 'Difícil' : 'Difícil · nivel 5'; }
-      select.value = this.settings.difficulty;
-    }
-    const quickHard = [...this.quick_difficulty.options].find(option => option.value === 'hard');
-    quickHard.disabled = !hardUnlocked; quickHard.textContent = hardUnlocked ? 'Difícil' : 'Difícil · nivel 5';
-    if (!hardUnlocked && this.quickDifficulty === 'hard') this.quickDifficulty = 'easy';
-    this.quick_difficulty.value = this.quickDifficulty || this.settings.difficulty;
     const legendsUnlocked = this.progression.level >= LEGENDS_UNLOCK_LEVEL;
     this.legends_mode_card.classList.toggle('mode-locked', !legendsUnlocked);
     this.legends_mode_tag.textContent = legendsUnlocked ? 'CLÁSICOS · IA LEYENDA' : 'BLOQUEADO · NIVEL 7';
@@ -1249,7 +1250,7 @@ export class UI {
     this.hud_player_name.textContent = this.settings.name.toUpperCase(); this.player_dot.style.background = getTeamById(this.settings.teamId)?.primary || '#68746e';
     this.opponent_dot.style.background = options.opponentTeam?.primary || '#f19676';
     this.hud_opponent_name.textContent = mode === 'training' ? 'PRÁCTICA' : (options.opponentName || 'BOT');
-    const baseLabel = options.label || (mode === 'training' ? 'MODO ENTRENAMIENTO' : `PARTIDO · ${this.settings.difficulty.toUpperCase()}`);
+    const baseLabel = options.label || (mode === 'training' ? 'MODO ENTRENAMIENTO' : `PARTIDO · ${difficultyLabel(this.settings.difficulty).toUpperCase()}`);
     const target = `A ${this.game.goalTarget} ${this.game.goalTarget === 1 ? 'GOL' : 'GOLES'}`;
     const label = mode === 'training' ? baseLabel : /\bA \d+(?: GOLES)?\b/.test(baseLabel) ? baseLabel.replace(/\bA \d+(?: GOLES)?\b/g, target) : `${baseLabel} · ${target}`;
     this.mode_label.textContent = (modifiersAreDefault(options.modifiers) ? '' : 'REGLAS PERSONALIZADAS · ') + label;
@@ -1716,7 +1717,7 @@ export class UI {
     const player = this.game?.player, rival = this.game?.bot;
     const sides = {
       home: { team: homeTeam, body: player, title: homeTeam?.name || 'Tu equipo', subtitle: options.squad ? `@${options.playerUsername}` : `${online && this.hub?.identity ? '@' + this.hub.identity.username : this.settings.name} · #${player?.number ?? this.settings.number}`, goals: 'player' },
-      away: { team: awayTeam, body: rival, title: awayTeam?.name || options.opponentName || 'Rival', subtitle: options.squad ? `@${options.opponentUsername}` : `${online ? '@' + (options.opponentUsername || options.opponentName || 'rival') : 'IA · ' + ({ easy: 'FÁCIL', normal: 'NORMAL', hard: 'DIFÍCIL', legend: 'LEYENDA' })[this.game?.botAI?.difficulty] || 'IA'} · #${rival?.number ?? 10}`, goals: 'opponent' },
+      away: { team: awayTeam, body: rival, title: awayTeam?.name || options.opponentName || 'Rival', subtitle: options.squad ? `@${options.opponentUsername}` : `${online ? '@' + (options.opponentUsername || options.opponentName || 'rival') : 'IA · ' + difficultyLabel(this.game?.botAI?.difficulty).toUpperCase()} · #${rival?.number ?? 10}`, goals: 'opponent' },
     };
     for (const [key, side] of Object.entries(sides)) {
       this.paintPlayerPreview(this[`result_${key}_crest`], side.team, { name: side.body?.name || '', number: side.body?.number ?? '' });

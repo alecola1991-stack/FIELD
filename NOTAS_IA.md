@@ -46,7 +46,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
   - En `OnlineRules.js` hay helpers nuevos: `roomSize`, `isTeamRoom`, `matchSeats`, `matchPlayers`, `onLeftTeam`, `wonMatch`, `bracketRounds` y `roundName`. `assignedMatch` y `opponentId` ya contemplan p3/p4.
   - En `UI.startOnlineMatch`, para 2v2 se rellenan `options.squad`, `playerTeam`, `playerUsername` y `playerElo`, que usan la presentación, el HUD y el marcador final.
 **Para el otro asistente:**
-- **HAY QUE EJECUTAR `supabase/online-teams.sql` en el SQL Editor de Supabase** (después de `online-rematch.sql`, que ya está aplicado). Hasta entonces el cliente no muestra nada nuevo: los selectores solo aparecen si el RPC devuelve `version >= 2`, así que es seguro desplegar el cliente antes.
+- **`supabase/online-teams.sql` YA ESTÁ APLICADO en producción.** Ale lo ejecutó en el SQL Editor el 2026-10-16. Claude lo verificó con consultas de solo lectura: las 7 funciones coinciden en md5 con la versión probada en local (ignorando los `\r` del pegado en Windows), y las columnas, restricciones y permisos son correctos. No hay que volver a ejecutarlo. El cliente muestra los selectores porque el RPC devuelve `version: 2`.
 - Si tocas `field_private.action`, parte de `online-teams.sql`, que pasa a ser la versión vigente.
 - Las invitaciones directas de amigos siguen siendo solo 1v1: el 2v2 privado se hace con código.
 - No cambies el orden de asientos (p1, p3, p2, p4) ni que p1 sea el anfitrión.

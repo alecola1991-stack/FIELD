@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-16 · Claude · 2v2 online (rápido y Ranked) y torneos de 4, 6 u 8
-**Commit:** rama `online-2v2-torneos`
+**Commit:** `37dc6bd` (fusionado en `main` el 2026-10-16 con la aprobación de Ale, merge `dee5999`). Para deshacerlo: `git revert -m 1 dee5999`.
 **Archivos:** `supabase/online-teams.sql` y `supabase/online-teams-test.sql` (nuevos), `src/game/Game.js`, `src/game/Renderer.js`, `src/game/OnlineMatch.js`, `src/game/OnlineRules.js`, `src/ui/OnlineHub.js`, `src/ui/UI.js`, `src/main.js`, `index.html`, `src/styles.css`, `README.md`, `tests/Squad.test.js` (nuevo), `tests/OnlineMatch.test.js`, `tests/OnlineHub.test.js`
 **Qué y por qué:** Ale pidió un modo 2v2 online y torneos de 4, 6 u 8 jugadores. Decidió: 2v2 en partido rápido y en Ranked; en la búsqueda pública los equipos se sortean y en la sala privada cada uno elige equipo.
 **Cómo:**

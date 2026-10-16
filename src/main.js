@@ -26,3 +26,5 @@ const game = new Game(document.querySelector('#game-canvas'), ui.settings, sound
   onReplaySkip: () => onlineMatch.sendReplaySkip(),
 });
 ui.attach(game, sound, accountService, onlineMatch);
+// Development only (stripped from production builds): lets end-to-end tests drive the game.
+if (import.meta.env.DEV) window.__field = { ui, game, onlineMatch, accountService };

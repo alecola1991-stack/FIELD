@@ -226,3 +226,46 @@ test('2v2: el anfitrión arranca con los tres invitados, recibe entradas por asi
   assert.deepEqual(left.sort(), [0, 1, 2], 'a player leaving ends the match for everyone');
   for (const peer of peers) await peer.leave(false);
 });
+
+test('game packets wait for the socket instead of falling back to REST broadcasts', () => {
+  const sent = [];
+  const match = new OnlineMatch(client);
+  match.channel = { state: 'joining', send: message => { sent.push(message); return Promise.resolve('ok'); } };
+  match.send('snapshot', { a: 1 });
+  assert.equal(sent.length, 0, 'nothing is sent while the channel is not joined');
+  match.channel.state = 'joined'; match.send('snapshot', { a: 1 });
+  assert.equal(sent.length, 1);
+});
+
+test('a reloaded host resumes the assigned match with the score the guest sends, and accepts new packet counters', async () => {
+  const host = { userId: 'u-host', username: 'h', name: 'H', number: 1, teamId: 'laliga-celta' };
+  const guest = { userId: 'u-guest', username: 'g', name: 'G', number: 2, teamId: 'laliga-celta' };
+  const match = { id: '1f2e3d4c-1111-4222-8333-944455556666', p1: host.userId, p2: guest.userId };
+  sessionValues = new Map(); const guestPeer = new OnlineMatch(client);
+  sessionValues = new Map(); let hostPeer = new OnlineMatch(client);
+  const starts = [];
+  guestPeer.setHandlers({ onMatchStart: info => starts.push(['guest', info]), getResume: () => ({ matchId: match.id, left: 3, right: 1, elapsed: 75, goals: [] }) });
+  hostPeer.setHandlers({ onMatchStart: info => starts.push(['host', info]) });
+  await guestPeer.connectAssigned(match, guest, host);
+  await hostPeer.connectAssigned(match, host, guest);
+  await new Promise(resolve => setTimeout(resolve, 650));
+  assert.equal(starts.length, 2);
+  assert.equal(starts.find(([who]) => who === 'host')[1].resume, null, 'a first start has nothing to resume');
+  for (let i = 0; i < 5; i++) guestPeer.sendInput({ x: 1, y: 0 });
+  // The host reloads: a new instance with fresh counters.
+  await hostPeer.leave(false);
+  sessionValues = new Map(); hostPeer = new OnlineMatch(client);
+  let inputs = 0, snapshots = 0;
+  hostPeer.setHandlers({ onMatchStart: info => starts.push(['host-again', info]), onInput: () => inputs++ });
+  guestPeer.handlers.onSnapshot = () => snapshots++;
+  await hostPeer.connectAssigned(match, host, guest);
+  await new Promise(resolve => setTimeout(resolve, 650));
+  const again = starts.find(([who]) => who === 'host-again');
+  assert.ok(again, 'the reloaded host starts again');
+  assert.deepEqual(again[1].resume, { matchId: match.id, left: 3, right: 1, elapsed: 75, goals: [] });
+  guestPeer.sendInput({ x: -1, y: 0 });
+  assert.equal(inputs, 1, 'guest inputs are accepted by the new host despite the old sequence');
+  hostPeer.sendSnapshot({ mode: 'online' });
+  assert.equal(snapshots, 1, 'snapshots of the new host are accepted by the guest');
+  await hostPeer.leave(false); await guestPeer.leave(false);
+});

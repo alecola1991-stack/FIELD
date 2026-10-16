@@ -132,12 +132,14 @@ export class OnlineMatch {
       if (message.version !== 3 || !Number.isInteger(seat) || seat < 0 || seat > 3 || this.squadSeatOf(peer?.userId) !== seat) return;
       this.squadPeers.set(seat, message.clientId);
       if (this.role === 'host' && seat > 0) {
+        if (message.resume?.matchId === this.assignment.matchId && !this.pendingResume) this.pendingResume = message.resume;
         if (this.matched) { this.sendStart(); return; }
         if ([1, 2, 3].every(index => this.squadPeers.has(index))) this.startSquad();
       } else if (this.role === 'guest' && seat === 0) {
         this.opponent = { ...safeProfile(squad.seats[0]), clientId: message.clientId };
         this.markPeerReconnected();
         if (!this.matched) this.handlers.onStatus?.('waiting');
+        else this.announce(); // the host reloaded: help it resume
       }
       return;
     }
@@ -158,7 +160,8 @@ export class OnlineMatch {
     this.matched = true; this.matchId = this.assignment.matchId;
     clearInterval(this.helloTimer); this.helloTimer = 0;
     this.sendStart();
-    this.handlers.onMatchStart?.({ role: 'host', localSide: 'left', modifiers: normalizeModifiers({}), opponent: this.squadRival(), roomCode: this.code, squad });
+    this.handlers.onMatchStart?.({ role: 'host', localSide: 'left', modifiers: normalizeModifiers({}), opponent: this.squadRival(), roomCode: this.code, squad, resume: this.pendingResume });
+    this.pendingResume = null;
   }
   squadRival() { const squad = this.assignment.squad; return { ...safeProfile(squad.seats[squad.localSeat < 2 ? 2 : 0]) }; }
   getSeatInput(seat) {
@@ -175,11 +178,13 @@ export class OnlineMatch {
     this.matched = false; this.closedByUser = false; this.matchId = null;
     this.localRematchVote = false; this.remoteRematchVote = false; this.rematchStarting = false;
     this.peerDisconnectedAt = 0; clearInterval(this.disconnectTimer); this.disconnectTimer = 0;
-    this.squadPeers = new Map(); this.seatInputs = new Map(); this.seatSequences = new Map();
+    this.squadPeers = new Map(); this.seatInputs = new Map(); this.seatSequences = new Map(); this.seatNonces = new Map();
+    // A new nonce per connection lets the other side reset its packet counters when we reload.
+    this.nonce = Math.random().toString(36).slice(2, 10); this.remoteNonce = null; this.pendingResume = null;
     clearTimeout(this.squadStartTimer); this.squadStartTimer = 0;
     this.latestInput = { x: 0, y: 0, kick: false, receivedAt: 0 };
     this.inputSequence = 0; this.lastInputSequence = 0;
-    this.snapshotSequence = 0; this.lastSnapshotSequence = 0;
+    this.snapshotSequence = 0; this.lastSnapshotSequence = 0; this.lastSnapshotAt = 0;
     const channel = this.client.channel(assignment ? `field-v3-match-${code}` : `field-match-${code.toLowerCase()}`, {
       config: { private: Boolean(assignment), broadcast: { self: false, ack: false }, presence: { key: this.clientId } },
     });
@@ -211,7 +216,9 @@ export class OnlineMatch {
   }
 
   announce() {
-    this.send('signal', { kind: 'hello', version: this.assignment ? 3 : 2, clientId: this.clientId, role: this.role, profile: this.profile, ...(this.assignment?.squad ? { seat: this.assignment.squad.localSeat } : {}) });
+    // A matched guest that greets a reloaded host also sends where the match was (score and time).
+    const resume = this.role === 'guest' && this.matched ? this.handlers.getResume?.() || null : null;
+    this.send('signal', { kind: 'hello', version: this.assignment ? 3 : 2, clientId: this.clientId, role: this.role, profile: this.profile, nonce: this.nonce, ...(resume ? { resume } : {}), ...(this.assignment?.squad ? { seat: this.assignment.squad.localSeat } : {}) });
   }
 
   handleSignal(message) {
@@ -237,24 +244,29 @@ export class OnlineMatch {
           this.handlers.onStatus?.('error', 'El rival necesita actualizar el juego para usar estas reglas.'); return;
         }
         if (this.matched) {
-          if (message.clientId !== this.opponent?.clientId) this.send('signal', { kind: 'room-full', target: message.clientId });
-          else { this.markPeerReconnected(); this.sendStart(); }
+          // Server-assigned matches verify the user: a reload, new tab or new device takes the seat back.
+          if (message.clientId !== this.opponent?.clientId && !this.assignment) { this.send('signal', { kind: 'room-full', target: message.clientId }); return; }
+          if (message.clientId !== this.opponent?.clientId) this.opponent = { ...this.opponent, clientId: message.clientId };
+          this.markPeerReconnected(); this.sendStart();
           return;
         }
+        const resume = this.assignment && message.resume?.matchId === this.assignment.matchId ? message.resume : null;
         this.matched = true; this.opponent = { ...safeProfile(this.assignment?.opponent || message.profile), clientId: message.clientId };
         clearInterval(this.helloTimer); this.helloTimer = 0;
         this.matchId = this.assignment?.matchId || makeMatchId();
         this.sendStart();
-        this.handlers.onMatchStart?.({ role: 'host', localSide: 'left', modifiers: normalizeModifiers(this.profile?.modifiers), opponent: this.opponent, roomCode: this.code });
+        this.handlers.onMatchStart?.({ role: 'host', localSide: 'left', modifiers: normalizeModifiers(this.profile?.modifiers), opponent: this.opponent, roomCode: this.code, resume });
       } else if (this.role === 'guest' && message.role === 'host') {
         this.opponent = { ...safeProfile(this.assignment?.opponent || message.profile), clientId: message.clientId };
         this.markPeerReconnected();
         if (!this.matched) this.handlers.onStatus?.('waiting');
+        // The host greets again only after reloading: answer so it can resume the match.
+        else this.announce();
       }
       return;
     }
     if (message.kind === 'start' && this.role === 'guest') {
-      if (this.matched) { this.markPeerReconnected(); return; }
+      if (this.matched) { this.opponent = { ...this.opponent, clientId: message.clientId }; this.markPeerReconnected(); return; }
       this.matched = true; this.matchId = message.matchId;
       this.opponent = { ...safeProfile(this.assignment?.opponent || message.host), clientId: message.clientId };
       clearInterval(this.helloTimer); this.helloTimer = 0;
@@ -285,6 +297,7 @@ export class OnlineMatch {
     if (this.assignment?.squad) {
       const seat = Number(message?.seat);
       if (this.role !== 'host' || !this.matched || this.squadPeers.get(seat) !== message?.clientId || message.matchId !== this.matchId) return;
+      if (message.nonce && this.seatNonces.get(seat) !== message.nonce) { this.seatNonces.set(seat, message.nonce); this.seatSequences.set(seat, 0); }
       if (Number.isInteger(message.sequence) && message.sequence <= (this.seatSequences.get(seat) || 0)) return;
       if (Number.isInteger(message.sequence)) this.seatSequences.set(seat, message.sequence);
       const previous = this.seatInputs.get(seat);
@@ -293,6 +306,7 @@ export class OnlineMatch {
     }
     if (this.role !== 'host' || !this.matched || message?.clientId !== this.opponent?.clientId) return;
     if ((this.assignment || message.matchId) && message.matchId !== this.matchId) return;
+    if (message.nonce && message.nonce !== this.remoteNonce) { this.remoteNonce = message.nonce; this.lastInputSequence = 0; }
     if (Number.isInteger(message.sequence) && message.sequence <= this.lastInputSequence) return;
     if (Number.isInteger(message.sequence)) this.lastInputSequence = message.sequence;
     this.latestInput = {
@@ -305,8 +319,10 @@ export class OnlineMatch {
   handleSnapshot(message) {
     if (this.role !== 'guest' || !this.matched || message?.clientId !== this.opponent?.clientId || !message.snapshot) return;
     if ((this.assignment || message.matchId) && message.matchId !== this.matchId) return;
+    if (message.nonce && message.nonce !== this.remoteNonce) { this.remoteNonce = message.nonce; this.lastSnapshotSequence = 0; }
     if (Number.isInteger(message.sequence) && message.sequence <= this.lastSnapshotSequence) return;
     if (Number.isInteger(message.sequence)) this.lastSnapshotSequence = message.sequence;
+    this.lastSnapshotAt = Date.now();
     this.handlers.onSnapshot?.(message.snapshot);
   }
 
@@ -383,7 +399,7 @@ export class OnlineMatch {
 
   sendInput(input) {
     if (this.role !== 'guest' || !this.matched) return;
-    this.send('input', { clientId: this.clientId, matchId: this.matchId, sequence: ++this.inputSequence, x: clampAxis(input.x), y: clampAxis(input.y), kick: input.kick === true, ...(this.assignment?.squad ? { seat: this.assignment.squad.localSeat } : {}) });
+    this.send('input', { clientId: this.clientId, matchId: this.matchId, nonce: this.nonce, sequence: ++this.inputSequence, x: clampAxis(input.x), y: clampAxis(input.y), kick: input.kick === true, ...(this.assignment?.squad ? { seat: this.assignment.squad.localSeat } : {}) });
   }
 
   sendReplaySkip() {
@@ -393,12 +409,17 @@ export class OnlineMatch {
 
   sendSnapshot(snapshot) {
     if (this.role !== 'host' || !this.matched) return;
-    this.send('snapshot', { clientId: this.clientId, matchId: this.matchId, sequence: ++this.snapshotSequence, snapshot });
+    this.send('snapshot', { clientId: this.clientId, matchId: this.matchId, nonce: this.nonce, sequence: ++this.snapshotSequence, snapshot });
   }
 
   send(event, payload) {
-    if (!this.channel) return;
-    this.channel.send({ type: 'broadcast', event, payload }).catch(() => {});
+    const channel = this.channel;
+    if (!channel) return;
+    // While the socket is down supabase-js would fall back to the REST broadcast API: at 30
+    // packets/s that gets rate limited (429) and loads the database for every player. Game
+    // packets are disposable, so they wait for the socket instead.
+    if (channel.state !== undefined && channel.state !== 'joined') return;
+    channel.send({ type: 'broadcast', event, payload }).catch(() => {});
   }
 
   async leave(notifyPeer = true) {

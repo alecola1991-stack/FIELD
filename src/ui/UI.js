@@ -81,7 +81,10 @@ export class UI {
       onPeerReconnected: () => this.hideConnectionStatus(),
       onRematchRequested: () => this.showRematchRequest(),
       onReplaySkip: seat => game.setRemoteReplaySkip(seat),
+      getResume: () => this.onlineResume(),
     });
+    // Guests: warn when the host stops sending the match (bad connection or app in the background).
+    this.hostStallTimer = setInterval(() => this.checkHostStall(), 1000);
     if (this.user && accountService) this.activateAccount(this.user).catch(error => this.setAccountMessage(error.message, true));
     else this.renderAccount();
     // Back from Google with an error (cancelled, expired…): explain it on the account screen.
@@ -1407,16 +1410,42 @@ export class UI {
     this.hud_player_name.textContent = `@${teamExtras.playerUsername || this.hub?.identity?.username || this.settings.name}`;
     this.hud_opponent_name.textContent = `@${teamExtras.opponentUsername || other.username || other.name || 'rival'}`;
     if (teamExtras.playerTeam) this.player_dot.style.background = teamExtras.playerTeam.primary;
+    // Reconnected or reloaded host: continue from the last known score and time.
+    const resume = info.resume || (info.role === 'host' && this.lastOnlineResume?.matchId === this.onlineMatch?.assignment?.matchId ? this.lastOnlineResume : null);
+    if (info.role === 'host' && resume && this.game.applyResume(resume)) this.hub?.message('Partido reanudado.');
+    this.lastOnlineResume = null;
   }
 
   handleOnlinePeerLeft() {
+    const matchId = this.onlineMatch?.assignment?.matchId;
+    if (matchId && this.currentMatchMode === 'online' && this.game?.state.running && !this.game.state.matchOver) this.lastOnlineResume = this.game.resumeState(matchId);
     this.onlineMatch?.leave(false);
     if (this.currentMatchMode === 'online') {
       this.game?.stop(); this.currentMatchMode = null; this.currentMatchOptions = null;
       this.show('online'); this.online_room_panel.classList.remove('hidden');
       this.updateOnlineStatus('peer-left');
-      this.hub?.message('Conexión perdida. Esperando la resolución de la sala; puedes salir o esperar la reconexión.', true);
+      // Server rooms: forget the connection so the hub reconnects to the same match while it is open.
+      if (this.hub?.lobby && matchId) { this.hub.connectedMatchId = null; this.hub.message('Se ha perdido la conexión con la partida. Intentando reconectar… Si alguien no vuelve, la sala se resuelve sola en 90 segundos.', true); }
+      else this.hub?.message('Conexión perdida. Esperando la resolución de la sala; puedes salir o esperar la reconexión.', true);
     }
+  }
+
+  // Where this online match was, in host order, to resume it after a reload or reconnection.
+  onlineResume() {
+    const matchId = this.onlineMatch?.assignment?.matchId;
+    if (!matchId) return null;
+    if (this.currentMatchMode === 'online' && this.game?.state.running && !this.game.state.matchOver) return this.game.resumeState(matchId);
+    return this.lastOnlineResume?.matchId === matchId ? this.lastOnlineResume : null;
+  }
+
+  checkHostStall() {
+    const match = this.onlineMatch, game = this.game;
+    const stalled = this.currentMatchMode === 'online' && match?.role === 'guest' && match.matched && !match.peerDisconnectedAt && match.lastSnapshotAt > 0
+      && Date.now() - match.lastSnapshotAt > 3000 && game?.state.running && !game.state.matchOver && this.result_overlay.classList.contains('hidden');
+    if (stalled) {
+      this.connection_banner.textContent = 'Esperando al anfitrión de la partida… Puede tener mala conexión o el juego en segundo plano.';
+      this.connection_banner.classList.remove('hidden'); this.hostStallShown = true;
+    } else if (this.hostStallShown) { this.hostStallShown = false; if (!match?.peerDisconnectedAt) this.hideConnectionStatus(); }
   }
 
   // Goal replay overlay. Online, the replay only ends early once both players skip.

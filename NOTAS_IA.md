@@ -4,6 +4,28 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-16 · Claude · Online más robusto: reconexiones, avisos y pruebas con varios navegadores
+**Commit:** rama `online-robustez`
+**Archivos:** `src/game/OnlineMatch.js`, `src/game/Game.js`, `src/ui/OnlineHub.js`, `src/ui/UI.js`, `src/main.js`, `src/styles.css`, `supabase/online-swap.sql` y `supabase/online-swap-test.sql` (nuevos), `supabase/online-teams-test.sql`, `README.md`, `tools/e2e-online/` (nuevo), `tests/OnlineMatch.test.js`, `tests/OnlineHub.test.js`, `tests/Squad.test.js`
+**Qué y por qué:** Ale pidió buscar errores y causas de desconexión y asegurar que todos los modos online funcionan con todos los jugadores. Monté un banco de pruebas en el que varios navegadores juegan entre sí con el código real (ver `tools/e2e-online/README.md`), lo ejecuté antes y después de los cambios, y revisé el código y los registros de Supabase.
+**Fallos encontrados y arreglados:**
+- **Mensajes del partido por HTTP durante los cortes (registros de Realtime: errores 429 y pool de BD agotado).** Si el socket no está unido, supabase-js reenvía cada `send()` a la API REST de broadcast, que en canales privados autoriza contra la BD. A 30 paquetes/s eso saturaba Supabase y agravaba la desconexión. `OnlineMatch.send()` ya no envía si `channel.state !== 'joined'`; los paquetes de juego se descartan.
+- **El anfitrión recarga a mitad de partido → bloqueo para siempre (1v1 y 2v2).** Ahora, si un invitado ya emparejado recibe el `hello` de un anfitrión nuevo, responde con `hello` + `resume` (`{matchId,left,right,elapsed,goals}`, en orden del anfitrión, obtenido de `handlers.getResume` → `UI.onlineResume()` → `Game.resumeState()`). El anfitrión arranca y aplica `Game.applyResume()`, así que se conserva el marcador y el tiempo.
+- **Tras recargar, el otro lado descartaba los paquetes porque su contador ya era mayor.** Cada conexión envía un `nonce`; si cambia, se reinician `lastInputSequence`, `lastSnapshotSequence` y `seatSequences`.
+- **1v1 asignado: el rival que volvía en otra pestaña o dispositivo (con otro `clientId`) recibía «sala llena».** El anfitrión ahora acepta al usuario verificado con su nuevo `clientId`.
+- **Tras perder la conexión (`onPeerLeft`) los dos se quedaban en el online con el partido «en juego» sin reintentar.** `UI.handleOnlinePeerLeft` guarda `lastOnlineResume` y pone `hub.connectedMatchId = null`, de modo que el hub se reconecta solo. Si alguien no vuelve, la sala se resuelve en 90 s, como antes.
+- **Al abrir el juego con un partido en curso no se volvía a él.** `OnlineHub.activate()` va al online y reconecta.
+- **Si el servidor da el partido por terminado mientras juegas (abandono o tiempo agotado y el aviso de Realtime se pierde), el juego seguía.** `OnlineHub.consume()` lo detecta, para el partido y muestra el resultado (victoria por abandono). Además cierra el canal de un partido ya resuelto.
+- **Sala en espera de la que el servidor te sacó por inactividad:** la consulta periódica fallaba en bucle con «No perteneces a esta sala» y no se podía salir. Ahora `OnlineHub.dropLobby()` descarta la sala y refresca el estado; `leave` con ese error también limpia.
+- **Invitado sin datos del anfitrión durante más de 3 s** (mala conexión o juego en segundo plano): `UI.checkHostStall()` muestra en `#connection-banner` «Esperando al anfitrión…».
+- **2v2 privado lleno: nadie podía cambiar de equipo.** `supabase/online-swap.sql` (nuevo) añade `team` con `{swapWith: userId}` para intercambiar con un jugador del otro equipo, y el RPC devuelve `version: 3`. El cliente muestra «Cambiar con @x» (`.room-swap`) solo si `supportsSwap` (versión 3 o superior).
+**Comprobado:** 129 tests unitarios; tests SQL (`online-test`, `online-rematch-test`, `online-teams-test`, `online-swap-test`) en Postgres local; el banco de pruebas pasa todos los escenarios (1v1 público, privado e invitación, Ranked y revancha, 2v2 en sus tres variantes, torneos de 4, 6 y 8, cortes y recargas en 1v1 y 2v2, abandono resuelto por el servidor, volver en otra pestaña y sala caducada).
+**Para el otro asistente:**
+- **HAY QUE EJECUTAR `supabase/online-swap.sql` en Supabase** (después de `online-teams.sql`, que ya está aplicado). Hasta entonces todo lo demás funciona; solo falta el botón «Cambiar».
+- `field_private.action` vigente: la de `online-swap.sql`.
+- `src/main.js` expone `window.__field` solo en desarrollo (`import.meta.env.DEV`), para el banco de pruebas. No lo uses en producción.
+- No vuelvas a enviar paquetes de juego con `channel.send` si el canal no está unido.
+
 ## 2026-10-16 · Claude · Arreglos de inicio de sesión
 **Commit:** fusionado en `main` el 2026-10-16 con la aprobación de Ale (merge `78299a6`). Para deshacerlo: `git revert -m 1 78299a6`.
 **Archivos:** `src/account/AuthErrors.js` (nuevo), `src/account/AccountService.js`, `src/account/GoogleSignIn.js`, `src/ui/UI.js`, `index.html`, `tests/AuthErrors.test.js` (nuevo), `tests/GoogleSignIn.test.js`

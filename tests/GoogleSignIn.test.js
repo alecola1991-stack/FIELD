@@ -25,3 +25,17 @@ test('provider failures are returned to the account screen', async () => {
   const f = fixture(); f.client.auth.signInWithOAuth = async () => ({ error: new Error('OAuth unavailable') });
   await assert.rejects(startGoogleSignIn(f.client, f.options), /OAuth unavailable/);
 });
+
+test('the public site opened over http moves to https instead of failing', async () => {
+  const f = fixture(); let target = null;
+  f.options.location = { protocol: 'http:', hostname: 'futarcade.es', host: 'futarcade.es', pathname: '/', search: '', replace: url => { target = url; } };
+  assert.equal(await startGoogleSignIn(f.client, f.options), 'redirecting');
+  assert.equal(target, 'https://futarcade.es/'); assert.equal(f.calls.length, 0);
+  // Local and LAN dev servers keep the explanatory error.
+  for (const hostname of ['localhost', '192.168.1.20']) {
+    f.options.location = { protocol: 'http:', hostname, host: hostname, pathname: '/', replace: () => { throw new Error('no redirect'); } };
+    await assert.rejects(startGoogleSignIn(f.client, f.options), /versión web/);
+  }
+  f.options.location = { protocol: 'arcade:', hostname: 'game' };
+  await assert.rejects(startGoogleSignIn(f.client, f.options), /versión de Windows/);
+});

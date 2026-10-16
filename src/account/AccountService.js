@@ -1,4 +1,5 @@
 import { startGoogleSignIn } from './GoogleSignIn.js';
+import { authErrorMessage } from './AuthErrors.js';
 import { createClient } from '@supabase/supabase-js';
 
 // These browser credentials are intentionally public; RLS controls all profile access.
@@ -42,8 +43,8 @@ export class AccountService {
   }
 
   async signIn(email, password) {
-    const { data, error } = await this.requireClient().auth.signInWithPassword({ email, password });
-    if (error) throw error;
+    const { data, error } = await this.requireClient().auth.signInWithPassword({ email, password }).catch(failure => ({ error: failure }));
+    if (error) throw new Error(authErrorMessage(error, 'signin'));
     return { user: toAccountUser(data.user) };
   }
 
@@ -52,13 +53,14 @@ export class AccountService {
       email,
       password,
       options: { data: { full_name: name } },
-    });
-    if (error) throw error;
+    }).catch(failure => ({ error: failure }));
+    if (error) throw new Error(authErrorMessage(error, 'signup'));
     return { user: toAccountUser(data.user), session: data.session };
   }
 
   async signInWithGoogle() {
-    return startGoogleSignIn(this.requireClient(), { projectUrl, publishableKey, location: window.location });
+    try { return await startGoogleSignIn(this.requireClient(), { projectUrl, publishableKey, location: window.location }); }
+    catch (error) { throw new Error(authErrorMessage(error, 'google')); }
   }
 
   async signOut() {

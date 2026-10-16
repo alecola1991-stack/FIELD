@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-16 · Claude · Online más robusto: reconexiones, avisos y pruebas con varios navegadores
-**Commit:** rama `online-robustez`
+**Commit:** fusionado en `main` el 2026-10-16 con la aprobación de Ale (merge `439a908`). Para deshacerlo: `git revert -m 1 439a908`.
 **Archivos:** `src/game/OnlineMatch.js`, `src/game/Game.js`, `src/ui/OnlineHub.js`, `src/ui/UI.js`, `src/main.js`, `src/styles.css`, `supabase/online-swap.sql` y `supabase/online-swap-test.sql` (nuevos), `supabase/online-teams-test.sql`, `README.md`, `tools/e2e-online/` (nuevo), `tests/OnlineMatch.test.js`, `tests/OnlineHub.test.js`, `tests/Squad.test.js`
 **Qué y por qué:** Ale pidió buscar errores y causas de desconexión y asegurar que todos los modos online funcionan con todos los jugadores. Monté un banco de pruebas en el que varios navegadores juegan entre sí con el código real (ver `tools/e2e-online/README.md`), lo ejecuté antes y después de los cambios, y revisé el código y los registros de Supabase.
 **Fallos encontrados y arreglados:**

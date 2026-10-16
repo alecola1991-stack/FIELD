@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-16 · Claude · Resto de submenús en paneles y sin scroll en PC
-**Commit:** rama `submenus-paneles-2` (pendiente de aprobación de Ale)
+**Commit:** fusionado en main (rama `submenus-paneles-2`, merge 0257862). Para deshacerlo: `git revert -m 1 0257862`
 **Archivos:** `index.html`, `src/styles.css`, `src/ui/UI.js`
 **Qué y por qué:** Ale pidió hacer lo mismo con los demás submenús: paneles y sin scroll en PC. Comprobado sin scroll en 1366×657, 1366×768, 1280×720 y 1920×960 en todas las pantallas y en sus estados secundarios (pestañas de Ajustes, cuenta conectada, cuadros de 16 y 32 equipos, clasificación con 50 filas, misiones, vitrina desplegada).
 **Cómo:**

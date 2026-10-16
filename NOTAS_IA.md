@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-16 · Claude · Pantalla «Ver rangos» en el online
-**Commit:** rama `ver-rangos`
+**Commit:** fusionado en `main` el 2026-10-16 con la aprobación de Ale (merge `a45c442`). Para deshacerlo: `git revert -m 1 a45c442`.
 **Archivos:** `index.html`, `src/ui/UI.js`, `src/styles.css`
 **Qué y por qué:** Ale pidió una opción en el online para ver todos los rangos como una barra de progreso, indicando en cuál estás.
 **Cómo:**

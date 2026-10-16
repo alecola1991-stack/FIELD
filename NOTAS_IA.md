@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-16 · Claude · Submenús en paneles y pantallas sin scroll en PC
-**Commit:** rama `submenus-paneles` (pendiente de aprobación de Ale)
+**Commit:** fusionado en main (rama `submenus-paneles`, merge 1b857f8). Para deshacerlo: `git revert -m 1 1b857f8`
 **Archivos:** `index.html`, `src/styles.css`, `src/ui/UI.js`, `src/ui/OnlineHub.js`, `src/ui/ProfileSocial.js`
 **Qué y por qué:** Ale pidió actualizar los submenús, evitar el scroll en PC y usar paneles como el menú principal en Jugar, Online y Liga nacional (ligas organizadas por países). Comprobado sin scroll en 1366×768, 1920×1080 y 1366×657 (altura útil real de un portátil con navegador), salvo pantallas con listas largas desplegadas a propósito.
 **Cómo:**

@@ -21,7 +21,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 - **2v2 privado lleno: nadie podía cambiar de equipo.** `supabase/online-swap.sql` (nuevo) añade `team` con `{swapWith: userId}` para intercambiar con un jugador del otro equipo, y el RPC devuelve `version: 3`. El cliente muestra «Cambiar con @x» (`.room-swap`) solo si `supportsSwap` (versión 3 o superior).
 **Comprobado:** 129 tests unitarios; tests SQL (`online-test`, `online-rematch-test`, `online-teams-test`, `online-swap-test`) en Postgres local; el banco de pruebas pasa todos los escenarios (1v1 público, privado e invitación, Ranked y revancha, 2v2 en sus tres variantes, torneos de 4, 6 y 8, cortes y recargas en 1v1 y 2v2, abandono resuelto por el servidor, volver en otra pestaña y sala caducada).
 **Para el otro asistente:**
-- **HAY QUE EJECUTAR `supabase/online-swap.sql` en Supabase** (después de `online-teams.sql`, que ya está aplicado). Hasta entonces todo lo demás funciona; solo falta el botón «Cambiar».
+- **`supabase/online-swap.sql` YA ESTÁ APLICADO en producción.** Ale lo ejecutó el 2026-10-16. Claude lo verificó con consultas de solo lectura: `action` y las otras 6 funciones coinciden en md5 con la versión probada en local, y los permisos son correctos. No hay que volver a ejecutarlo.
 - `field_private.action` vigente: la de `online-swap.sql`.
 - `src/main.js` expone `window.__field` solo en desarrollo (`import.meta.env.DEV`), para el banco de pruebas. No lo uses en producción.
 - No vuelvas a enviar paquetes de juego con `channel.send` si el canal no está unido.

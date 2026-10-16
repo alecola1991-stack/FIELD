@@ -9,7 +9,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 **Archivos:** `src/account/AuthErrors.js` (nuevo), `src/account/AccountService.js`, `src/account/GoogleSignIn.js`, `src/ui/UI.js`, `index.html`, `tests/AuthErrors.test.js` (nuevo), `tests/GoogleSignIn.test.js`
 **Qué y por qué:** Ale pidió resolver los problemas al iniciar sesión.
 - **Problema principal (configuración, no código).** En los registros de Auth de Supabase, todas las peticiones llevan `referer: http://localhost:3000`. Eso indica que la Site URL de Supabase sigue siendo `http://localhost:3000` y que `https://futarcade.es` no está en las Redirect URLs. Por eso, tras entrar con Google, Supabase devuelve al jugador a localhost. Se ve a usuarios repitiendo Google tres veces y acabando por registrarse con correo.
-- **Solución pendiente para Ale en el panel:** Authentication → URL Configuration. Site URL: `https://futarcade.es`. Redirect URLs: `https://futarcade.es/**` y `https://www.futarcade.es/**`.
+- **Resuelto en el panel (2026-10-16, 13:57):** Ale puso en Authentication → URL Configuration la Site URL `https://futarcade.es` y las Redirect URLs `https://futarcade.es/**` y `https://www.futarcade.es/**`. Claude lo verificó en los registros de Auth: el inicio con Google vuelve ya a `https://futarcade.es/` y la sesión se abre (`/callback` 302 y luego `/user` 200).
 **Cómo:**
 - `AuthErrors.js` contiene:
   - `authErrorMessage(error, context)`: traduce los errores de Supabase Auth a mensajes en español que dicen qué hacer (credenciales incorrectas con la pista de Google, cuenta ya existente, demasiados intentos, sin conexión, contraseña débil…).

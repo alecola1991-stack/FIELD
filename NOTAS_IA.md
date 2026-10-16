@@ -4,6 +4,21 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-16 · Claude · Pantalla «Ver rangos» en el online
+**Commit:** rama `ver-rangos`
+**Archivos:** `index.html`, `src/ui/UI.js`, `src/styles.css`
+**Qué y por qué:** Ale pidió una opción en el online para ver todos los rangos como una barra de progreso, indicando en cuál estás.
+**Cómo:**
+- Hay un botón nuevo en la pestaña Ranked: «Ver rangos →» (`data-action="ranks"` → `UI.selectMode('ranks')` → `UI.showRanks()`).
+- Diálogo `#ranks-overlay`, al final de `<main>`, con la misma base visual que `#rank-overlay`:
+  - `#ranks-you`: tu icono, @usuario, rango y ELO que te falta para el siguiente.
+  - `#ranks-ladder`: un tramo igual por rango, con relleno completo en los superados, parcial en el actual (`rankProgress().ratio`) y vacío en el resto, el icono y el ELO de inicio de cada tramo, y el marcador «TÚ» debajo de la barra. En Leyenda, que no tiene techo, el marcador avanza hasta 1000 ELO.
+  - `#ranks-list`: una ficha por rango con su tramo de ELO y el estado CONSEGUIDO, TU RANGO o FALTAN N.
+- Sin sesión iniciada se ve la escala sin marcador.
+- Se cierra con ✕, «Entendido», Escape o un clic fuera.
+- Todo se calcula con `RANKS`, `rankIndex` y `rankProgress` de `src/config/ranks.js`; no hay datos fijos en la UI.
+**Para el otro asistente:** si cambian los rangos, basta con tocar `RANKS`. La barra reparte un tramo igual por rango, no proporcional al ELO.
+
 ## 2026-10-16 · Claude · Rangos por ELO con iconos y pantalla de progreso tras el Ranked
 **Commit:** fusionado en `main` el 2026-10-16 con la aprobación de Ale (merge `506ace1`). Para deshacerlo: `git revert -m 1 506ace1`.
 **Archivos:** `src/config/ranks.js` y `src/ui/RankIcon.js` (nuevos), `src/ui/OnlineHub.js`, `src/ui/UI.js`, `index.html`, `src/styles.css`, `tests/Ranks.test.js` (nuevo)

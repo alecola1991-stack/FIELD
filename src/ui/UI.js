@@ -1,6 +1,6 @@
 import { readAuthRedirectError, cleanAuthUrl } from '../account/AuthErrors.js';
 import { rankBadge, rankIconSvg } from './RankIcon.js';
-import { rankJourney, rankProgress } from '../config/ranks.js';
+import { rankJourney, rankProgress, rankIndex, RANKS } from '../config/ranks.js';
 import { selectionFor, cycleTeamSelection, teamAbbreviation } from './TeamSelection.js';
 import { GamepadController } from '../game/GamepadController.js';
 import { OnlineHub } from './OnlineHub.js';
@@ -342,6 +342,10 @@ export class UI {
     this.result_next.addEventListener('click', () => this.advanceCompetition());
     this.result_finish.addEventListener('click', () => this.finishToMenu());
     document.getElementById('rank-continue').addEventListener('click', () => this.hideRankProgress());
+    const ranksOverlay = document.getElementById('ranks-overlay'), closeRanks = () => ranksOverlay.classList.add('hidden');
+    document.getElementById('ranks-close').addEventListener('click', closeRanks); document.getElementById('ranks-done').addEventListener('click', closeRanks);
+    ranksOverlay.addEventListener('click', event => { if (event.target === ranksOverlay) closeRanks(); });
+    ranksOverlay.addEventListener('keydown', event => { if (event.key === 'Escape') closeRanks(); });
     this.rank_overlay.addEventListener('keydown', event => { if (event.key === 'Escape') this.hideRankProgress(); });
     document.getElementById('reset-ball').addEventListener('click', () => this.game.resetBall());
     document.getElementById('reset-player').addEventListener('click', () => this.game.resetPlayer());
@@ -597,6 +601,7 @@ export class UI {
       this.openQuickSetup(); return;
     }
     if (mode === 'leaderboard') { this.show('leaderboard'); this.loadLeaderboard(); return; }
+    if (mode === 'ranks') { this.showRanks(); return; }
     if (mode === 'competitions') { this.show('competitions'); this.renderCompetitionPicker(); return; }
     // Home menu shortcuts reuse the competition picker flow (profile and eligibility checks included).
     if (mode === 'champions' || mode === 'league') { this.openCompetitionShortcut(mode); return; }
@@ -1486,6 +1491,54 @@ export class UI {
     };
     this.rankTimer = setTimeout(() => step(0), 350);
   }
+  // All tiers as one progress ladder (one equal segment per tier) with your position.
+  showRanks() {
+    const overlay = document.getElementById('ranks-overlay'), identity = this.hub?.identity;
+    const elo = identity ? Number(identity.elo) : null, current = elo === null ? -1 : rankIndex(elo), progress = elo === null ? null : rankProgress(elo);
+    const you = document.getElementById('ranks-you'); you.replaceChildren();
+    if (progress) {
+      const badge = document.createElement('span'); badge.className = 'ranks-you-icon'; badge.innerHTML = rankIconSvg(progress.rank, 64);
+      const text = document.createElement('div'); text.className = 'ranks-you-text';
+      const name = document.createElement('b'); name.textContent = `@${identity.username} · ${progress.rank.name}`;
+      const detail = document.createElement('small'); detail.textContent = progress.next ? `${elo} ELO · te faltan ${progress.to - elo} para ${progress.next.name}` : `${elo} ELO · rango máximo`;
+      text.append(name, detail); you.append(badge, text);
+    } else you.textContent = 'Inicia sesión y juega Ranked para conseguir tu rango. Todos empiezan en Amateur (500 ELO).';
+    // Ladder: past tiers full, the current one by progress, the rest empty.
+    const ladder = document.getElementById('ranks-ladder'); ladder.replaceChildren();
+    const track = document.createElement('div'); track.className = 'ranks-track';
+    RANKS.forEach((rank, index) => {
+      const segment = document.createElement('div'); segment.className = 'ranks-segment'; segment.dataset.rank = rank.id;
+      segment.classList.toggle('reached', index <= current); segment.classList.toggle('current', index === current);
+      const fill = document.createElement('i'); fill.style.width = `${index < current ? 100 : index === current ? progress.ratio * 100 : 0}%`;
+      const tick = document.createElement('span'); tick.className = 'ranks-tick'; tick.innerHTML = rankIconSvg(rank, index === current ? 34 : 26);
+      const label = document.createElement('small'); label.textContent = rank.floor;
+      segment.append(fill, tick, label); track.append(segment);
+    });
+    ladder.append(track);
+    if (progress) {
+      // Leyenda has no ceiling: its marker moves across the last segment up to 1000 ELO.
+      const within = progress.next ? progress.ratio : Math.min(1, (elo - progress.rank.floor) / 200);
+      const marker = document.createElement('span'); marker.className = 'ranks-marker'; marker.textContent = 'TÚ';
+      marker.style.left = `${Math.min(99, (current + within) / RANKS.length * 100)}%`;
+      ladder.append(marker);
+    }
+    const list = document.getElementById('ranks-list'); list.replaceChildren();
+    RANKS.forEach((rank, index) => {
+      const next = RANKS[index + 1];
+      const item = document.createElement('li'); item.className = 'ranks-item'; item.dataset.rank = rank.id;
+      item.classList.toggle('current', index === current); item.classList.toggle('locked', index > current);
+      const icon = document.createElement('span'); icon.innerHTML = rankIconSvg(rank, 40);
+      const text = document.createElement('div');
+      const name = document.createElement('b'); name.textContent = rank.name;
+      const range = document.createElement('small'); range.textContent = index === 0 ? `Hasta ${next.min - 1} ELO · empiezas en 500` : next ? `${rank.min}–${next.min - 1} ELO` : `${rank.min} ELO o más`;
+      text.append(name, range);
+      const state = document.createElement('em');
+      state.textContent = index === current ? 'TU RANGO' : index < current ? 'CONSEGUIDO' : elo === null ? (index === 0 ? 'INICIAL' : `${rank.min} ELO`) : `FALTAN ${rank.min - elo}`;
+      item.append(icon, text, state); list.append(item);
+    });
+    overlay.classList.remove('hidden'); document.getElementById('ranks-done').focus({ preventScroll: true });
+  }
+
   hideRankProgress() { this.rankAnimation = (this.rankAnimation || 0) + 1; clearTimeout(this.rankTimer); this.rank_overlay?.classList.add('hidden'); }
 
   handleOnlinePeerLeft() {

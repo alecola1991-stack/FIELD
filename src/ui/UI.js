@@ -1,3 +1,4 @@
+import { readAuthRedirectError, cleanAuthUrl } from '../account/AuthErrors.js';
 import { selectionFor, cycleTeamSelection, teamAbbreviation } from './TeamSelection.js';
 import { GamepadController } from '../game/GamepadController.js';
 import { OnlineHub } from './OnlineHub.js';
@@ -83,6 +84,12 @@ export class UI {
     });
     if (this.user && accountService) this.activateAccount(this.user).catch(error => this.setAccountMessage(error.message, true));
     else this.renderAccount();
+    // Back from Google with an error (cancelled, expired…): explain it on the account screen.
+    const redirectError = readAuthRedirectError(window.location);
+    if (redirectError) {
+      try { history.replaceState(null, '', cleanAuthUrl(window.location)); } catch { /* keep the address as is */ }
+      if (!this.user) { this.show('account'); this.setAccountMessage(redirectError.message, true); }
+    }
   }
 
   populateTeamPicker() {
@@ -376,8 +383,9 @@ export class UI {
   async submitAccount() {
     if (!this.accountService?.isConfigured) { this.setAccountMessage('Falta configurar Supabase para activar las cuentas. El progreso local sigue disponible.', true); return; }
     const email = this.account_email.value.trim(), password = this.account_password.value;
-    if (!this.account_email.checkValidity() || (this.accountMode === 'signup' && !this.account_name.value.trim()) || password.length < 8) {
-      this.setAccountMessage('Completa un correo válido, el nombre y una contraseña de 8 caracteres como mínimo.', true); return;
+    // New accounts need 8 characters; signing in only needs the password the account already has.
+    if (!this.account_email.checkValidity() || (this.accountMode === 'signup' && (!this.account_name.value.trim() || password.length < 8)) || !password) {
+      this.setAccountMessage(this.accountMode === 'signup' ? 'Completa un correo válido, el nombre y una contraseña de 8 caracteres como mínimo.' : 'Escribe tu correo y tu contraseña.', true); return;
     }
     this.account_submit.disabled = true; this.setAccountMessage(this.accountMode === 'signup' ? 'Creando cuenta…' : 'Iniciando sesión…');
     try {

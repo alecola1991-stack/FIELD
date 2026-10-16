@@ -4,6 +4,23 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-16 · Claude · Arreglos de inicio de sesión
+**Commit:** rama `login-fixes`
+**Archivos:** `src/account/AuthErrors.js` (nuevo), `src/account/AccountService.js`, `src/account/GoogleSignIn.js`, `src/ui/UI.js`, `index.html`, `tests/AuthErrors.test.js` (nuevo), `tests/GoogleSignIn.test.js`
+**Qué y por qué:** Ale pidió resolver los problemas al iniciar sesión.
+- **Problema principal (configuración, no código).** En los registros de Auth de Supabase, todas las peticiones llevan `referer: http://localhost:3000`. Eso indica que la Site URL de Supabase sigue siendo `http://localhost:3000` y que `https://futarcade.es` no está en las Redirect URLs. Por eso, tras entrar con Google, Supabase devuelve al jugador a localhost. Se ve a usuarios repitiendo Google tres veces y acabando por registrarse con correo.
+- **Solución pendiente para Ale en el panel:** Authentication → URL Configuration. Site URL: `https://futarcade.es`. Redirect URLs: `https://futarcade.es/**` y `https://www.futarcade.es/**`.
+**Cómo:**
+- `AuthErrors.js` contiene:
+  - `authErrorMessage(error, context)`: traduce los errores de Supabase Auth a mensajes en español que dicen qué hacer (credenciales incorrectas con la pista de Google, cuenta ya existente, demasiados intentos, sin conexión, contraseña débil…).
+  - `readAuthRedirectError(location)` y `cleanAuthUrl(location)`: leen los errores que vuelven de Google en `?error=` o `#error=` y limpian la dirección.
+- `AccountService.signIn/signUp/signInWithGoogle` lanzan ya el mensaje traducido.
+- `UI.attach` muestra la pantalla de cuenta con el aviso si se vuelve de Google con un error.
+- Al iniciar sesión ya no se exigen 8 caracteres de contraseña (solo al crear la cuenta).
+- `GoogleSignIn`: en un dominio público abierto por http redirige a https en vez de fallar. En la Portable (`arcade:`) explica que se use correo y contraseña.
+- `index.html`: script en línea al principio de `<head>` que pasa de http a https en dominios públicos. No afecta a localhost, a las IPs de red local ni a la Portable.
+**Para el otro asistente:** Los mensajes de error de acceso se añaden en `AuthErrors.js`, no en la UI. No quites el script de https de `index.html`, porque Google necesita https.
+
 ## 2026-10-16 · Claude · 2v2 online (rápido y Ranked) y torneos de 4, 6 u 8
 **Commit:** `37dc6bd` (fusionado en `main` el 2026-10-16 con la aprobación de Ale, merge `dee5999`). Para deshacerlo: `git revert -m 1 dee5999`.
 **Archivos:** `supabase/online-teams.sql` y `supabase/online-teams-test.sql` (nuevos), `src/game/Game.js`, `src/game/Renderer.js`, `src/game/OnlineMatch.js`, `src/game/OnlineRules.js`, `src/ui/OnlineHub.js`, `src/ui/UI.js`, `src/main.js`, `index.html`, `src/styles.css`, `README.md`, `tests/Squad.test.js` (nuevo), `tests/OnlineMatch.test.js`, `tests/OnlineHub.test.js`

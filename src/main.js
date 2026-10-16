@@ -19,6 +19,7 @@ const game = new Game(document.querySelector('#game-canvas'), ui.settings, sound
   onGoal: side => { ui.goal(); ui.recordGoal(side); },
   onMatchEnd: result => ui.handleMatchEnd(result),
   getRemoteInput: () => onlineMatch.getRemoteInput(),
+  getSeatInput: seat => onlineMatch.getSeatInput(seat),
   onOnlineInput: input => onlineMatch.sendInput(input),
   onOnlineSnapshot: snapshot => onlineMatch.sendSnapshot(snapshot),
   onReplay: info => ui.updateReplay(info),

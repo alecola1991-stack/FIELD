@@ -1,18 +1,29 @@
-import { ONLINE_RULES, ONLINE_MODES, normalizeUsername, validUsername, assignedMatch, opponentId } from '../game/OnlineRules.js';
+import { ONLINE_RULES, ONLINE_MODES, ONLINE_SIZES, normalizeUsername, validUsername, assignedMatch, opponentId, roomSize, isTeamRoom, matchSeats, matchPlayers, onLeftTeam, wonMatch, roundName } from '../game/OnlineRules.js';
 import { getTeamById, getKitBackground } from '../config/teams.js';
 import { teamAbbreviation } from './TeamSelection.js';
 
 const element = (tag, text, className = '') => { const node = document.createElement(tag); node.textContent = text; node.className = className; return node; };
+const FORMATS_KEY = 'field-online-formats';
+// Chosen room size per mode (1v1/2v2, 4/6/8 players), remembered per browser.
+function loadFormats() {
+  const formats = { ranked: 2, quick: 2, tournament: 4 };
+  try { const saved = JSON.parse(localStorage.getItem(FORMATS_KEY) || '{}'); for (const kind of Object.keys(formats)) if (ONLINE_SIZES[kind].includes(saved[kind])) formats[kind] = saved[kind]; } catch { /* storage unavailable */ }
+  return formats;
+}
 export class OnlineHub {
   constructor(ui) {
     this.ui = ui; this.identity = null; this.lobby = null; this.mode = 'ranked'; this.friends = []; this.invites = [];
     this.revision = 0; this.connectedMatchId = null; this.busy = false; this.polling = false; this.lastPoll = 0; this.nameSequence = 0; this.rematchRequested = false;
+    this.formats = loadFormats(); this.supportsTeams = false;
     this.screen = document.getElementById('online-screen');
     this.screen.addEventListener('click', event => {
       const tab = event.target.closest('[data-online-tab]');
       if (tab) { this.mode = tab.dataset.onlineTab; this.render(); return; }
+      const format = event.target.closest('[data-format-group]');
+      if (format) { this.setFormat(format.dataset.formatGroup, Number(format.dataset.size)); return; }
       const button = event.target.closest('[data-online-command]');
-      if (button) this.action(button.dataset.onlineCommand, { kind: button.dataset.kind, userId: button.dataset.userId, inviteId: button.dataset.inviteId,
+      if (button) this.action(button.dataset.onlineCommand, { kind: button.dataset.kind, userId: button.dataset.userId, inviteId: button.dataset.inviteId, team: button.dataset.team ? Number(button.dataset.team) : undefined,
+        size: button.dataset.sizeFrom ? this.formats[button.dataset.sizeFrom] : undefined,
         code: button.dataset.codeInput ? document.getElementById(button.dataset.codeInput).value : undefined });
     });
     document.getElementById('online-username-form').addEventListener('submit', event => { event.preventDefault(); this.action('claim_username', { username: document.getElementById('online-username-input').value }); });
@@ -32,6 +43,14 @@ export class OnlineHub {
     this.timer = setInterval(() => this.tick(), 3000);
     this.render();
   }
+  setFormat(kind, size) {
+    if (!ONLINE_SIZES[kind]?.includes(size)) return;
+    this.formats[kind] = size;
+    try { localStorage.setItem(FORMATS_KEY, JSON.stringify(this.formats)); } catch { /* storage unavailable */ }
+    this.render();
+  }
+  // Room size to request: only once the database supports team rooms (online-teams.sql).
+  requestedSize(kind) { return this.supportsTeams ? this.formats[kind] : undefined; }
   rpc(action, payload = {}) { return this.ui.accountService.onlineAction(action, payload); }
   message(text, error = false) { const node = document.getElementById('online-hub-message'); node.textContent = text; node.classList.toggle('error', error); }
   async activate() {
@@ -72,6 +91,8 @@ export class OnlineHub {
       payload.lobbyId = this.lobby.id;
     }
     if (command === 'friend_remove' && !confirm('¿Eliminar a este amigo?')) return;
+    if (['team', 'start'].includes(command)) { if (!this.lobby) return; payload.lobbyId = this.lobby.id; }
+    if (!this.supportsTeams || !['queue', 'create'].includes(command)) delete payload.size;
     const userId = this.ui.user.id;
     this.revision = (this.revision || 0) + 1;
     this.busy = true; this.render(); this.message('Conectando…');
@@ -90,12 +111,14 @@ export class OnlineHub {
       else if (command === 'friend_request') { this.message('Solicitud enviada. Tu amigo podrá aceptarla aquí.'); document.getElementById('online-friend-input').value = ''; }
       else if (command === 'invite') this.message('Invitación enviada. Esperando a que tu amigo acepte.');
       else if (command === 'invite_decline') this.message('Invitación declinada.');
+      else if (command === 'team') this.message('Equipo cambiado.');
       else if (!this.lobby) this.message('Listo.');
     } catch (error) { this.message(error.message || 'No se pudo completar la acción.', true); }
     finally { this.busy = false; this.render(); }
   }
   async consume(data) {
     this.identity = data?.identity || null; this.friends = data?.friends || []; this.invites = data?.invites || []; this.lobby = data?.lobby || null;
+    if (data) this.supportsTeams = Number(data.version) >= 2;
     this.render();
     if (this.lobby?.state === 'cancelled') {
       this.message('La sala se ha cancelado o el resultado no coincide. No se aplica ELO por un resultado discrepante.', true);
@@ -111,11 +134,17 @@ export class OnlineHub {
     if (!this.identity || this.connectedMatchId === match.id) return;
     const other = this.lobby.players.find(player => player.id === opponentId(match, this.identity.id));
     if (!other) return;
+    const profileOf = player => ({ ...player.profile, userId: player.id, username: player.username, elo: player.elo, modifiers: ONLINE_RULES });
+    // 2v2: four seats in host order (p1, p3, p2, p4); seat 0 hosts the match.
+    let squad = null;
+    if (match.p3 && match.p4) {
+      const seats = matchSeats(match).map(id => this.lobby.players.find(player => player.id === id));
+      if (seats.some(seat => !seat)) return;
+      squad = { seats: seats.map(seat => seat.id === this.identity.id ? { ...profileOf(seat), ...this.ui.onlinePlayer() } : profileOf(seat)), localSeat: seats.findIndex(seat => seat.id === this.identity.id) };
+    }
     this.connectedMatchId = match.id; this.rematchRequested = false;
-    try {
-      const opponent = { ...other.profile, userId: other.id, username: other.username, elo: other.elo, modifiers: ONLINE_RULES };
-      await this.ui.onlineMatch.connectAssigned(match, this.ui.onlinePlayer(), opponent);
-    } catch (error) { this.connectedMatchId = null; this.message(error.message, true); }
+    try { await this.ui.onlineMatch.connectAssigned(match, this.ui.onlinePlayer(), profileOf(other), squad); }
+    catch (error) { this.connectedMatchId = null; this.message(error.message, true); }
   }
   async record(result) {
     const matchId = this.connectedMatchId;
@@ -142,7 +171,7 @@ export class OnlineHub {
     if (!match || this.ui.result_overlay.classList.contains('hidden')) return;
     this.ui.result_finish.disabled = match.state === 'playing';
     if (match.state === 'finished') {
-      const won = match.winner === this.identity.id;
+      const won = wonMatch(match, this.identity.id);
       this.ui.result_online_status.textContent = this.lobby.kind === 'ranked' ? `Resultado confirmado · ${this.identity.elo} ELO · ${won ? 'Victoria' : 'Derrota'}` : 'Resultado confirmado. Sin cambios de ELO.';
     } else if (match.state === 'disputed') this.ui.result_online_status.textContent = 'Los resultados no coinciden. El partido no puntúa.';
     this.updateRematch();
@@ -155,13 +184,14 @@ export class OnlineHub {
     const supported = room?.rematch && ['quick', 'ranked'].includes(room.kind) && this.ui.currentMatchMode === 'online';
     button.classList.toggle('hidden', !supported); status.classList.toggle('hidden', !supported);
     if (!supported) return;
-    const me = this.identity?.id, votes = room.rematch.votes || [], rival = room.players.find(player => player.id !== me);
-    const name = rival ? `@${rival.username}` : 'tu rival';
-    let label = 'Pedir revancha', icon = '↻', disabled = false, text = room.kind === 'ranked' ? 'La revancha Ranked también cuenta ELO.' : 'Juega otra vez contra el mismo rival.';
+    const me = this.identity?.id, votes = room.rematch.votes || [], others = room.players.filter(player => player.id !== me), team = others.length > 1;
+    const rival = others[0], name = team ? 'los demás' : rival ? `@${rival.username}` : 'tu rival', gone = others.find(player => player.active === false);
+    const count = team ? ` (${votes.length}/${room.players.length})` : '';
+    let label = 'Pedir revancha', icon = '↻', disabled = false, text = room.kind === 'ranked' ? 'La revancha Ranked también cuenta ELO.' : team ? 'Jugad otra vez con los mismos equipos.' : 'Juega otra vez contra el mismo rival.';
     if (room.state !== 'finished') { disabled = true; text = 'Disponible cuando se confirme el resultado.'; }
-    else if (rival?.active === false) { disabled = true; label = 'Revancha no disponible'; icon = '✕'; text = `${name} ha salido de la sala.`; }
-    else if (votes.includes(me)) { disabled = true; label = 'Esperando al rival…'; icon = '⌛'; text = `Revancha pedida. Empezará en cuanto ${name} acepte.`; }
-    else if (rival && votes.includes(rival.id)) { label = 'Aceptar revancha'; text = `${name} quiere la revancha.`; }
+    else if (gone) { disabled = true; label = 'Revancha no disponible'; icon = '✕'; text = `@${gone.username} ha salido de la sala.`; }
+    else if (votes.includes(me)) { disabled = true; label = `Esperando${team ? ' a los demás' : ' al rival'}…${count}`; icon = '⌛'; text = `Revancha pedida. Empezará en cuanto ${name} ${team ? 'acepten' : 'acepte'}.`; }
+    else if (others.some(player => votes.includes(player.id))) { label = `Aceptar revancha${count}`; text = team ? `${votes.length} ${votes.length === 1 ? 'jugador quiere' : 'jugadores quieren'} la revancha.` : `${name} quiere la revancha.`; }
     button.disabled = Boolean(disabled || this.busy); button.innerHTML = `${label} <span>${icon}</span>`; status.textContent = text;
   }
   async requestRematch() {
@@ -193,7 +223,27 @@ export class OnlineHub {
     this.screen.querySelectorAll('[data-online-panel]').forEach(panel => panel.classList.toggle('hidden', panel.dataset.onlinePanel !== this.mode));
     this.screen.querySelectorAll('[data-online-command], #online-find-match, #online-create-room, #online-join-room').forEach(button => { button.disabled = this.busy; });
     document.getElementById('online-ranked-elo').textContent = registered ? `${this.identity.elo} ELO` : '500 ELO iniciales';
+    this.renderFormats();
     this.renderFriends(); this.renderLobby();
+  }
+  // Format pickers (1v1/2v2 and tournament size) appear once the database supports them.
+  renderFormats() {
+    this.screen.querySelectorAll('[data-format-picker]').forEach(picker => picker.classList.toggle('hidden', !this.supportsTeams));
+    this.screen.querySelectorAll('[data-format-group]').forEach(button => {
+      const active = this.formats[button.dataset.formatGroup] === Number(button.dataset.size);
+      button.classList.toggle('active', active); button.setAttribute('aria-checked', String(active));
+    });
+    const size = kind => this.supportsTeams ? this.formats[kind] : ONLINE_MODES[kind].capacity;
+    const set = (id, text) => { const node = document.getElementById(id); if (node) node.textContent = text; };
+    set('online-ranked-kicker', `COMPETICIÓN · ${size('ranked') === 4 ? '2 CONTRA 2' : '1 CONTRA 1'}`);
+    set('online-ranked-search', size('ranked') === 4 ? 'Buscar Ranked 2v2 →' : 'Buscar partida Ranked →');
+    set('online-quick-kicker', `AMISTOSO · ${size('quick') === 4 ? '2 CONTRA 2' : '1 CONTRA 1'} · SIN CAMBIOS DE ELO`);
+    set('online-find-match', size('quick') === 4 ? 'Partida pública 2v2 · Buscar jugadores →' : 'Partida pública · Buscar rival →');
+    set('online-create-room', size('quick') === 4 ? 'Crear partida privada 2v2 →' : 'Crear partida privada →');
+    const players = size('tournament');
+    set('online-tournament-kicker', `${players} JUGADORES · ${players === 4 ? 'SEMIFINALES Y FINAL' : players === 6 ? 'CUARTOS, SEMIFINALES Y FINAL' : 'CUARTOS, SEMIFINALES Y FINAL'}`);
+    set('online-tournament-copy', players === 4 ? 'Dos semifinales simultáneas. Los ganadores disputan la final.' : players === 6 ? 'Dos cuartos de final; dos jugadores, sorteados, pasan directos a semifinales.' : 'Cuatro cuartos de final simultáneos, semifinales y final.');
+    set('online-tournament-search', `Torneo público · Buscar ${players} jugadores →`);
   }
   button(text, command, data = {}) {
     const button = element('button', text, 'tiny-button'); button.type = 'button'; button.dataset.onlineCommand = command;
@@ -222,14 +272,16 @@ export class OnlineHub {
     if (!this.invites.length) invites.append(element('p', 'Aquí aparecerán las invitaciones para jugar.', 'online-match-hint'));
   }
   // Room panel: mode, privacy, state and waiting time; one card per seat (kit
-  // colours, @user, ELO, level) with animated empty seats; VS for duels and a
-  // bracket for four-player tournaments.
+  // colours, @user, ELO, level) with animated empty seats. 1v1 shows VS, 2v2
+  // two team columns (pick a side and start in private rooms) and tournaments
+  // a seat grid plus every match grouped by round.
   renderLobby() {
     const panel = this.ui.online_room_panel; panel.classList.toggle('hidden', !this.lobby);
     const roster = document.getElementById('online-lobby-roster'); roster.replaceChildren();
     const bracket = document.getElementById('online-bracket'); bracket.replaceChildren();
     if (!this.lobby) { clearInterval(this.roomTimer); this.roomTimer = 0; this.waitingRoom = null; return; }
-    const room = this.lobby, capacity = ONLINE_MODES[room.kind]?.capacity || 2, mode = ONLINE_MODES[room.kind]?.name || 'Sala';
+    const room = this.lobby, capacity = roomSize(room), teams = isTeamRoom(room), me = this.identity?.id;
+    const mode = `${ONLINE_MODES[room.kind]?.name || 'Sala'}${room.kind === 'tournament' ? ` de ${capacity}` : teams ? ' 2v2' : ''}`;
     this.ui.online_room_code_wrap.classList.toggle('hidden', room.public || room.state !== 'waiting');
     this.ui.online_room_code.textContent = room.code;
     this.ui.online_cancel.textContent = room.state === 'finished' || room.state === 'cancelled' ? 'Cerrar sala' : room.state === 'playing' ? 'Salir de la sala' : 'Cancelar búsqueda / sala';
@@ -242,33 +294,81 @@ export class OnlineHub {
       const tickTimer = () => { const seconds = Math.floor((Date.now() - this.waitingSince) / 1000); document.getElementById('online-room-timer').textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`; };
       tickTimer(); if (!this.roomTimer) this.roomTimer = setInterval(tickTimer, 1000);
     } else { clearInterval(this.roomTimer); this.roomTimer = 0; document.getElementById('online-room-timer').textContent = ''; }
-    let status = room.state === 'waiting' ? (room.public ? 'Buscando rivales… te emparejaremos en cuanto haya alguien disponible.' : 'Comparte el código para que tu rival entre.')
-      : room.state === 'finished' ? `Ganador: @${room.players.find(p => p.id === room.champion)?.username || 'jugador'}` : room.state === 'cancelled' ? 'Sala cancelada.'
-        : room.kind === 'tournament' ? 'Torneo en curso · dos semifinales y una final' : 'Partido en curso';
-    if (room.kind === 'tournament' && room.state === 'playing' && !assignedMatch(room, this.identity?.id)) status += ' · Esperando la otra semifinal o la final';
-    this.ui.online_status.textContent = status; this.ui.online_status.classList.toggle('error', room.state === 'cancelled');
-    roster.classList.toggle('duel', capacity === 2); roster.classList.toggle('quad', capacity === 4);
-    const seats = [];
-    for (let slot = 1; slot <= capacity; slot++) {
-      const player = room.players.find(item => item.slot === slot) || (room.players[slot - 1] && room.players[slot - 1].slot === undefined ? room.players[slot - 1] : null);
-      seats.push(player ? this.seatCard(player) : this.emptySeat());
-      if (capacity === 2 && slot === 1) seats.push(element('b', 'VS', 'room-versus'));
+    const host = room.players.find(player => player.id === room.host);
+    const lastMatch = room.matches.at(-1), names = ids => ids.map(id => `@${room.players.find(p => p.id === id)?.username || 'jugador'}`).join(' y ');
+    let status = room.state === 'waiting' ? (room.public ? (teams ? 'Buscando jugadores… los equipos se sortean al completar la sala.' : 'Buscando rivales… te emparejaremos en cuanto haya alguien disponible.')
+      : teams ? (room.players.length < 4 ? 'Comparte el código: hacen falta cuatro jugadores.' : room.host === me ? 'Elegid equipos y pulsa Empezar.' : `Elegid equipos. @${host?.username || 'el anfitrión'} empezará el partido.`) : 'Comparte el código para que tu rival entre.')
+      : room.state === 'finished' ? (teams && lastMatch ? `Ganan ${names(onLeftTeam(lastMatch, lastMatch.winner) ? [lastMatch.p1, lastMatch.p3] : [lastMatch.p2, lastMatch.p4])}` : `Ganador: @${room.players.find(p => p.id === room.champion)?.username || 'jugador'}`)
+        : room.state === 'cancelled' ? 'Sala cancelada.' : room.kind === 'tournament' ? `Torneo en curso · ${capacity} jugadores` : 'Partido en curso';
+    if (room.kind === 'tournament' && room.state === 'playing' && !assignedMatch(room, me)) {
+      const out = room.matches.some(match => match.state === 'finished' && matchPlayers(match).includes(me) && match.winner !== me);
+      status += out ? ' · Has quedado eliminado; puedes seguir el cuadro.' : ' · Esperando a que termine la ronda.';
     }
-    roster.append(...seats);
+    this.ui.online_status.textContent = status; this.ui.online_status.classList.toggle('error', room.state === 'cancelled');
+    roster.classList.toggle('duel', capacity === 2); roster.classList.toggle('quad', capacity === 4 && !teams);
+    roster.classList.toggle('teams', teams); roster.classList.toggle('grid', capacity > 4);
+    if (teams) roster.append(...this.renderTeams(room));
+    else {
+      const seats = [];
+      for (let slot = 1; slot <= capacity; slot++) {
+        const player = room.players.find(item => item.slot === slot) || (room.players[slot - 1] && room.players[slot - 1].slot === undefined ? room.players[slot - 1] : null);
+        seats.push(player ? this.seatCard(player) : this.emptySeat());
+        if (capacity === 2 && slot === 1) seats.push(element('b', 'VS', 'room-versus'));
+      }
+      roster.append(...seats);
+    }
+    // Byes in 6-player tournaments: players without a first-round match.
+    if (room.kind === 'tournament' && capacity === 6 && room.state !== 'waiting') {
+      const firstRound = room.matches.filter(match => match.round === 1).flatMap(matchPlayers);
+      const byes = room.players.filter(player => !firstRound.includes(player.id));
+      if (byes.length) bracket.append(element('p', `Pasan directos a semifinales: ${byes.map(player => '@' + player.username).join(' y ')}`, 'room-byes'));
+    }
+    const counters = {};
     for (const match of room.matches) {
-      const first = room.players.find(player => player.id === match.p1), second = room.players.find(player => player.id === match.p2);
       const card = element('div', '', 'room-match'); card.dataset.state = match.state;
-      card.append(element('small', room.kind === 'tournament' ? match.round === 2 ? 'FINAL' : `SEMIFINAL ${match.position}` : (ONLINE_MODES[room.kind]?.name || '').toUpperCase()));
-      for (const [player, score] of [[first, match.score1], [second, match.score2]]) {
+      let label = (ONLINE_MODES[room.kind]?.name || '').toUpperCase() + (teams ? ' · 2V2' : '');
+      if (room.kind === 'tournament') {
+        const name = roundName(capacity, match.round), count = room.matches.filter(item => item.round === match.round).length;
+        counters[match.round] = (counters[match.round] || 0) + 1;
+        label = count > 1 ? `${name} ${counters[match.round]}` : name;
+      }
+      card.append(element('small', label));
+      const sides = match.p3 ? [[[match.p1, match.p3], match.score1, match.p1], [[match.p2, match.p4], match.score2, match.p2]] : [[[match.p1], match.score1, match.p1], [[match.p2], match.score2, match.p2]];
+      for (const [ids, score, captain] of sides) {
         const line = element('div', '', 'room-match-line');
-        line.classList.toggle('winner', match.state === 'finished' && match.winner === player?.id);
-        line.classList.toggle('you', player?.id === this.identity?.id);
-        line.append(element('span', `@${player?.username || '—'}`), element('b', match.state === 'finished' ? String(score ?? '') : ''));
+        line.classList.toggle('winner', match.state === 'finished' && match.winner === captain);
+        line.classList.toggle('you', ids.includes(me));
+        line.append(element('span', names(ids)), element('b', match.state === 'finished' ? String(score ?? '') : ''));
         card.append(line);
       }
       card.append(element('em', match.state === 'finished' ? (room.kind === 'ranked' && match.eloDelta ? `±${Math.abs(match.eloDelta)} ELO` : 'Final') : match.state === 'disputed' ? 'Resultado discrepante' : match.reported1 || match.reported2 ? 'Confirmando resultado…' : 'En juego'));
       bracket.append(card);
     }
+  }
+  // 2v2 roster: team A (left) and team B (right). Public rooms are drawn when
+  // full; in private rooms players switch sides and the creator starts.
+  renderTeams(room) {
+    const me = this.identity?.id, mine = room.players.find(player => player.id === me);
+    const match = room.matches.at(-1), privateWaiting = room.state === 'waiting' && !room.public;
+    // Public rooms have no teams until they fill: show the seats split in two, labelled as a draw.
+    const drawPending = !match && room.public;
+    const teamOf = player => match ? (onLeftTeam(match, player.id) ? 1 : 2) : drawPending ? (room.players.indexOf(player) < 2 ? 1 : 2) : player.team;
+    const columns = [1, 2].map(team => {
+      const column = element('div', '', 'room-team'); column.dataset.team = String(team);
+      const members = room.players.filter(player => teamOf(player) === team);
+      const head = element('div', '', 'room-team-head'); head.append(element('b', drawPending ? 'SORTEO' : team === 1 ? 'EQUIPO A' : 'EQUIPO B'), element('small', drawPending ? 'AL COMPLETAR' : `${members.length}/2`));
+      column.append(head, ...members.map(player => this.seatCard(player)));
+      for (let index = members.length; index < 2; index++) column.append(this.emptySeat());
+      if (privateWaiting && mine && teamOf(mine) !== team && members.length < 2) column.append(this.button(`Unirme al equipo ${team === 1 ? 'A' : 'B'}`, 'team', { team: String(team) }));
+      return column;
+    });
+    const nodes = [columns[0], element('b', 'VS', 'room-versus'), columns[1]];
+    if (privateWaiting && room.host === me) {
+      const ready = room.players.length === 4 && room.players.filter(player => player.team === 1).length === 2;
+      const start = this.button(ready ? 'Empezar partido 2v2 →' : 'Empezar (faltan jugadores o equipos)', 'start'); start.classList.add('room-start'); start.disabled = this.busy || !ready;
+      nodes.push(start);
+    }
+    return nodes;
   }
   seatCard(player) {
     const profile = player.profile || {}, team = getTeamById(profile.teamId), mine = player.id === this.identity?.id;

@@ -185,3 +185,44 @@ test('server-assigned matches use authorized private topics, authenticated peer 
     assert.equal(host.profile.modifiers.ballSize, 1);
   } finally { await guest.leave(false); await host.leave(false); }
 });
+
+test('2v2: el anfitrión arranca con los tres invitados, recibe entradas por asiento y rechaza suplantaciones', async () => {
+  const ids = ['u-host', 'u-mate', 'u-riva', 'u-rivb'];
+  const seats = ids.map((userId, index) => ({ userId, username: `p${index}`, name: `P${index}`, number: index + 1, teamId: 'laliga-celta' }));
+  const match = { id: '0b5c1d2e-1111-4222-8333-944455556666', p1: ids[0], p2: ids[2], p3: ids[1], p4: ids[3] };
+  const peers = [], starts = [], skips = [], left = [];
+  for (let seat = 0; seat < 4; seat++) {
+    sessionValues = new Map();
+    const peer = new OnlineMatch(client);
+    peer.setHandlers({ onMatchStart: info => starts.push([seat, info]), onReplaySkip: index => skips.push(index), onPeerLeft: () => left.push(seat) });
+    peers.push(peer);
+  }
+  // Guests connect first; the host starts only when all three have said hello.
+  for (let seat = 1; seat < 4; seat++) await peers[seat].connectAssigned(match, seats[seat], seats[seat < 2 ? 2 : 0], { seats, localSeat: seat });
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal(starts.length, 0);
+  await peers[0].connectAssigned(match, seats[0], seats[2], { seats, localSeat: 0 });
+  await new Promise(resolve => setTimeout(resolve, 700));
+  assert.deepEqual(starts.map(([seat]) => seat).sort(), [0, 1, 2, 3], 'all four peers start');
+  const info = new Map(starts);
+  assert.equal(info.get(0).role, 'host'); assert.equal(info.get(1).localSide, 'left'); assert.equal(info.get(3).localSide, 'right');
+  assert.equal(info.get(1).squad.localSeat, 1);
+
+  peers[3].sendInput({ x: 1, y: -1, kick: true });
+  assert.deepEqual(peers[0].getSeatInput(3), { x: 1, y: -1, kick: true });
+  assert.equal(peers[0].getSeatInput(3).kick, false, 'a kick is consumed once');
+  assert.deepEqual(peers[0].getSeatInput(2), { x: 0, y: 0, kick: false });
+  // Seat 2 claiming to be seat 1 is ignored.
+  peers[2].send('input', { clientId: peers[2].clientId, matchId: match.id, sequence: 99, x: -1, y: 0, kick: false, seat: 1 });
+  assert.deepEqual(peers[0].getSeatInput(1), { x: 0, y: 0, kick: false });
+
+  let snapshots = 0; peers[1].handlers.onSnapshot = () => snapshots++;
+  peers[0].sendSnapshot({ mode: 'online' });
+  assert.equal(snapshots, 1, 'guests receive the host snapshot');
+  peers[2].sendReplaySkip();
+  assert.deepEqual(skips, [2]);
+
+  await peers[3].leave();
+  assert.deepEqual(left.sort(), [0, 1, 2], 'a player leaving ends the match for everyone');
+  for (const peer of peers) await peer.leave(false);
+});

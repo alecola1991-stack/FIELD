@@ -609,3 +609,26 @@ body.blue-theme.online-theme{--bg:#020713;--panel:#071329;--green:#83b4ff;--mute
 @keyframes roomPulse{50%{opacity:.45}}
 @media(max-width:600px){.online-lobby-roster.duel{grid-template-columns:1fr}.room-versus{font-size:14px}.online-lobby-roster.quad .room-seat{padding:8px;gap:7px}.online-lobby-roster.quad .room-crest{width:34px;height:34px;font-size:10px}.online-lobby-roster.quad .room-seat-info small:last-child{display:none}.online-lobby-roster.quad .room-seat-info b{font-size:13px}}
 @media(prefers-reduced-motion:reduce){.room-crest.pulse{animation:none}}
+
+/* Online formats (1v1/2v2, tournament size), 2v2 teams and 6/8-player rooms */
+.online-format{display:flex;gap:6px;margin:4px 0 16px;padding:4px;border:1px solid #6089c548;border-radius:12px;background:#06142a}
+.online-format button{flex:1;min-width:0;border:0;border-radius:9px;padding:9px 8px;background:transparent;color:#a9bfdf;font:700 13px Manrope,system-ui,sans-serif;cursor:pointer}
+.online-format button:hover{color:#eef4ff}
+.online-format button.active{background:#7eaeef;color:#030d20}
+.online-format button:focus-visible{outline:2px solid #ffd678;outline-offset:1px}
+.online-lobby-roster.teams{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:start}
+.online-lobby-roster.teams .room-versus{align-self:center}
+.online-lobby-roster.grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.online-lobby-roster.grid .room-seat,.room-team .room-seat{padding:8px;gap:7px}
+.online-lobby-roster.grid .room-crest,.room-team .room-crest{width:34px;height:34px;font-size:10px}
+.online-lobby-roster.grid .room-seat-info small:last-child,.room-team .room-seat-info small:last-child{display:none}
+.room-team{display:grid;gap:6px;min-width:0;padding:8px;border:1px solid #6089c530;border-radius:12px;background:#ffffff05}
+.room-team[data-team="1"]{border-top:3px solid #65e6a5}
+.room-team[data-team="2"]{border-top:3px solid #f19676}
+.room-team-head{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font:11px var(--mono);letter-spacing:.08em;color:#9fb4d4}
+.room-team-head b{color:#eef4ff}
+.room-team .tiny-button{width:100%;justify-content:center}
+.room-start{grid-column:1/-1;width:100%;justify-content:center;margin-top:4px;padding:12px;font-size:14px}
+.room-byes{margin:0 0 8px;font:12px var(--mono);color:#ffd678}
+@media(max-width:520px){.online-lobby-roster.teams{grid-template-columns:1fr}.online-lobby-roster.teams .room-versus{padding:2px 0}}
+.online-bracket .room-byes{grid-column:1/-1}

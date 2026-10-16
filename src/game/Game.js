@@ -37,7 +37,9 @@ export class Game {
     this.competitionRound = options.competitionRound || 0;
     this.goalTarget = this.modifiers.goalTarget || (mode === 'league' ? (Number(options.goalTarget) || 2) : mode === 'tournament' ? 3 : 5);
     this.localSide = options.localSide === 'right' ? 'right' : 'left';
-    this.onlineAuthority = mode !== 'online' || this.localSide === 'left';
+    if (mode === 'online' && options.squad) this.localSide = options.squad.localSeat < 2 ? 'left' : 'right';
+    // 1v1: the left player hosts. 2v2: seat 0 (left captain) hosts.
+    this.onlineAuthority = mode !== 'online' || (options.squad ? options.squad.localSeat === 0 : this.localSide === 'left');
     this.onlineSnapshotClock = 0; this.onlineInputClock = 0; this.remoteInput = { x: 0, y: 0, kick: false }; this.onlineMatchEnded = false; this.onlinePendingKick = false;
     this.lastOnlineAxes = null; this.onlineSnapshotAge = 0;
     this.input.enabled = true; this.input.down.clear(); this.input.pressed.clear();
@@ -54,6 +56,8 @@ export class Game {
     const opponentNumber = mode === 'online' ? options.opponentNumber ?? 10 : [10, 9, 11][Math.floor(Math.random() * 3)];
     this.bot = mode !== 'training' ? new Player({ x: opponentX, y: WORLD.height / 2, name: opponentName, number: opponentNumber, color: opponentTeam?.primary || '#f19676', secondaryColor: opponentTeam?.secondary || null, numberColor: opponentTeam?.numberColor, kitPattern: opponentTeam?.kitPattern, isBot: mode !== 'online', speed: mode === 'online' ? 305 : 280 }) : null;
     if (this.bot && mode === 'online') this.bot.faceX = this.localSide === 'left' ? -1 : 1;
+    this.squad = null; this.others = [];
+    if (mode === 'online' && options.squad) this.setupSquad(options.squad);
     this.ball.reset(WORLD.width / 2, WORLD.height / 2); this.goalResetTimer = 0; this.last = 0;
     this.applyModifiers();
     this.beginCountdown();
@@ -62,7 +66,7 @@ export class Game {
   }
   applyModifiers() {
     this.modifiers = normalizeModifiers(this.modifiers); this.world = modifierWorld(this.modifiers);
-    for (const body of [this.player, this.bot]) if (body) {
+    for (const body of [this.player, this.bot, ...(this.others || [])]) if (body) {
       body.radius = 22 * this.modifiers.playerSize;
       body.speedScale = this.modifiers.playerSpeed;
       body.maxSpeed = (body.isBot ? 280 : 305) * body.speedScale;
@@ -120,7 +124,7 @@ export class Game {
     if (this.renderEnabled !== false) {
       const view = this.replayView();
       this.renderer.render(view ? { ...view, trajectory: false, shotPreview: false, goalTimer: 0, goalSide: 0, world: this.world || WORLD, fieldTheme: this.fieldTheme, competitionRound: this.competitionRound, shotRangeTimer: 0, replay: true }
-        : { player: this.player, bot: this.bot, ball: this.ball, trajectory: this.trajectory, shotPreview: !!this.settings.shotPreview && this.countdown === 0 && this.state.goalTimer <= 0 && !this.state.matchOver && !this.replay, goalTimer: this.state.goalTimer, goalSide: this.state.goalSide, world: this.world || WORLD, fieldTheme: this.fieldTheme, competitionRound: this.competitionRound, shotRangeTimer: this.shotRangeTimer }, this.state.paused ? 0 : dt);
+        : { player: this.player, bot: this.bot, others: this.others, ball: this.ball, trajectory: this.trajectory, shotPreview: !!this.settings.shotPreview && this.countdown === 0 && this.state.goalTimer <= 0 && !this.state.matchOver && !this.replay, goalTimer: this.state.goalTimer, goalSide: this.state.goalSide, world: this.world || WORLD, fieldTheme: this.fieldTheme, competitionRound: this.competitionRound, shotRangeTimer: this.shotRangeTimer }, this.state.paused ? 0 : dt);
     }
     this.input.endFrame();
   }
@@ -147,6 +151,7 @@ export class Game {
       if (this.state.goalTimer <= 0 && !this.startReplay()) this.finishGoalSequence();
       return;
     }
+    if (this.squad) { this.updateSquad(dt); return; }
     const move = this.input.axes(); this.player.move(move.x, move.y, dt);
     if (this.input.consume('Space')) {
       this.shotRangeTimer = .62;
@@ -223,7 +228,7 @@ export class Game {
     if (scoring && this.replayTail <= 0) return;
     const body = item => item && [item.x, item.y, item.faceX, item.faceY, item.kickScale || 0, item.powerFlash || 0, item.spin || 0];
     this.replayFrames ||= []; this.replayClock = (this.replayClock || 0) + dt;
-    this.replayFrames.push({ t: this.replayClock, player: body(this.player), bot: body(this.bot), ball: body(this.ball) });
+    this.replayFrames.push({ t: this.replayClock, player: body(this.player), bot: body(this.bot), ball: body(this.ball), others: (this.others || []).map(body) });
     while (this.replayFrames.length && this.replayFrames[0].t < this.replayClock - REPLAY_SECONDS) this.replayFrames.shift();
     if (scoring) { this.replayTail -= dt; if (this.replayTail <= 0) this.replayClip = this.replayFrames.slice(); }
   }
@@ -249,13 +254,18 @@ export class Game {
     if (this.state.mode === 'online' && !this.onlineAuthority) { replay.resendClock = .3; this.hooks.onReplaySkip?.(); }
     this.notifyReplay();
   }
-  setRemoteReplaySkip() {
+  setRemoteReplaySkip(seat = null) {
     if (!this.replay || !this.onlineAuthority || this.replay.remoteSkip) return;
+    if (this.squad) {
+      if (!Number.isInteger(seat) || seat <= 0 || seat > 3) return;
+      (this.replay.remoteSeats ||= new Set()).add(seat);
+      if (this.replay.remoteSeats.size < 3) { this.notifyReplay(); return; }
+    }
     this.replay.remoteSkip = true; this.notifyReplay();
   }
   notifyReplay() {
     const replay = this.replay;
-    this.hooks.onReplay?.(replay && { online: this.state.mode === 'online', localSkip: replay.localSkip, remoteSkip: replay.remoteSkip, duration: replay.duration });
+    this.hooks.onReplay?.(replay && { online: this.state.mode === 'online', localSkip: replay.localSkip, remoteSkip: replay.remoteSkip, duration: replay.duration, ...(this.squad ? { players: 4, skipped: this.replaySkipCount() } : {}) });
   }
   // Guest side: follow the host's replay phase using the locally recorded clip.
   syncGuestReplay(info) {
@@ -268,7 +278,13 @@ export class Game {
       if (!frames.length) this.skipReplay(); // replays disabled locally: never hold the rival back
     } else if (!active && this.replay) { this.resetReplay(); this.hooks.onReplay?.(null); return; }
     if (!this.replay) return;
-    const remoteSkip = info.skipHost === true, acked = info.skipGuest === true;
+    let remoteSkip = info.skipHost === true, acked = info.skipGuest === true;
+    if (this.squad) {
+      const seats = Array.isArray(info.seats) ? info.seats : [], mine = this.squad.localSeat;
+      acked = seats.includes(mine);
+      remoteSkip = info.skipHost === true && [1, 2, 3].every(seat => seat === mine || seats.includes(seat));
+      this.replay.remoteSeats = new Set(seats.filter(seat => seat !== mine)); this.replay.hostSkip = info.skipHost === true;
+    }
     if (remoteSkip !== this.replay.remoteSkip || acked !== this.replay.acked) { this.replay.remoteSkip = remoteSkip; this.replay.acked = acked; this.notifyReplay(); }
   }
   replayView() {
@@ -282,7 +298,7 @@ export class Game {
       const [x, y, faceX, faceY, kickScale, powerFlash, spin] = data;
       return { ...source, x, y, faceX, faceY, kickScale, powerFlash, spin, _rx: x, _ry: y };
     };
-    return { player: body(this.player, frame.player), bot: body(this.bot, frame.bot), ball: body(this.ball, frame.ball) };
+    return { player: body(this.player, frame.player), bot: body(this.bot, frame.bot), ball: body(this.ball, frame.ball), others: (this.others || []).map((item, index) => body(item, frame.others?.[index])).filter(Boolean) };
   }
   predictOnlineGuest(dt) {
     if (dt <= 0 || !this.player) return;
@@ -305,7 +321,7 @@ export class Game {
     const remoteDt = Math.max(0, Math.min(dt, .1 - age));
     this.onlineSnapshotAge = age + dt;
     if (remoteDt > 0) {
-      if (this.bot) { this.bot.x += this.bot.vx * remoteDt; this.bot.y += this.bot.vy * remoteDt; resolvePlayerWalls(this.bot); }
+      for (const body of [this.bot, ...(this.others || [])]) if (body) { body.x += body.vx * remoteDt; body.y += body.vy * remoteDt; resolvePlayerWalls(body); }
       this.ball.x += this.ball.vx * remoteDt; this.ball.y += this.ball.vy * remoteDt;
       this.ball.spin += (this.ball.vx || 0) * remoteDt * .003;
       resolveBallWalls(this.ball);
@@ -347,11 +363,12 @@ export class Game {
       mode: this.state.mode, elapsed: this.state.elapsed, scorePlayer: this.state.scorePlayer, scoreBot: this.state.scoreBot,
       // While a replay runs the goal phase is still open (a restored save resumes the reset, old guests keep waiting).
       goalTimer: this.replay ? Math.max(this.state.goalTimer, .01) : this.state.goalTimer, goalSide: this.state.goalSide, matchOver: this.state.matchOver, goalTarget: this.goalTarget,
-      ...(online ? { replay: this.replay ? { active: true, skipHost: this.replay.localSkip, skipGuest: this.replay.remoteSkip } : null } : {}),
+      ...(online ? { replay: this.replay ? { active: true, skipHost: this.replay.localSkip, skipGuest: this.replay.remoteSkip, ...(this.squad ? { seats: [...(this.replay.remoteSeats || [])] } : {}) } : null } : {}),
       countdown: this.countdown, countdownClock: this.countdownClock, trajectory: this.trajectory,
       ...(online ? {} : { modifiers: this.modifiers, fieldTheme: this.fieldTheme, competitionRound: this.competitionRound }),
       matchStats: online ? this.matchStats : this.matchSummary(),
       player: entity(this.player), bot: entity(this.bot), ball: entity(this.ball),
+      ...(online && this.squad ? { seats: this.squad.bodies.map(entity) } : {}),
       ...(online ? {} : { difficulty: this.botAI.difficulty, ai: { thinkTimer: this.botAI.thinkTimer, targetX: this.botAI.targetX, targetY: this.botAI.targetY, shotsTaken: this.botAI.shotsTaken, mode: this.botAI.mode } }),
     };
   }
@@ -373,6 +390,7 @@ export class Game {
     const savedStats = snapshot.matchStats;
     this.matchStats = { shotsPlayer: Number(savedStats?.shotsPlayer) || 0, shotsOpponent: Number(savedStats?.shotsOpponent) || 0, goals: Array.isArray(savedStats?.goals) ? savedStats.goals.map(goal => ({ ...goal })) : [] };
     restoreBody(this.player, snapshot.player); restoreBody(this.bot, snapshot.bot); restoreBody(this.ball, snapshot.ball);
+    if (Array.isArray(snapshot.others)) (this.others || []).forEach((body, index) => restoreBody(body, snapshot.others[index]));
     if (snapshot.ai) Object.assign(this.botAI, snapshot.ai);
     if (notify) {
       this.hooks.onScore?.(this.state.scorePlayer, this.state.scoreBot); this.hooks.onTime?.(this.state.formatTime());
@@ -389,7 +407,9 @@ export class Game {
   }
   applyOnlineSnapshot(snapshot) {
     if (this.state.mode !== 'online' || this.onlineAuthority || !snapshot || snapshot.mode !== 'online') return false;
-    for (const body of [snapshot.player, snapshot.bot, snapshot.ball]) {
+    const squad = this.squad;
+    if (squad && (!Array.isArray(snapshot.seats) || snapshot.seats.length !== 4)) return false;
+    for (const body of squad ? [...snapshot.seats, snapshot.ball] : [snapshot.player, snapshot.bot, snapshot.ball]) {
       if (!body || !Number.isFinite(body.x) || !Number.isFinite(body.y)) return false;
       if (['vx', 'vy'].some(key => body[key] !== undefined && !Number.isFinite(body[key]))) return false;
     }
@@ -401,20 +421,24 @@ export class Game {
     for (const key of ['elapsed', 'countdown', 'scorePlayer', 'scoreBot']) {
       if (snapshot[key] !== undefined && (!Number.isFinite(snapshot[key]) || snapshot[key] < 0)) return false;
     }
+    // The host sends its own view (left side). Right-side guests flip scores
+    // and stats; in 2v2 every body comes from its seat.
+    const flip = !squad || this.localSide === 'right';
     const mapped = {
       ...snapshot,
       goalTimer: Math.max(0, snapshot.goalTimer || 0),
       countdownClock: Math.max(0, snapshot.countdownClock || 0),
-      player: snapshot.bot,
-      bot: snapshot.player,
-      scorePlayer: snapshot.scoreBot,
-      scoreBot: snapshot.scorePlayer,
-      matchStats: snapshot.matchStats && { shotsPlayer: snapshot.matchStats.shotsOpponent, shotsOpponent: snapshot.matchStats.shotsPlayer, goals: Array.isArray(snapshot.matchStats.goals) ? snapshot.matchStats.goals.map(goal => ({ ...goal, side: goal.side === 'player' ? 'opponent' : 'player' })) : [] },
+      player: squad ? snapshot.seats[squad.localSeat] : snapshot.bot,
+      bot: squad ? snapshot.seats[squad.botSeat] : snapshot.player,
+      others: squad ? squad.otherSeats.map(seat => snapshot.seats[seat]) : undefined,
+      scorePlayer: flip ? snapshot.scoreBot : snapshot.scorePlayer,
+      scoreBot: flip ? snapshot.scorePlayer : snapshot.scoreBot,
+      matchStats: snapshot.matchStats && (flip ? { shotsPlayer: snapshot.matchStats.shotsOpponent, shotsOpponent: snapshot.matchStats.shotsPlayer, goals: Array.isArray(snapshot.matchStats.goals) ? snapshot.matchStats.goals.map(goal => ({ ...goal, side: goal.side === 'player' ? 'opponent' : 'player' })) : [] } : snapshot.matchStats),
     };
     const priorScorePlayer = this.state.scorePlayer, priorScoreBot = this.state.scoreBot;
     const priorCountdown = this.countdown;
     const resetting = snapshot.countdown > 0 || snapshot.goalTimer > 0 || snapshot.matchOver || priorCountdown > 0 || priorScorePlayer !== mapped.scorePlayer || priorScoreBot !== mapped.scoreBot;
-    const predictedPlayer = this.localSide === 'right' && !resetting ? { x: this.player.x, y: this.player.y, vx: this.player.vx, vy: this.player.vy, faceX: this.player.faceX, faceY: this.player.faceY } : null;
+    const predictedPlayer = (squad || this.localSide === 'right') && !resetting ? { x: this.player.x, y: this.player.y, vx: this.player.vx, vy: this.player.vy, faceX: this.player.faceX, faceY: this.player.faceY } : null;
     this.onlineSnapshotAge = 0;
     this.restoreSnapshot(mapped, false, resetting);
     if (predictedPlayer) {
@@ -446,7 +470,71 @@ export class Game {
     }
     return true;
   }
+  // ---- 2v2 online ------------------------------------------------------------
+  // Seats in host order: 0 = left captain (host), 1 = left teammate,
+  // 2 = right captain, 3 = right teammate. `player` is the local seat, `bot`
+  // the first rival and `others` the remaining two bodies.
+  setupSquad(squad) {
+    const seats = Array.isArray(squad.seats) ? squad.seats.slice(0, 4) : [];
+    while (seats.length < 4) seats.push({});
+    const localSeat = Math.max(0, Math.min(3, Math.floor(Number(squad.localSeat) || 0)));
+    const kits = [getTeamById(seats[0].teamId), getTeamById(seats[2].teamId)];
+    const bodies = seats.map((seat, index) => {
+      const team = kits[index < 2 ? 0 : 1], fallback = index < 2 ? '#68746e' : '#f19676';
+      return new Player({ x: 0, y: 0, name: String(seat.name || 'JUGADOR').slice(0, 16), number: Number.isFinite(Number(seat.number)) ? Number(seat.number) : 10, color: team?.primary || fallback, secondaryColor: team?.secondary || null, numberColor: team?.numberColor, kitPattern: team?.kitPattern, isBot: false, speed: 305 });
+    });
+    const botSeat = localSeat < 2 ? 2 : 0;
+    this.squad = { bodies, localSeat, botSeat, otherSeats: [0, 1, 2, 3].filter(seat => seat !== localSeat && seat !== botSeat), seats };
+    this.player = bodies[localSeat]; this.bot = bodies[botSeat]; this.others = this.squad.otherSeats.map(seat => bodies[seat]);
+    bodies.forEach((body, seat) => this.placeSquadBody(body, seat));
+  }
+  placeSquadBody(body, seat) {
+    body.x = WORLD.width * (seat < 2 ? .3 : .7); body.y = WORLD.height * (seat % 2 === 0 ? .38 : .62);
+    body.faceX = seat < 2 ? 1 : -1; body.faceY = 0; body.stop(); body._rx = body.x; body._ry = body.y;
+  }
+  replaySkipCount() {
+    const replay = this.replay; if (!replay || !this.squad) return 0;
+    if (this.onlineAuthority) return (replay.localSkip ? 1 : 0) + (replay.remoteSkip ? 3 : (replay.remoteSeats?.size || 0));
+    return (replay.localSkip ? 1 : 0) + (replay.hostSkip ? 1 : 0) + (replay.remoteSeats?.size || 0);
+  }
+  // Host simulation of the four bodies; guest seats move with their last input.
+  updateSquad(dt) {
+    const { bodies, localSeat } = this.squad, leftLocal = this.localSide === 'left';
+    bodies.forEach((body, seat) => {
+      let command;
+      if (seat === localSeat) { const axes = this.input.axes(); command = { x: axes.x, y: axes.y, kick: this.input.consume('Space') }; }
+      else {
+        command = this.hooks.getSeatInput?.(seat) || { x: 0, y: 0, kick: false };
+        body.powerCooldown = Math.max(0, body.powerCooldown - dt); body.powerFlash = Math.max(0, body.powerFlash - dt);
+      }
+      body.move(Number(command.x) || 0, Number(command.y) || 0, dt);
+      resolvePlayerWalls(body);
+      if (!command.kick) return;
+      if (seat === localSeat) this.shotRangeTimer = .62;
+      const powered = body.powerCooldown <= 0;
+      const kicked = kickBall(body, this.ball, () => {
+        this.sound.play('kick');
+        if (powered) { this.renderer.fireBurst(this.ball.x, this.ball.y); body.powerFlash = .48; }
+        else this.renderer.burst(this.ball.x, this.ball.y, '#c5f4d8', 7, 100);
+      }, null, powered ? 1.45 : 1);
+      if (kicked) { if ((seat < 2) === leftLocal) this.matchStats.shotsPlayer++; else this.matchStats.shotsOpponent++; }
+      if (kicked && powered) { body.powerCooldown = (this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS); if (seat === localSeat) this.hooks.onPowerCooldown?.(body.powerCooldown); }
+    });
+    // Two passes: with four bodies one push can create a new overlap.
+    for (let pass = 0; pass < 2; pass++) for (let i = 0; i < bodies.length; i++) for (let j = i + 1; j < bodies.length; j++) resolvePlayerPlayers(bodies[i], bodies[j], strength => { if (pass === 0 && strength > 22) this.sound.bump(); });
+    for (const body of bodies) resolvePlayerWalls(body);
+    const steps = Math.max(1, Math.ceil(Math.hypot(this.ball.vx, this.ball.vy) * dt / Math.max(5, this.ball.radius)));
+    for (let step = 0; step < steps; step++) {
+      this.ball.update(dt / steps);
+      for (const body of bodies) resolvePlayerBall(body, this.ball, strength => { if (strength > 30) this.sound.bump(); });
+      for (const body of bodies) resolvePlayerWalls(body);
+      const goalSide = isGoal(this.ball);
+      if (goalSide !== 0) { this.recordGoal(goalSide); return; }
+      resolveBallWalls(this.ball, () => this.sound.bump());
+    }
+  }
   resetPositions() {
+    if (this.squad) { this.squad.bodies.forEach((body, seat) => this.placeSquadBody(body, seat)); this.ball.reset(WORLD.width / 2, WORLD.height / 2); this.ball._rx = this.ball.x; this.ball._ry = this.ball.y; return; }
     this.player.x = WORLD.width * (this.localSide === 'left' ? .31 : .69); this.player.y = WORLD.height / 2; this.player.stop(); this.player._rx = this.player.x; this.player._ry = this.player.y;
     if (this.bot) { this.bot.x = WORLD.width * (this.localSide === 'left' ? .69 : .31); this.bot.y = WORLD.height / 2; this.bot.stop(); this.bot._rx = this.bot.x; this.bot._ry = this.bot.y; }
     this.ball.reset(WORLD.width / 2, WORLD.height / 2); this.ball._rx = this.ball.x; this.ball._ry = this.ball.y;

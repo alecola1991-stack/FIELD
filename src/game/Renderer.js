@@ -94,6 +94,9 @@ export class Renderer {
     const ballPosition = this.smooth(game.ball);
     if (game.shotPreview) this.drawShotPreview(c, game.player, game.ball, ballPosition);
     if (game.bot) this.drawPlayer(c, game.bot, game.bot.color);
+    for (const other of game.others || []) this.drawPlayer(c, other, other.color);
+    // 2v2: a ring under your own player tells you apart from your teammate.
+    if (game.others?.length) this.drawLocalMarker(c, game.player);
     this.drawPlayer(c, game.player, game.player.color);
     this.drawBall(c, game.ball, ballPosition);
     this.updateParticles(c, dt);
@@ -151,6 +154,11 @@ export class Renderer {
     if (entity._rx === undefined || Math.hypot(entity.x - entity._rx, entity.y - entity._ry) > 160) { entity._rx = entity.x; entity._ry = entity.y; }
     const blend = this.renderBlend ?? .33; entity._rx += (entity.x - entity._rx) * blend; entity._ry += (entity.y - entity._ry) * blend;
     return [entity._rx, entity._ry];
+  }
+  drawLocalMarker(c, player) {
+    const [x, y] = this.smooth(player), r = player.radius;
+    c.save(); c.strokeStyle = 'rgba(255,236,150,.85)'; c.lineWidth = 3; c.setLineDash([6, 5]);
+    c.beginPath(); c.arc(x, y, r + 7, 0, Math.PI * 2); c.stroke(); c.restore();
   }
   drawPlayer(c, player, color) {
     const [x, y] = this.smooth(player), r = player.radius, kick = player.kickScale || 0;

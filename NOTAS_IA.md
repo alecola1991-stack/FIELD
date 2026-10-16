@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-16 · Claude · Dificultades de la IA: nombres nuevos, Profesional y Champions
-**Commit:** rama `dificultades-ia`
+**Commit:** fusionado en `main` el 2026-10-16 con la aprobación de Ale (merge `e490884`). Para deshacerlo: `git revert -m 1 e490884`.
 **Archivos:** `src/config/settings.js`, `src/game/BotAI.js`, `src/ui/UI.js`, `index.html`, `tests/BotSkills.test.js` (nuevo)
 **Qué y por qué:** Ale pidió renombrar las dificultades (fácil → Principiante, normal → Avanzado, difícil → Experto) y añadir Profesional y Champions. En estas dos, el rival debe hacer amagos, llevar el balón pegado antes de disparar y usar las paredes para superar al jugador y marcar.
 **Cómo:**

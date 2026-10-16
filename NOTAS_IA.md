@@ -4,6 +4,14 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-16 · Claude · Perfil rediseñado con amigos, búsqueda de jugadores y ficha pública
+**Commit:** rama `perfil-amigos` (pendiente de fusionar en main)
+**Archivos:** `index.html`, `src/styles.css`, `src/ui/ProfileSocial.js` (nuevo), `src/ui/UI.js`, `src/ui/OnlineHub.js`, `supabase/online-profiles.sql` (nuevo), `supabase/online-profiles-test.sql` (nuevo), `supabase/online-swap-test.sql`
+**Qué y por qué:** Ale pidió un perfil más intuitivo y visual, con amigos y búsqueda de perfiles. El perfil tiene ahora: héroe con la equipación del jugador, su @usuario con rango/ELO y un anillo de nivel; pestañas Resumen / Amigos / Buscar jugadores; en Resumen, 4 estadísticas (anillo de % de victorias), tarjeta de balance con barras (victorias/derrotas, goles a favor/en contra, tiempo, temporadas, trofeos) y tarjeta Ranked con icono y barra al siguiente rango; la vitrina muestra primero los trofeos ganados y pliega los bloqueados («Ver los N trofeos restantes»). Amigos: añadir por usuario, solicitudes (aceptar/rechazar), lista ordenada por ELO con «Invitar a jugar» (sala privada 1v1, abre el online) y «Eliminar». Buscar: por prefijo de usuario; cada fila abre la ficha pública (rango, Ranked V/D, partidos online, siguiente rango, últimos 10 resultados V/D y acciones de amistad).
+**Cómo:** `ProfileSocial` (nuevo) gestiona pestañas, amigos, búsqueda y la ficha (`#player-card-overlay`, que se mueve al lado de `#ranks-overlay` al arrancar para cubrir la página). Usa `hub.rpc`/`hub.consume` y los comandos de amigos existentes. SQL: `online-profiles.sql` añade los comandos `search {query}` y `profile {username|userId}` a `field_private.action` y sube la versión a 4; `OnlineHub.consume` pone `supportsProfiles = version >= 4`. Sin la versión 4 el cliente sigue funcionando: la búsqueda muestra un aviso y las filas no abren ficha. Se mantienen los IDs `career-*` anteriores; nuevos: `career-online`, `career-level-ring`, `career-winrate-ring`, `career-goal-average`, `balance-*`, `profile-ranked`, `trophy-toggle`, `profile-*`, `player-card-*`.
+**Para el otro asistente:** HAY QUE EJECUTAR `supabase/online-profiles.sql` en el SQL Editor DESPUÉS de `online-swap.sql`; su `field_private.action` pasa a ser la versión vigente (cualquier cambio futuro de `action` debe partir de este archivo). `online-profiles-test.sql` es un test con rollback. Para deshacer: revertir el merge; la función con versión 4 es compatible con clientes anteriores.
+
+
 ## 2026-10-16 · Claude · Pantalla «Ver rangos» en el online
 **Commit:** fusionado en `main` el 2026-10-16 con la aprobación de Ale (merge `a45c442`). Para deshacerlo: `git revert -m 1 a45c442`.
 **Archivos:** `index.html`, `src/ui/UI.js`, `src/styles.css`

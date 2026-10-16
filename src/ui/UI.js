@@ -1,5 +1,6 @@
 import { readAuthRedirectError, cleanAuthUrl } from '../account/AuthErrors.js';
 import { rankBadge, rankIconSvg } from './RankIcon.js';
+import { ProfileSocial } from './ProfileSocial.js';
 import { rankJourney, rankProgress, rankIndex, RANKS } from '../config/ranks.js';
 import { selectionFor, cycleTeamSelection, teamAbbreviation } from './TeamSelection.js';
 import { GamepadController } from '../game/GamepadController.js';
@@ -71,6 +72,7 @@ export class UI {
     this.game = game; this.game.input.enabled = this.currentView === 'game' && !game.state.paused; this.sound = sound; this.accountService = accountService;
     this.onlineMatch = onlineMatch;
     this.hub = new OnlineHub(this);
+    this.social = new ProfileSocial(this);
     this.controller = new GamepadController(this);
     this.sound.setScene?.(this.currentView === 'game' ? 'game' : 'menu');
     if (onlineMatch) onlineMatch.setHandlers({
@@ -508,18 +510,60 @@ export class UI {
     const { stats } = this.career, team = getTeamById(this.settings.teamId);
     const name = this.settings.profileReady && this.settings.name ? this.settings.name.trim() : (this.user?.email?.split('@')[0] || 'Jugador');
     this.career_name.textContent = name;
-    this.career_avatar.textContent = [...name][0]?.toUpperCase() || 'F';
-    this.career_avatar.style.setProperty('--avatar-color', team?.primary || '#65e6a5');
+    this.paintPlayerPreview(this.career_avatar, team, { name: name.slice(0, 10).toUpperCase(), number: this.settings.number });
     this.career_team_label.textContent = team ? `· ${team.name}` : '';
     this.career_subtitle.textContent = this.user ? 'Cuenta conectada · progreso sincronizado' : 'Progreso guardado en este dispositivo';
     this.career_level.textContent = String(this.progression.level);
     this.career_xp.textContent = this.progression.level >= Progression.maxLevel ? 'NIVEL MÁXIMO' : `${this.progression.xp} / ${this.progression.xpForNextLevel()} XP`;
     this.career_xp_fill.style.width = `${this.progression.progressRatio() * 100}%`;
+    const ring = document.getElementById('career-level-ring'), circumference = 2 * Math.PI * 52;
+    ring.style.strokeDasharray = `${circumference}`; ring.style.strokeDashoffset = `${circumference * (1 - (this.progression.level >= Progression.maxLevel ? 1 : this.progression.progressRatio()))}`;
     this.career_matches.textContent = String(stats.matches); this.career_wins.textContent = String(stats.wins);
     this.career_winrate.textContent = `${stats.matches ? Math.round(stats.wins / stats.matches * 100) : 0} % de victorias`;
     this.career_goals.textContent = String(stats.goalsFor); this.career_best.textContent = String(stats.bestScore);
     this.career_time.textContent = formatPlayTime(stats.timePlayedSeconds); this.career_seasons.textContent = String(stats.leagueSeasons);
+    // Visual summary: win-rate ring, averages and balance bars.
+    const winRate = stats.matches ? stats.wins / stats.matches : 0, winRing = document.getElementById('career-winrate-ring'), small = 2 * Math.PI * 18;
+    winRing.style.strokeDasharray = `${small}`; winRing.style.strokeDashoffset = `${small * (1 - winRate)}`;
+    document.getElementById('career-goal-average').textContent = `${stats.matches ? (stats.goalsFor / stats.matches).toFixed(1).replace('.', ',') : '0'} por partido`;
+    const losses = Math.max(0, stats.losses ?? stats.matches - stats.wins), split = (a, b) => (a + b ? a / (a + b) * 100 : 50);
+    document.getElementById('balance-wins').textContent = String(stats.wins); document.getElementById('balance-losses').textContent = String(losses);
+    document.getElementById('balance-for').textContent = String(stats.goalsFor); document.getElementById('balance-against').textContent = String(stats.goalsAgainst);
+    document.getElementById('balance-wins-bar').style.width = `${split(stats.wins, losses)}%`; document.getElementById('balance-losses-bar').style.width = `${100 - split(stats.wins, losses)}%`;
+    document.getElementById('balance-for-bar').style.width = `${split(stats.goalsFor, stats.goalsAgainst)}%`; document.getElementById('balance-against-bar').style.width = `${100 - split(stats.goalsFor, stats.goalsAgainst)}%`;
+    this.renderProfileOnline();
     this.renderTrophyGrid();
+  }
+
+  // Online identity in the profile: @user with rank badge, and the Ranked card.
+  renderProfileOnline() {
+    const identity = this.hub?.identity, line = document.getElementById('career-online'), card = document.getElementById('profile-ranked');
+    if (!line || !card) return;
+    line.replaceChildren(); card.replaceChildren();
+    const kicker = document.createElement('p'); kicker.className = 'card-kicker'; kicker.textContent = 'RANKED'; card.append(kicker);
+    if (identity) {
+      line.append(rankBadge(identity.elo, { size: 20 }), ` @${identity.username} · ${identity.elo} ELO`);
+      const progress = rankProgress(identity.elo), losses = Math.max(0, (identity.played || 0) - (identity.wins || 0));
+      const top = document.createElement('div'); top.className = 'profile-rank-top';
+      const icon = document.createElement('span'); icon.innerHTML = rankIconSvg(progress.rank, 64);
+      const text = document.createElement('div');
+      const name = document.createElement('b'); name.textContent = progress.rank.name;
+      const elo = document.createElement('small'); elo.textContent = `${identity.elo} ELO · ${identity.wins || 0}V ${losses}D`;
+      text.append(name, elo); top.append(icon, text);
+      const bar = document.createElement('div'); bar.className = 'rank-bar'; bar.dataset.rank = progress.rank.id;
+      const fill = document.createElement('i'); fill.style.width = `${progress.ratio * 100}%`; bar.append(fill);
+      const next = document.createElement('small'); next.className = 'profile-rank-next';
+      next.textContent = progress.next ? `${progress.to - identity.elo} ELO para ${progress.next.name}` : 'Rango máximo alcanzado';
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'tiny-button'; button.textContent = 'Ver todos los rangos →';
+      button.addEventListener('click', () => this.showRanks());
+      card.append(top, bar, next, button);
+    } else {
+      const text = document.createElement('p'); text.textContent = this.user ? 'Elige tu usuario y juega Ranked para conseguir tu rango.' : 'Inicia sesión y juega Ranked online para conseguir tu rango.';
+      const icon = document.createElement('span'); icon.className = 'profile-rank-ghost'; icon.innerHTML = rankIconSvg(500, 56);
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'tiny-button'; button.textContent = 'Ir al online →';
+      button.addEventListener('click', () => this.openOnline());
+      card.append(icon, text, button);
+    }
   }
 
   renderTrophyGrid() {
@@ -528,11 +572,23 @@ export class UI {
     const unlockedCount = TROPHY_CATALOG.filter(item => item.test(context)).length;
     const percent = Math.round(unlockedCount / TROPHY_CATALOG.length * 100);
     this.trophy_summary.textContent = `${unlockedCount} de ${TROPHY_CATALOG.length} trofeos desbloqueados`;
+    const trophyCount = document.getElementById('career-trophies'); if (trophyCount) trophyCount.textContent = `${unlockedCount}/${TROPHY_CATALOG.length}`;
     this.trophy_percent.textContent = `${percent}%`; this.trophy_progress_fill.style.width = `${percent}%`;
     this.trophy_grid.replaceChildren();
-    for (const item of TROPHY_CATALOG) {
+    // Earned trophies first; collapsed, only the next four locked ones are shown.
+    const ordered = [...TROPHY_CATALOG.filter(item => item.test(context)), ...TROPHY_CATALOG.filter(item => !item.test(context))];
+    const toggle = document.getElementById('trophy-toggle'), expanded = this.trophiesExpanded === true;
+    this.trophy_grid.classList.toggle('collapsed', !expanded);
+    if (toggle) {
+      const hidden = Math.max(0, TROPHY_CATALOG.length - unlockedCount - 4);
+      toggle.classList.toggle('hidden', !hidden); toggle.setAttribute('aria-expanded', String(expanded));
+      toggle.textContent = expanded ? 'Mostrar menos' : `Ver los ${hidden} trofeos restantes`;
+      toggle.onclick = () => { this.trophiesExpanded = !expanded; this.renderTrophyGrid(); };
+    }
+    let lockedShown = 0;
+    for (const item of ordered) {
       const earned = item.test(context), button = document.createElement('button');
-      button.type = 'button'; button.className = `trophy-card${earned ? ' earned' : ' locked'}`; button.dataset.trophyId = item.id;
+      button.type = 'button'; button.className = `trophy-card${earned ? ' earned' : ' locked'}${!earned && ++lockedShown > 4 ? ' extra' : ''}`; button.dataset.trophyId = item.id;
       button.setAttribute('aria-label', `${item.name}, ${earned ? 'desbloqueado' : 'bloqueado'}`);
       button.setAttribute('aria-pressed', this.trophy_detail.dataset.selected === item.id ? 'true' : 'false');
       const icon = document.createElement('span'); icon.className = 'trophy-icon'; icon.setAttribute('aria-hidden', 'true'); icon.textContent = earned ? item.icon : '· · ·';
@@ -971,7 +1027,7 @@ export class UI {
     });
     for (const [key, screen] of Object.entries(this.screens)) screen.classList.toggle('hidden', key !== view);
     this.menuBackdrop?.setActive(view === 'home');
-    if (view === 'profile') this.renderProfile();
+    if (view === 'profile') { this.renderProfile(); this.social?.setTab(this.social.tab); } else this.social?.closePlayer();
     if (view === 'missions') this.renderMissions();
     if (view === 'play') this.refreshContinueButton();
     if (view === 'game') requestAnimationFrame(() => this.game?.renderer.resize());

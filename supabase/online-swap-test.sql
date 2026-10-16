@@ -8,7 +8,7 @@ begin
  for i in 1..5 loop insert into auth.users(id) values(ids[i]); end loop;
  execute 'set local role authenticated';
  for i in 1..5 loop perform set_config('request.jwt.claim.sub',ids[i]::text,true); r:=public.field_online('claim_username',jsonb_build_object('username',prefix||i)); end loop;
- if (r->>'version')::int<>3 then raise exception 'Version 3 expected'; end if;
+ if (r->>'version')::int<3 then raise exception 'Version 3 expected'; end if;
  perform set_config('request.jwt.claim.sub',ids[1]::text,true);
  r:=public.field_online('create','{"kind":"quick","size":4}'); room:=(r->'lobby'->>'id')::uuid; code:=r->'lobby'->>'code';
  for i in 2..4 loop perform set_config('request.jwt.claim.sub',ids[i]::text,true); r:=public.field_online('join',jsonb_build_object('kind','quick','code',code)); end loop;

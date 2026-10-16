@@ -137,7 +137,8 @@ export class OnlineHub {
   }
   async consume(data) {
     this.identity = data?.identity || null; this.friends = data?.friends || []; this.invites = data?.invites || []; this.lobby = data?.lobby || null;
-    if (data) { this.supportsTeams = Number(data.version) >= 2; this.supportsSwap = Number(data.version) >= 3; }
+    if (data) { this.supportsTeams = Number(data.version) >= 2; this.supportsSwap = Number(data.version) >= 3; this.supportsProfiles = Number(data.version) >= 4; }
+    if (this.ui.currentView === 'profile') { this.ui.social?.render(); this.ui.renderProfileOnline?.(); }
     this.render();
     if (this.lobby?.state === 'cancelled') {
       this.message('La sala se ha cancelado o el resultado no coincide. No se aplica ELO por un resultado discrepante.', true);

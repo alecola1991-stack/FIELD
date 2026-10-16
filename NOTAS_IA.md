@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-16 · Claude · Arreglos de inicio de sesión
-**Commit:** rama `login-fixes`
+**Commit:** fusionado en `main` el 2026-10-16 con la aprobación de Ale (merge `78299a6`). Para deshacerlo: `git revert -m 1 78299a6`.
 **Archivos:** `src/account/AuthErrors.js` (nuevo), `src/account/AccountService.js`, `src/account/GoogleSignIn.js`, `src/ui/UI.js`, `index.html`, `tests/AuthErrors.test.js` (nuevo), `tests/GoogleSignIn.test.js`
 **Qué y por qué:** Ale pidió resolver los problemas al iniciar sesión.
 - **Problema principal (configuración, no código).** En los registros de Auth de Supabase, todas las peticiones llevan `referer: http://localhost:3000`. Eso indica que la Site URL de Supabase sigue siendo `http://localhost:3000` y que `https://futarcade.es` no está en las Redirect URLs. Por eso, tras entrar con Google, Supabase devuelve al jugador a localhost. Se ve a usuarios repitiendo Google tres veces y acabando por registrarse con correo.

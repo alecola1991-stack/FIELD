@@ -4,6 +4,20 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-16 · Claude · Submenús en paneles y pantallas sin scroll en PC
+**Commit:** rama `submenus-paneles` (pendiente de aprobación de Ale)
+**Archivos:** `index.html`, `src/styles.css`, `src/ui/UI.js`, `src/ui/OnlineHub.js`, `src/ui/ProfileSocial.js`
+**Qué y por qué:** Ale pidió actualizar los submenús, evitar el scroll en PC y usar paneles como el menú principal en Jugar, Online y Liga nacional (ligas organizadas por países). Comprobado sin scroll en 1366×768, 1920×1080 y 1366×657 (altura útil real de un portátil con navegador), salvo pantallas con listas largas desplegadas a propósito.
+**Cómo:**
+- Cabecera compacta en PC (≥1024 px): la navegación de sección (`.section-nav`) se coloca a la derecha de la cabecera, en lugar de la etiqueta `.version`; títulos más pequeños. Capa extra para alturas ≤720 px.
+- Jugar: la columna de texto y las tarjetas se sustituyen por 8 paneles `.hub-tile.panel-tile` (rápido, online, copas, liga, entrenamiento, leyendas, modificadores, clasificación) con los mismos `data-action`. Se mantienen `legends-mode-card`, `legends-mode-tag`, `play-continue-wrap`, `continue-competition` y `play-difficulty`. El texto de `legends-mode-tag` lleva ahora el prefijo «06 /».
+- Online: las pestañas son ahora paneles (`.online-mode-tabs` con `data-online-tab`, misma lógica en OnlineHub). Cada modo se muestra en `.online-panel-card` a dos columnas (`.panel-col`): pública | privada. `#online-friends-count` pasa a ser un número en una insignia. Con sala activa, `#online-content.in-room` oculta los paneles de modo (salvo Amigos). Se quitó el párrafo «Sin modificadores…» (integrado en la descripción).
+- Liga nacional: dos paneles. País (`#league-country-tabs`, ahora `.league-country-tile` con bandera CSS `.flag-<id>` y la marca «TU LIGA») y división (`#league-options`, sin cambios en su lógica), más la fila de ajustes y el botón de empezar. El select oculto `#league-competition` sigue siendo la fuente de verdad. El h2 ya no muestra «N jornadas»; esa cifra sigue en `.league-stat-rounds`. Nuevo `#league-country-name`. En móvil, al elegir un país se desplaza a las divisiones.
+- Perfil: la vitrina de trofeos pasa a la nueva pestaña «Trofeos» (`data-profile-panel="trophies"`). ProfileSocial solo refresca el online en Amigos y Buscar.
+- Equipo, Ajustes, Modificadores, Partido rápido, Leyendas y Champions: compactados solo con CSS en PC (identidad a la derecha del selector de equipo, modificadores a dos columnas, cuadro de Champions más compacto, etc.).
+**Para el otro asistente:** sin SQL. Los estilos nuevos están al final de `src/styles.css`, en bloques `@media(min-width:1024px)` y `(max-height:720px)`. Si añades una pantalla, comprueba que cabe en 1366×657.
+
+
 ## 2026-10-16 · Claude · Perfil rediseñado con amigos, búsqueda de jugadores y ficha pública
 **Commit:** fusionado en main (rama `perfil-amigos`, merge 7650425). Para deshacerlo: `git revert -m 1 7650425`
 **Archivos:** `index.html`, `src/styles.css`, `src/ui/ProfileSocial.js` (nuevo), `src/ui/UI.js`, `src/ui/OnlineHub.js`, `supabase/online-profiles.sql` (nuevo), `supabase/online-profiles-test.sql` (nuevo), `supabase/online-swap-test.sql`

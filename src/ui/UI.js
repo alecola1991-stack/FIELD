@@ -324,6 +324,7 @@ export class UI {
     document.getElementById('league-country-tabs').addEventListener('click', event => {
       const tab = event.target.closest('[data-league-country]'); if (!tab) return;
       this.leaguePickerCountry = tab.dataset.leagueCountry; this.renderLeaguePicker(); this.sound?.play('click');
+      if (window.matchMedia?.('(max-width: 900px)').matches) document.getElementById('league-picker')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
     document.getElementById('league-options').addEventListener('click', event => {
       const option = event.target.closest('[data-league-option]'); if (option) this.selectLeagueOption(option.dataset.leagueOption);
@@ -1062,7 +1063,7 @@ export class UI {
     }
     const legendsUnlocked = this.progression.level >= LEGENDS_UNLOCK_LEVEL;
     this.legends_mode_card.classList.toggle('mode-locked', !legendsUnlocked);
-    this.legends_mode_tag.textContent = legendsUnlocked ? 'CLÁSICOS · IA LEYENDA' : 'BLOQUEADO · NIVEL 7';
+    this.legends_mode_tag.textContent = legendsUnlocked ? '06 / CLÁSICOS · IA LEYENDA' : '06 / BLOQUEADO · NIVEL 7';
   }
 
   updateLeaguePreview() {
@@ -1075,8 +1076,6 @@ export class UI {
     this.league_competition_summary.textContent = `${competition.label.split(' · ')[0].toUpperCase()} · ${count} CLUBES · ${rounds} JORNADAS · ${teamHint}`;
     const stat = document.querySelector('.league-stat-rounds b');
     if (stat) stat.textContent = String(rounds);
-    const subtitle = document.querySelector('#league-screen .editor-copy h2');
-    if (subtitle) subtitle.innerHTML = `${rounds}<br><em>jornadas.</em>`;
     this.renderLeaguePicker();
   }
 
@@ -1101,13 +1100,20 @@ export class UI {
     }
     const team = getTeamById(this.settings.teamId);
     tabs.replaceChildren(...countries.map(country => {
-      const tab = document.createElement('button'); tab.type = 'button'; tab.className = 'league-country-tab';
+      const tab = document.createElement('button'); tab.type = 'button'; tab.className = 'league-country-tile';
       const active = country.id === this.leaguePickerCountry;
       tab.dataset.leagueCountry = country.id; tab.setAttribute('role', 'tab'); tab.setAttribute('aria-selected', String(active));
       tab.classList.toggle('active', active); tab.classList.toggle('has-selection', country.id === selectedCountry);
-      tab.textContent = country.label; return tab;
+      const groups = country.groups.filter(id => leagueIds.has(id)), clubs = TEAMS.filter(item => groups.includes(item.league)).length;
+      const flag = document.createElement('span'); flag.className = `league-flag flag-${country.id}`; flag.setAttribute('aria-hidden', 'true');
+      const name = document.createElement('b'); name.textContent = country.label;
+      const meta = document.createElement('small'); meta.textContent = `${groups.length} ${groups.length === 1 ? 'DIVISIÓN' : 'DIVISIONES'}`; tab.title = `${country.label} · ${clubs} clubes`;
+      tab.append(flag, name, meta);
+      if (groups.includes(team?.league)) { const mine = document.createElement('i'); mine.className = 'league-option-mine'; mine.textContent = 'TU LIGA'; tab.append(mine); }
+      return tab;
     }));
     const country = countries.find(item => item.id === this.leaguePickerCountry);
+    const countryName = document.getElementById('league-country-name'); if (countryName) countryName.textContent = country?.label || '';
     const leagues = TEAM_LEAGUES.filter(league => country?.groups.includes(league.id));
     options.replaceChildren(...leagues.map(league => {
       const count = TEAMS.filter(item => item.league === league.id).length, chosen = league.id === selected;

@@ -48,7 +48,7 @@ export class ProfileSocial {
     this.screen.querySelectorAll('[data-profile-tab]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.profileTab === tab)));
     this.screen.querySelectorAll('[data-profile-panel]').forEach(panel => panel.classList.toggle('hidden', panel.dataset.profilePanel !== tab));
     this.render();
-    if (tab !== 'summary' && this.ui.user) this.hub?.refresh().then(() => this.render());
+    if ((tab === 'friends' || tab === 'search') && this.ui.user) this.hub?.refresh().then(() => this.render());
     if (tab === 'search') setTimeout(() => document.getElementById('profile-search-input').focus({ preventScroll: true }), 50);
   }
 

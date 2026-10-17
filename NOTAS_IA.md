@@ -4,6 +4,22 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-17 · Claude · Rivales del 2v2: defensa que corta la línea de pase y delantero que espera arriba
+**Commit:** rama `roles-rivales` (pendiente de aprobación de Ale)
+**Archivos:** `src/game/SquadAI.js`, `tests/Duo.test.js`
+**Qué y por qué:** Ale pidió dos roles fijos para las IA rivales: una que defienda y otra que espere el balón en el campo contrario para rematar. La que defiende, en su campo, debe intentar cortar la línea de pase entre el jugador y la IA compañera.
+**Cómo:**
+- Defensa (`rivalKeeper`):
+  - Si tenemos el balón en su campo, se coloca sobre la línea entre quien lo lleva y su compañero, al 60 % del camino hacia el que recibe.
+  - Si quien lleva el balón está cerca de la portería, deja la línea y se pone a tapar el tiro, entre el balón y la portería. Esa distancia depende de la dificultad: 220 + defensa × 140 px.
+  - Si el balón queda suelto en su campo, va a por él; cuando lo gana, se lo pasa al delantero.
+  - Si el balón está en el otro campo, espera a 0,7 del ancho del campo, alineado con el balón.
+- Delantero: espera en nuestro campo (entre 0,22 y 0,42 del ancho), en el carril más alejado de nuestros jugadores y con línea de pase libre. Va a por el balón suelto que le quede cerca, intenta robar si lo tenemos a menos de 110 px de él y, con el balón, busca el tiro (su alcance de tiro es un 15 % mayor que el resto).
+- Compañera: si persigue un balón suelto lejos de ella, corre a por él entrando por detrás. Antes, en ese caso el BotAI en espejo la dejaba quieta en la portería y el balón se quedaba parado.
+- Test de roles reescrito: la defensa queda a menos de 40 px de la línea de pase y en su campo, y el delantero espera en nuestro campo, en las 5 dificultades.
+**Para el otro asistente:** sin SQL.
+
+
 ## 2026-10-17 · Claude · Partido rápido: selector de formato e IA compañera ordenado
 **Commit:** fusionado en main (rama `selector-partido-rapido`, merge e5b97fc). Para deshacerlo: `git revert -m 1 e5b97fc`
 **Archivos:** `index.html`, `src/styles.css`, `src/ui/UI.js`

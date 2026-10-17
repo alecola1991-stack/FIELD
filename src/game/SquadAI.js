@@ -209,6 +209,11 @@ export class SquadAI {
         if (dist(mate, behind) > 16) return this.moveTo(mate, behind, speed, 10);
         return { x: toward.x, y: toward.y, speed: speed * .9, kick: false };
       }
+      // Far from the ball: run to it, arriving from behind so the first touch goes forward.
+      if (mateBall > mate.radius + ball.radius + 34) {
+        const forward = unit(world.right + 4 - ball.x, centerY - ball.y);
+        return this.moveTo(mate, { x: ball.x - forward.x * (mate.radius + ball.radius + 4), y: ball.y - forward.y * (mate.radius + ball.radius + 4) }, speed, 10);
+      }
       const decision = unmirror(this.mateBot.update(mirror(mate, W), mirror(ball, W), mirror(nearestRival, W), dt));
       return { x: decision.x, y: decision.y, speed: decision.speedMultiplier ?? speed, kick: !!decision.kick, aim: decision.kickDirection, power: 1 };
     }
@@ -291,8 +296,10 @@ export class SquadAI {
   }
 
   // ---- Rivals (right team, attack the left goal) -------------------------------
-  // Fixed roles: one keeper, one forward. The keeper is the rival nearer its own goal;
-  // they swap only when the keeper ends up clearly ahead of the forward.
+  // Two fixed roles. The defender guards its half: when we have the ball there it cuts the
+  // passing line between the human and the teammate (or blocks the shot near goal) and feeds
+  // the striker when it wins the ball. The striker waits in our half, in the free lane, to
+  // receive and shoot. Roles swap only if the defender ends up clearly ahead of the striker.
   rivals(bodies, ball, dt, world) {
     const [human, mate, ...rivals] = bodies, W = world.width, centerY = world.height / 2;
     const config = BOT_LEVELS[this.difficulty], play = RIVAL_PLAY[this.difficulty] || RIVAL_PLAY.normal;
@@ -301,51 +308,55 @@ export class SquadAI {
     const forward = 1 - keeper, K = rivals[keeper], F = rivals[forward];
     const ours = [human, mate];
     const reach = body => body.radius + ball.radius + 20;
-    const ourOnBall = ours.find(body => dist(body, ball) < reach(body));
+    const nearestOurs = ours.reduce((best, body) => dist(body, ball) < dist(best, ball) ? body : best, ours[0]);
+    const ourOnBall = dist(nearestOurs, ball) < reach(nearestOurs) ? nearestOurs : null;
     const commands = {};
     const keeperSpeed = this.speedFor(this.difficulty, K), forwardSpeed = this.speedFor(this.difficulty, F);
     const keeperHasBall = dist(K, ball) < reach(K);
+    const forwardHasBall = dist(F, ball) < reach(F);
+    const ourBall = ourOnBall || (!keeperHasBall && !forwardHasBall && dist(nearestOurs, ball) < Math.min(dist(K, ball), dist(F, ball)) - 20);
 
-    // Keeper.
-    if (keeperHasBall) {
-      commands[2 + keeper] = this.rivalCarry(K, F, ball, ours, world, play, config, keeperSpeed, true);
-    } else {
-      const nearestOurs = ours.reduce((best, body) => dist(body, ball) < dist(best, ball) ? body : best, ours[0]);
-      const danger = ball.x > W * .7 && (dist(K, ball) < dist(nearestOurs, ball) + 30 || this.looseTime > .25);
-      if (danger) {
-        commands[2 + keeper] = this.moveTo(K, { x: ball.x + K.radius + ball.radius - 4, y: ball.y }, keeperSpeed, 10);
-        if (canKickBall(K, ball) && K.shotCooldown <= 0) commands[2 + keeper] = this.rivalCarry(K, F, ball, ours, world, play, config, keeperSpeed, true);
+    // Defender.
+    if (keeperHasBall) commands[2 + keeper] = this.rivalCarry(K, F, ball, ours, world, play, config, keeperSpeed, true);
+    else if (canKickBall(K, ball) && K.shotCooldown <= 0 && !ourOnBall) commands[2 + keeper] = this.rivalCarry(K, F, ball, ours, world, play, config, keeperSpeed, true);
+    else if (!ourBall && ball.x > W * .5 && dist(K, ball) < dist(nearestOurs, ball) + 30 && dist(K, ball) <= dist(F, ball)) {
+      // Loose ball in its half: win it, coming from the goal side.
+      commands[2 + keeper] = this.moveTo(K, { x: ball.x + K.radius + ball.radius - 4, y: ball.y }, keeperSpeed, 10);
+    } else if (ourBall && ball.x > W * .45) {
+      const carrier = nearestOurs, receiver = carrier === human ? mate : human;
+      const goalDistance = Math.hypot(world.right - ball.x, centerY - ball.y);
+      if (goalDistance < 220 + config.defense * 140 || ball.x > world.right - 150) {
+        // Close to goal: block the shot, between the ball and the goal.
+        const toBall = unit(ball.x - world.right, ball.y - centerY);
+        commands[2 + keeper] = this.moveTo(K, { x: clamp(world.right + toBall.x * 70, W * .72, world.right - K.radius), y: clamp(centerY + toBall.y * 70, world.goalTop + 10, world.goalBottom - 10) }, keeperSpeed, 12);
+        if (dist(K, ball) < 90 && canKickBall(K, ball) && K.shotCooldown <= 0) commands[2 + keeper] = this.rivalCarry(K, F, ball, ours, world, play, config, keeperSpeed, true);
       } else {
-        const target = { x: clamp(world.right - 70 - (world.right - ball.x) * .16, W * .72, world.right - K.radius), y: clamp(centerY + (ball.y - centerY) * (.45 + config.defense * .3), world.goalTop + 16, world.goalBottom - 16) };
-        commands[2 + keeper] = this.moveTo(K, target, keeperSpeed);
+        // Cut the passing line between the carrier and its partner, nearer the receiver, inside its half.
+        const cut = { x: carrier.x + (receiver.x - carrier.x) * .6, y: carrier.y + (receiver.y - carrier.y) * .6 };
+        const target = { x: clamp(cut.x, W * .5, world.right - K.radius), y: clamp(cut.y, world.top + K.radius, world.bottom - K.radius) };
+        commands[2 + keeper] = this.moveTo(K, target, keeperSpeed * 1.05, 12);
       }
+    } else {
+      // Ball in the other half: hold the middle of its own half, in line with the ball.
+      commands[2 + keeper] = this.moveTo(K, { x: W * .7, y: clamp(centerY + (ball.y - centerY) * .4, world.top + 80, world.bottom - 80) }, keeperSpeed);
     }
 
-    // Forward: never drops back next to the keeper.
-    const forwardHasBall = dist(F, ball) < reach(F);
-    if (ourOnBall && ball.x > W * .7) {
-      // We attack deep: the keeper deals with it; the forward waits up the pitch for the counter.
-      commands[2 + forward] = this.moveTo(F, { x: W * .5, y: clamp(centerY + (centerY - ball.y) * .5, world.top + 70, world.bottom - 70) }, forwardSpeed);
-    } else if (forwardHasBall) {
-      commands[2 + forward] = this.rivalCarry(F, K, ball, ours, world, play, config, forwardSpeed, false);
-    } else if (keeperHasBall || (ball.vx < -150 && ball.x > F.x && !ourOnBall)) {
-      // Get open up the pitch to receive, away from the nearest defender.
-      const marker = ours.reduce((best, body) => dist(body, F) < dist(best, F) ? body : best, ours[0]);
-      let target = { x: clamp(Math.min(ball.x - 240, W * .48), W * .24, W * .55), y: clamp(centerY + (ball.y < centerY ? 1 : -1) * 120, world.top + 60, world.bottom - 60) };
-      if (dist(marker, target) < 90) target = { x: target.x, y: clamp(target.y + (target.y >= marker.y ? 95 : -95), world.top + 60, world.bottom - 60) };
-      commands[2 + forward] = this.moveTo(F, target, forwardSpeed);
-    } else if (ourOnBall || ball.x < W * .7) {
-      // Press the ball from its goal side; a loose ball in reach is taken on.
-      if (canKickBall(F, ball) && F.shotCooldown <= 0 && !ourOnBall) commands[2 + forward] = this.rivalCarry(F, K, ball, ours, world, play, config, forwardSpeed, false);
-      else {
-        const press = { x: clamp(ball.x + F.radius + ball.radius - 2, world.left + F.radius, W * .7), y: ball.y };
-        commands[2 + forward] = this.moveTo(F, press, forwardSpeed, 10);
-        // Win the ball by poking it forward (towards our own attack, not a blind shot).
-        if (canKickBall(F, ball) && F.shotCooldown <= 0) Object.assign(commands[2 + forward], { kick: true, aim: { x: -120, y: (centerY - ball.y) * .4 }, power: .5 });
-      }
+    // Striker.
+    if (forwardHasBall || (canKickBall(F, ball) && F.shotCooldown <= 0 && !ourOnBall)) {
+      commands[2 + forward] = this.rivalCarry(F, K, ball, ours, world, { ...play, shootRange: play.shootRange * 1.15 }, config, forwardSpeed, false);
+    } else if (!ourBall && ball.x < W * .55 && dist(F, ball) < dist(nearestOurs, ball) + 20) {
+      // Loose ball near it: go and get it.
+      commands[2 + forward] = this.moveTo(F, { x: ball.x + F.radius + ball.radius - 4, y: ball.y }, forwardSpeed, 10);
+    } else if (ourOnBall && dist(F, ball) < 110) {
+      // Our player is on the ball right next to it: try to steal it.
+      commands[2 + forward] = this.moveTo(F, { x: ball.x + F.radius + ball.radius - 2, y: ball.y }, forwardSpeed, 10);
+      if (canKickBall(F, ball) && F.shotCooldown <= 0) Object.assign(commands[2 + forward], { kick: true, aim: { x: -120, y: (centerY - ball.y) * .4 }, power: .5 });
     } else {
-      // Ball deep in our own half with the keeper on it: wait at the halfway line for the outlet.
-      commands[2 + forward] = this.moveTo(F, { x: W * .45, y: clamp(centerY + (centerY - ball.y) * .5, world.top + 70, world.bottom - 70) }, forwardSpeed);
+      // Wait in our half, in the lane farthest from our players, ready to receive and shoot.
+      const lanes = [centerY - 140, centerY, centerY + 140].map(y => ({ x: clamp(W * .3 + (ball.x - W / 2) * .08, W * .22, W * .42), y }));
+      const score = lane => Math.min(...ours.map(body => dist(body, lane))) - (this.laneOpen(ball, lane, ours, 30) ? 0 : 80);
+      const target = lanes.reduce((best, lane) => score(lane) > score(best) ? lane : best, lanes[0]);
+      commands[2 + forward] = this.moveTo(F, target, forwardSpeed);
     }
     return commands;
   }

@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · Disparo con curva (Shift / C) y ayuda de disparo curvada
-**Commit:** rama `disparo-curva`
+**Commit:** fusionado en main (rama `disparo-curva`, merge 513468d). Para deshacerlo: `git revert -m 1 513468d`
 **Archivos:** `src/game/Ball.js`, `src/game/Physics.js`, `src/game/Input.js`, `src/game/Game.js`, `src/game/OnlineMatch.js`, `src/game/Renderer.js`, `src/game/GamepadController.js`, `index.html`, `src/styles.css`, `tests/CurveShot.test.js`, `tests/OnlineMatch.test.js`
 **Qué y por qué:** Ale pidió disparos con curva con Shift o C. El efecto va hacia arriba o hacia abajo según la dirección en la que corre el jugador, y la ayuda de disparo debe mostrar la curva.
 **Cómo:**

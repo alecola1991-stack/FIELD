@@ -1,7 +1,7 @@
 export class Ball {
   static MAX_SPEED = 861.9;
-  static CURL_RATE = 1.1; // initial turn rate of a curved shot (rad/s)
-  static CURL_DECAY = 1.6;
+  static CURL_RATE = 1.9; // initial turn rate of a curved shot (rad/s)
+  static CURL_DECAY = 1.3;
   constructor(x, y) { this.x = x; this.y = y; this.vx = 0; this.vy = 0; this.radius = 12; this.spin = 0; this.kickScale = 0; this.curl = 0; }
   reset(x, y) { this.x = x; this.y = y; this.vx = 0; this.vy = 0; this.spin = 0; this.kickScale = 0; this.curl = 0; }
   update(dt) {

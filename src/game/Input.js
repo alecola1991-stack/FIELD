@@ -1,4 +1,4 @@
-// Curved shot keys: pressed alone they shoot with curve; held while pressing Space they curve the shot.
+// Curved shot keys: they never shoot by themselves; held while pressing Space they curve the shot (and show its path).
 export const CURVE_KEYS = ['ShiftLeft', 'ShiftRight', 'KeyC'];
 const MOVE = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 export class Input {
@@ -46,11 +46,10 @@ export class Input {
     return this.rotated ? { x: -screen.y || 0, y: screen.x || 0 } : screen;
   }
   curveHeld() { return this.enabled && (this.padCurve || CURVE_KEYS.some(code => this.down.has(code))); }
-  // One shot per frame: Space, or a curve key (alone, or held while pressing Space) for a curved shot.
+  // One shot per frame with Space; it is curved when Shift / C is held at that moment.
   consumeKick() {
-    const curvePressed = CURVE_KEYS.map(code => this.consume(code)).some(Boolean);
     const space = this.consume('Space');
-    return { kick: space || curvePressed, curve: curvePressed || (space && this.curveHeld()) };
+    return { kick: space, curve: space && this.curveHeld() };
   }
   consume(code) { const hit = this.pressed.has(code); this.pressed.delete(code); return hit; }
   press(code) { if (!this.down.has(code)) this.pressed.add(code); this.down.add(code); }

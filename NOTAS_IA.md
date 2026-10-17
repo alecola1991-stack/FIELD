@@ -4,6 +4,27 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-18 · Claude · Balón distinto según la competición
+**Commit:** rama `balones-competicion`
+**Archivos:** `src/game/BallStyles.js` (nuevo), `src/game/Renderer.js`, `src/game/Game.js`, `tests/BallStyles.test.js`
+**Qué y por qué:** Ale pidió un balón distinto por competición:
+- Liga: el amarillo actual con 2 franjas de la bandera del país.
+- Champions: blanco con estrellas azules.
+- Libertadores: naranja con 2 franjas negras.
+- Mundial: blanco con tres franjas, azul, verde y roja.
+- Partido rápido: el actual.
+- Online: blanco con el símbolo 🌐.
+**Cómo:**
+- `BallStyles.js`:
+  - `ballStyleFor(fieldTheme, mode)` devuelve `{ type, base, stripes?, color? }`. Primero mira si el modo es `online`; después los temas `champions`, `copa-libertadores`, `world-cup` y `league-*`. Para una liga busca su país en `TEAM_COUNTRIES` y usa `FLAG_STRIPES`. En cualquier otro caso, amarillo liso.
+  - `drawBallBody(c, r, style, spin)` dibuja el cuerpo plano con el contorno negro. Las franjas, las estrellas y el globo (dibujado con líneas, no con el emoji) giran con `ball.spin`.
+- `Game` pasa `mode: this.state.mode` al render, tanto en el normal como en la repetición. `Renderer.render` calcula `this.ballStyle` y `drawBall` llama a `drawBallBody`.
+- Las Leyendas usan el tema `champions`, así que también llevan el balón de estrellas. La Eurocopa, la Copa América, el Mundial de Clubes y el entrenamiento llevan el amarillo.
+- El balón del fondo de los menús no cambia (amarillo).
+**Para el otro asistente:** para cambiar o añadir un balón, toca `ballStyleFor`.
+
+---
+
 ## 2026-10-18 · Claude · Tercer color de equipación y 3 patrones nuevos
 **Commit:** fusionado en main (rama `tercer-color`, merge b2228f1). Para deshacerlo: `git revert -m 1 b2228f1`
 **Archivos:** `src/config/teams.js`, `src/game/Renderer.js`, `src/game/Player.js`, `src/game/Game.js`, `tests/TeamKits.test.js`

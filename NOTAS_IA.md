@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · AdSense (fase 2): banner en la portada y laterales en los partidos
-**Commit:** rama `anuncios`
+**Commit:** fusionado en main (rama `anuncios`, merge 42f420f). Para deshacerlo: `git revert -m 1 42f420f`
 **Archivos:** `src/ui/Ads.js` (nuevo), `src/ui/UI.js`, `src/styles.css`
 **Qué y por qué:** Ale creó los bloques «Portada» (`1179611412`) y «Laterales partido» (`2319187280`) y quiere los anuncios en la portada y a los lados del campo durante los partidos.
 **Cómo:**

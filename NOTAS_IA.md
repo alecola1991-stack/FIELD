@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · Balón amarillo plano
-**Commit:** rama `balon-plano`
+**Commit:** fusionado en main (rama `balon-plano`, merge b62fa7c). Para deshacerlo: `git revert -m 1 b62fa7c`
 **Archivos:** `src/game/Renderer.js`, `src/ui/MenuBackdrop.js`
 **Qué y por qué:** Ale pidió que el balón fuera de un amarillo fuerte y plano, sin brillo ni detalles.
 **Cómo:**

@@ -4,6 +4,14 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-17 · Claude · La compañera siempre tira si recibe del jugador en campo rival
+**Commit:** rama `ia-tiro-tras-pase` (pendiente de aprobación de Ale)
+**Archivos:** `src/game/SquadAI.js`, `tests/Duo.test.js`
+**Qué y por qué:** Ale pidió que, si la IA recibe el balón del jugador en el campo rival y tiene tiro, tire siempre.
+**Cómo:** `trackTouches()` registra en cada actualización quién tocó el balón por último (`lastToucher`) y quién antes (`prevToucher`), por asiento. En `teammate()` se considera que el balón viene del humano si este fue el último en tocarlo y ya se ha separado del balón, o si la compañera lo controla desde hace menos de 1,2 s tras un toque del humano. En ese caso, con el balón en el campo rival y a su alcance, tira fuerte (potencia 1,25). Para apuntar, `shotLine()` elige entre primer palo, centro y segundo palo el tiro con la línea más despejada de rivales. Si ninguna línea está libre, sigue con su lógica normal. Hay un test nuevo.
+**Para el otro asistente:** sin SQL.
+
+
 ## 2026-10-17 · Claude · IA del 2v2: pases largos de la compañera y rivales con roles, pases y paredes
 **Commit:** fusionado en main (rama `ia-2v2-mejorada`, merge 02853a3). Para deshacerlo: `git revert -m 1 02853a3`
 **Archivos:** `src/game/SquadAI.js`, `tests/Duo.test.js`

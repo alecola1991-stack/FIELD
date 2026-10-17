@@ -136,3 +136,20 @@ test('the rival keeper feeds the forward and the forward uses the walls when blo
   const commands = ai2.update([defender, body(200, 350), striker, keeper2], ballAt(555, 340), DT);
   assert.ok(commands[2].kick && commands[2].bank, 'wall dribble around the defender');
 });
+
+test('the teammate always shoots when it receives the ball from the human in the rival half', () => {
+  const ai = new SquadAI({ difficulty: 'hard' });
+  const human = body(700, 300), mate = body(860, 420), keeper = body(1040, 340), forward = body(500, 200);
+  // The human plays the ball (touch), then it travels to the teammate.
+  ai.update([human, mate, keeper, forward], ballAt(730, 310), DT);
+  const ball = { ...ballAt(830, 400), vx: 300, vy: 200 };
+  const shot = ai.update([human, mate, keeper, forward], ball, DT)[1];
+  assert.ok(shot.kick && shot.shot, 'shoots instead of passing back');
+  assert.ok(shot.power > 1, 'strong shot');
+  const crossY = ball.y + shot.aim.y / shot.aim.x * (1074 - ball.x);
+  assert.ok(crossY > 255 && crossY < 445, `aimed inside the goal mouth (y=${crossY.toFixed(0)})`);
+  // Without the human's pass (e.g. a rival touched it last) it does not force the shot.
+  const ai2 = new SquadAI({ difficulty: 'hard' });
+  ai2.update([human, mate, keeper, forward], ballAt(1020, 345), DT);
+  assert.ok(!ai2.update([human, mate, keeper, forward], { ...ballAt(830, 400), vx: -100, vy: 0 }, DT)[1].shot);
+});

@@ -4,6 +4,22 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-17 · Claude · Pantalla entre partidos de torneo sin scroll y ESPACIO para seguir
+**Commit:** rama `cuadro-sin-scroll`
+**Archivos:** `src/ui/UI.js`, `src/styles.css`
+**Qué y por qué:** Ale pidió que entre partidos de la Champions se vea el cuadro completo sin hacer scroll, y poder pasar al siguiente partido pulsando espacio.
+**Cómo:**
+- `renderBracketPanel` usa el cuadro en espejo (`mirror`, el mismo del setup de torneo) cuando la pantalla mide 1024 px de ancho o más: las dos mitades se juntan en la final, así que ocupa la mitad de alto.
+- CSS a partir de 1024 px, aplicado con `:has(.tournament-bracket-panel:not(.hidden))`:
+  - El overlay de resultado pasa a `position:fixed` a pantalla completa y el panel se ensancha a `min(1120px, 94vw)`.
+  - Marcador y escudos más compactos, columnas del cuadro de igual ancho, y los botones Jugar y Abandonar en una sola fila.
+- Probado sin scroll a 1280×720, 1366×768 y 1900×900. En móvil no cambia nada.
+- ESPACIO: un listener `keydown` en `window` pulsa `#result-next` si está visible y el overlay lleva al menos 800 ms abierto (`this.resultShownAt`). Así no se salta la pantalla con el espacio del último disparo. Ignora las repeticiones de tecla y los campos de texto.
+- El botón muestra la pista `<kbd class="next-key">ESPACIO</kbd>`, oculta en pantallas táctiles. Funciona también en liga.
+**Para el otro asistente:** `result_next` ahora se rellena con `innerHTML` (un `span` y el `kbd`), no con `textContent`.
+
+---
+
 ## 2026-10-17 · Claude · Misiones por dificultad que se renuevan al completarlas
 **Commit:** fusionado en main (rama `misiones-dificultad`, merge 9e0b2b1). Para deshacerlo: `git revert -m 1 9e0b2b1`
 **Archivos:** `src/game/Missions.js`, `src/game/CareerProfile.js`, `src/ui/UI.js`, `index.html`, `src/styles.css`, `tests/CareerProfile.test.js`

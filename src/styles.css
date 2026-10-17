@@ -1288,3 +1288,29 @@ body:not(.solo-duo) [data-duo-only]{display:none!important}
 .mission-index{display:flex;justify-content:space-between;align-items:center;gap:8px}.mission-tier{font:700 11px var(--mono);letter-spacing:.14em;padding:3px 7px;border-radius:3px;background:var(--tier-bg,#ffffff14);color:var(--tier,#cfe0f5)}.mission-stars{color:var(--tier,#cfe0f5);letter-spacing:2px;font-size:12px}
 .mission-card.tier-easy{--tier:#8ff0bf;--tier-bg:#8ff0bf1f}.mission-card.tier-medium{--tier:#8cc4ff;--tier-bg:#8cc4ff22}.mission-card.tier-hard{--tier:#ffb36b;--tier-bg:#ffb36b22}.mission-card.tier-elite{--tier:#ffd85e;--tier-bg:#ffd85e26;border-color:#ffd85e55}
 .missions-layout .mission-card.tier-elite{background:linear-gradient(135deg,#2b2a3aee,#1a1d33ee);border-color:#ffd85e66}.mission-card .mission-progress i{background:linear-gradient(90deg,var(--tier,#45c985),#ffffffcc)}
+/* Between competition matches: the space hint, and on PC a wide panel with the mirrored bracket that fits without scrolling. */
+.result-panel .next-key{margin-left:12px;padding:2px 6px;border:1px solid currentColor;border-radius:4px;font:10px var(--mono);letter-spacing:.08em;opacity:.7}
+@media(pointer:coarse){.result-panel .next-key{display:none}}
+@media(min-width:1024px){
+  .game-screen .result-overlay:has(.tournament-bracket-panel:not(.hidden)){position:fixed;inset:0;z-index:40}
+  .game-screen .result-panel:has(.tournament-bracket-panel:not(.hidden)){width:min(1120px,94vw);max-height:calc(100vh - 20px);overflow:auto;padding:16px 22px}
+  .result-panel:has(.tournament-bracket-panel:not(.hidden)) .result-scoreboard{margin:4px 0 6px;padding:10px 14px 8px}
+  .result-panel:has(.tournament-bracket-panel:not(.hidden)) .result-crest.player-circle-preview{width:62px;height:62px}
+  .result-panel:has(.tournament-bracket-panel:not(.hidden)) .result-copy{margin:4px 0 8px}
+  .result-panel .tournament-bracket-panel:has(.bracket-mirror){margin-bottom:10px;padding:8px 10px}
+  .result-panel .bracket-mirror{padding:0;gap:6px}
+  .result-panel .bracket-mirror .bracket-matches{gap:4px}
+  .result-panel .bracket-mirror .bracket-match{padding:0}
+  .game-screen .result-panel .bracket.bracket-mirror .bracket-team{min-height:0;padding:2px 7px;font-size:12px;line-height:1.25}
+  .game-screen .result-panel .bracket.bracket-mirror .bracket-team b{font-size:11px}
+  .game-screen .result-panel:has(.tournament-bracket-panel:not(.hidden)) .result-crest{width:54px!important;height:54px!important}
+  .game-screen .result-panel:has(.tournament-bracket-panel:not(.hidden))>.eyebrow{margin:0 0 4px}
+  .game-screen .result-panel:has(.tournament-bracket-panel:not(.hidden)) .tournament-bracket-panel h3{margin-bottom:4px}
+  .result-panel .bracket.bracket-mirror .bracket-round{flex:1 1 0!important;width:0;min-width:0}
+  .result-panel .bracket.bracket-mirror .bracket-final{flex:1.15 1 0!important}
+  .result-panel .bracket-mirror .bracket-round h4{font-size:9.5px}
+  .result-panel:has(.tournament-bracket-panel:not(.hidden)) .result-score{font-size:46px}
+  .result-panel:has(.tournament-bracket-panel:not(.hidden)) .result-xp-track{margin-bottom:10px}
+  .result-panel:has(.tournament-bracket-panel:not(.hidden)) #result-next{display:inline-flex;width:calc(74% - 8px);margin:0 8px 0 0;vertical-align:middle}
+  .result-panel:has(.tournament-bracket-panel:not(.hidden)) #result-finish{display:inline-block;width:26%;margin:0;vertical-align:middle;min-height:46px}
+}

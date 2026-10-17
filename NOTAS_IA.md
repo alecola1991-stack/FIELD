@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · Contorno negro fino en el balón
-**Commit:** rama `balon-contorno`
+**Commit:** fusionado en main (rama `balon-contorno`, merge 6981af3). Para deshacerlo: `git revert -m 1 6981af3`
 **Archivos:** `src/game/Renderer.js`, `src/ui/MenuBackdrop.js`
 **Qué y por qué:** Ale pidió un contorno negro fino en el balón amarillo.
 **Cómo:**

@@ -1,6 +1,7 @@
 import { WORLD } from '../config/settings.js';
 import { FEDERATION_LEAGUE_IDS, TEAM_LEAGUES, dorsalStyle } from '../config/teams.js';
 import { Ball } from './Ball.js';
+import { ballStyleFor, drawBallBody } from './BallStyles.js';
 import { predictShot, shotRangeRadius, resolveBallWalls, isGoal, curveFor, netPressDepth } from './Physics.js';
 
 const FIELD_THEMES = {
@@ -105,6 +106,7 @@ export class Renderer {
   render(game, dt) {
     this.renderBlend = 1 - Math.exp(-24 * (dt > 0 ? Math.min(dt, .05) : 1 / 60));
     this.world = game.world || WORLD;
+    this.ballStyle = ballStyleFor(game.fieldTheme, game.mode);
     // Fill the spare canvas with the pitch surround colour: no black bands.
     const c = this.ctx, W = this.world; c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = (FIELD_THEMES[game.fieldTheme] || FIELD_THEMES.arcade).net; c.fillRect(0, 0, this.canvas.width, this.canvas.height);
     this.applyWorldTransform(c);
@@ -316,9 +318,8 @@ export class Renderer {
     const [x, y] = position || this.smooth(ball), r = ball.radius;
     c.save(); c.translate(x, y); if (this.rotated) c.rotate(Math.PI / 2); c.fillStyle = '#0007'; c.beginPath(); c.ellipse(2, 5, r * 1.08, r * .76, 0, 0, Math.PI * 2); c.fill();
     c.scale(1 + ball.kickScale * .16, 1 - ball.kickScale * .12);
-    // Flat, strong yellow ball with a thin black outline.
-    c.fillStyle = BALL_COLOR; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill();
-    c.strokeStyle = '#000000'; c.lineWidth = 1.2; c.stroke();
+    // Flat ball with a thin black outline; its design depends on the competition (BallStyles.js).
+    drawBallBody(c, r, this.ballStyle || { type: 'plain', base: BALL_COLOR }, ball.spin || 0);
     c.restore();
   }
   drawTrajectory(c, ball) {

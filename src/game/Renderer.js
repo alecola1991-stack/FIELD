@@ -52,6 +52,7 @@ function pitchGreen(themeName = 'arcade') {
 // Small deterministic random so the texture is identical every time it is drawn.
 function seeded(seed) { let value = seed >>> 0 || 1; return () => (value = (value * 1664525 + 1013904223) >>> 0) / 4294967296; }
 const PITCH_LINE = 'rgba(255,255,255,.88)';
+export const BALL_COLOR = '#ffd400';
 
 const VIEW_TOP = 25, VIEW_BOTTOM = WORLD.height - 25; // reachable band of the world
 const TOUCH_CONTROLS_HEIGHT = 176; // css px kept clear for the portrait D-pad and kick button
@@ -303,21 +304,8 @@ export class Renderer {
     const [x, y] = position || this.smooth(ball), r = ball.radius;
     c.save(); c.translate(x, y); if (this.rotated) c.rotate(Math.PI / 2); c.fillStyle = '#0007'; c.beginPath(); c.ellipse(2, 5, r * 1.08, r * .76, 0, 0, Math.PI * 2); c.fill();
     c.scale(1 + ball.kickScale * .16, 1 - ball.kickScale * .12);
-    // Yellow ball with relief: fixed light from the top-left, soft shade at the bottom-right.
-    c.shadowColor = '#ffe27a70'; c.shadowBlur = 9;
-    const body = c.createRadialGradient(-r * .38, -r * .42, r * .08, 0, 0, r * 1.05);
-    body.addColorStop(0, '#fff9cf'); body.addColorStop(.45, '#ffe34d'); body.addColorStop(.82, '#f0bf19'); body.addColorStop(1, '#c4930c');
-    c.fillStyle = body; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill(); c.shadowBlur = 0;
-    // Faint seams turn with the ball so its spin stays visible.
-    c.save(); c.beginPath(); c.arc(0, 0, r - .5, 0, Math.PI * 2); c.clip(); c.rotate(ball.spin);
-    c.strokeStyle = 'rgba(150,105,10,.42)'; c.lineWidth = Math.max(.8, r * .07); c.beginPath();
-    c.arc(-r * 1.15, 0, r * .95, -.9, .9); c.arc(r * 1.15, 0, r * .95, Math.PI - .9, Math.PI + .9);
-    c.stroke(); c.restore();
-    // Specular highlight and a thin rim.
-    const shine = c.createRadialGradient(-r * .42, -r * .46, 0, -r * .42, -r * .46, r * .55);
-    shine.addColorStop(0, 'rgba(255,255,240,.9)'); shine.addColorStop(1, 'rgba(255,255,255,0)');
-    c.fillStyle = shine; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill();
-    c.strokeStyle = 'rgba(120,85,5,.45)'; c.lineWidth = 1; c.beginPath(); c.arc(0, 0, r - .5, 0, Math.PI * 2); c.stroke();
+    // Flat, strong yellow ball: no shine, no seams, no outline.
+    c.fillStyle = BALL_COLOR; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill();
     c.restore();
   }
   drawTrajectory(c, ball) {

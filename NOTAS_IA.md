@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · Logo nuevo FA (con balón) en todas partes
-**Commit:** rama `logo-nuevo`
+**Commit:** fusionado en main (rama `logo-nuevo`, merge f58e41b). Para deshacerlo: `git revert -m 1 f58e41b`
 **Archivos:** `src/assets/logo.svg`, `index.html`, `public/favicon.svg`, `public/favicon.png`, `public/apple-touch-icon.png`, `desktop/create-icon.cjs`
 **Qué y por qué:** Ale pasó un logo nuevo («FA» con el rayo y medio balón debajo), en PNG blanco con transparencia, y pidió que sustituya al anterior en todas partes.
 **Cómo:**

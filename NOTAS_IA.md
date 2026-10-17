@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · Campo con textura de césped, verde según la competición y líneas y porterías blancas
-**Commit:** rama `cesped-vivo`
+**Commit:** fusionado en main (rama `cesped-vivo`, merge 9749178). Para deshacerlo: `git revert -m 1 9749178`
 **Archivos:** `src/game/Renderer.js`
 **Qué y por qué:** Ale pidió una textura de césped para el campo, tonos más claros y vivos, y las líneas y las porterías en blanco. Pidió además que el cambio fuera reversible. Después pidió que todos los campos fueran verdes, más claros cuanto más importante fuera la competición (Primera RFEF más clara que Segunda RFEF).
 **Cómo:**

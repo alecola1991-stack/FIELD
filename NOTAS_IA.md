@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · IA compañera: remate preciso tras el pase del jugador
-**Commit:** rama `companera-precisa`
+**Commit:** fusionado en main (rama `companera-precisa`, merge bc58719). Para deshacerlo: `git revert -m 1 bc58719`
 **Archivos:** `src/game/SquadAI.js`, `tests/Duo.test.js`
 **Qué y por qué:** Ale vio que la IA compañera fallaba muchas ocasiones después de un pase suyo. Al depurarlo aparecieron cuatro causas: el pase rebotaba en su cuerpo porque se metía en la trayectoria; el tiro salía desviado porque no descontaba la velocidad que ya traía el balón; el defensa rival estaba en el centro y lo tapaba; y los tiros eran flojos porque golpeaba al límite del alcance.
 **Cómo:**

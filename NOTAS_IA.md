@@ -4,6 +4,27 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-18 · Claude · Tercer color de equipación y 3 patrones nuevos
+**Commit:** rama `tercer-color`
+**Archivos:** `src/config/teams.js`, `src/game/Renderer.js`, `src/game/Player.js`, `src/game/Game.js`, `tests/TeamKits.test.js`
+**Qué y por qué:** Ale pidió un tercer color para los equipos grandes que lo necesitan (como Alemania o España) y tres patrones de equipación nuevos.
+**Cómo:**
+- `teams.js`, tabla `KIT_TERTIARY` con 45 equipos. Cada entrada es `[tertiary, pattern?, bands?]`, y al aplicarla el equipo recibe `team.tertiary`, `team.kitPattern` y `team.kitBands`.
+- Patrones nuevos (`THREE_COLOUR_PATTERNS`):
+  - `tricolor-vertical`: Francia, Bélgica, Italia, México, Rumanía, Irlanda, Senegal, Malí, Camerún, Costa de Marfil y Ajax.
+  - `tricolor-horizontal`: Alemania, Colombia, Rusia, Hungría, Bulgaria, Armenia, Ghana y Boca.
+  - `sash` (banda diagonal): River, Perú, Rayo y Vasco.
+  - Los tricolores pintan `bands` (tres colores). `sash` pinta `[base, banda, ribete]`.
+- Con un patrón clásico, el tercer color se dibuja como aro de cuello: España, Portugal, Países Bajos, Inglaterra, Croacia, Brasil, Argentina, EE. UU., Japón, Barça, Atlético, Madrid, Man United, Arsenal, Milan, Inter, Roma, PSG, Bayern y otros.
+- Dónde se aplica:
+  - `getKitBackground` (CSS): `kitPatternBackground` y, si hay aro, una capa `radial-gradient`.
+  - `Renderer.drawKitPattern` (canvas): los tres patrones y el aro.
+- `Player` tiene `tertiaryColor` y `kitBands`. `Game` los pasa en todos los sitios donde ya pasaba `kitPattern` (1v1, rival, ajustes, squad offline y online).
+- Los patrones nuevos no entran en el reparto aleatorio (`RANDOM_KIT_PATTERNS`), porque necesitan tres colores.
+**Para el otro asistente:** para dar un tercer color a otro equipo basta con añadir una entrada a `KIT_TERTIARY`.
+
+---
+
 ## 2026-10-18 · Claude · El borde del dorsal y del nombre nunca es del mismo color que el texto
 **Commit:** fusionado en main (rama `dorsal-contraste`, merge a6dbc3e). Para deshacerlo: `git revert -m 1 a6dbc3e`
 **Archivos:** `src/config/teams.js`, `src/game/Renderer.js`, `src/ui/UI.js`, `src/styles.css`, `tests/TeamKits.test.js`

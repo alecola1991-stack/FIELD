@@ -283,7 +283,16 @@ export class Renderer {
         else c.fillRect(-r + i * size, -r, size, r * 2);
       }
     };
-    if (pattern === 'horizontal-stripes') stripes(true);
+    const bands = player.kitBands || [primary, player.tertiaryColor || secondary, secondary];
+    if (pattern === 'tricolor-vertical' || pattern === 'tricolor-horizontal') {
+      const size = r * 2 / 3;
+      bands.forEach((color, i) => { c.fillStyle = color; if (pattern === 'tricolor-vertical') c.fillRect(-r + i * size, -r, size + .5, r * 2); else c.fillRect(-r, -r + i * size, r * 2, size + .5); });
+    } else if (pattern === 'sash') {
+      // Base colour with a diagonal sash (and a thin trim on each side).
+      c.fillStyle = bands[0]; c.fillRect(-r, -r, r * 2, r * 2);
+      c.rotate(-Math.PI / 4); c.fillStyle = bands[2]; c.fillRect(-r * 1.5, -r * .36, r * 3, r * .72);
+      c.fillStyle = bands[1]; c.fillRect(-r * 1.5, -r * .27, r * 3, r * .54);
+    } else if (pattern === 'horizontal-stripes') stripes(true);
     else if (pattern === 'vertical-stripes') stripes(false);
     else if (pattern === 'checkerboard') {
       const size = r / 2;
@@ -298,6 +307,10 @@ export class Renderer {
       c.fillStyle = secondary; c.fillRect(0, -r, r, r * 2);
     }
     c.restore();
+    // Third colour on a classic pattern: collar ring.
+    if (player.tertiaryColor && !['tricolor-vertical', 'tricolor-horizontal', 'sash'].includes(pattern)) {
+      c.save(); c.strokeStyle = player.tertiaryColor; c.lineWidth = r * .16; c.beginPath(); c.arc(0, 0, r - r * .08, 0, Math.PI * 2); c.stroke(); c.restore();
+    }
   }
   drawBall(c, ball, position = null) {
     const [x, y] = position || this.smooth(ball), r = ball.radius;

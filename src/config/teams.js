@@ -393,10 +393,64 @@ for (const team of [...TEAMS, ...NATIONAL_TEAMS, ...HONORARY_TEAMS]) {
   team.kitPattern = KIT_PATTERN_BY_TEAM.get(team.id) || chooseKitPattern(team.id);
 }
 
+// Third kit colour for the big teams that need it: [tertiary, pattern?, bands?]. Tricolour patterns
+// paint `bands` (three colours) and the sash paints [base, sash, trim]; with any other pattern the third
+// colour is a collar ring around the shirt.
+export const THREE_COLOUR_PATTERNS = new Set(['tricolor-vertical', 'tricolor-horizontal', 'sash']);
+const KIT_TERTIARY = {
+  'europe-germany': ['#D83B45', 'tricolor-horizontal', ['#191919', '#D83B45', '#D9B747']],
+  'europe-spain': ['#173F75'], 'europe-portugal': ['#C9A227'], 'europe-netherlands': ['#F4F3EE'], 'europe-england': ['#173F75'], 'europe-croatia': ['#1765A8'],
+  'europe-france': ['#F4F3EE', 'tricolor-vertical', ['#123B82', '#F4F3EE', '#E84B55']],
+  'europe-belgium': ['#F2D34E', 'tricolor-vertical', ['#191919', '#F2D34E', '#D83B45']],
+  'europe-italy': ['#D83B45', 'tricolor-vertical', ['#178B62', '#F4F2E9', '#D83B45']],
+  'europe-romania': ['#1765A8', 'tricolor-vertical', ['#1765A8', '#F2D34E', '#D83B45']],
+  'europe-ireland': ['#EE7623', 'tricolor-vertical', ['#16824E', '#F4F3EE', '#EE7623']],
+  'europe-russia': ['#D83B45', 'tricolor-horizontal', ['#F4F3EE', '#1765A8', '#D83B45']],
+  'europe-hungary': ['#16824E', 'tricolor-horizontal', ['#D83B45', '#F4F3EE', '#16824E']],
+  'europe-bulgaria': ['#D83B45', 'tricolor-horizontal', ['#F4F3EE', '#16824E', '#D83B45']],
+  'europe-armenia': ['#EE7623', 'tricolor-horizontal', ['#D83B45', '#1765A8', '#EE7623']],
+  'america-colombia': ['#D83B45', 'tricolor-horizontal', ['#F0C72E', '#1765A8', '#D83B45']],
+  'america-mexico': ['#D83B45', 'tricolor-vertical', ['#16824E', '#F4F2E9', '#D83B45']],
+  'america-peru': ['#D83B45', 'sash', ['#F4F2E9', '#D83B45', '#D83B45']],
+  'america-brazil': ['#1765A8'], 'america-argentina': ['#173F75'], 'america-usa': ['#173F75'], 'america-ecuador': ['#D83B45'], 'america-venezuela': ['#173F75'],
+  'africa-senegal': ['#D83B45', 'tricolor-vertical', ['#16824E', '#F2D34E', '#D83B45']],
+  'africa-mali': ['#D83B45', 'tricolor-vertical', ['#16824E', '#F2D34E', '#D83B45']],
+  'africa-cameroon': ['#F2D34E', 'tricolor-vertical', ['#16824E', '#D83B45', '#F2D34E']],
+  'africa-ivory-coast': ['#16824E', 'tricolor-vertical', ['#EE7623', '#F4F3EE', '#16824E']],
+  'africa-ghana': ['#16824E', 'tricolor-horizontal', ['#D83B45', '#F2D34E', '#16824E']],
+  'asia-japan': ['#D83B45'],
+  'laliga-barcelona': ['#EDBB00'], 'laliga-atletico': ['#1B3A6B'], 'laliga-real-madrid': ['#C9A227'],
+  'laliga-rayo': ['#D71920', 'sash', ['#FFFFFF', '#D71920', '#D71920']],
+  'premier-man-united': ['#171717'], 'premier-arsenal': ['#13294B'],
+  'serie-a-milan': ['#FFFFFF'], 'serie-a-inter': ['#C9A227'], 'serie-a-roma': ['#F5D21B'],
+  'ligue-1-psg': ['#FFFFFF'], 'bundesliga-bayern': ['#0066B2'], 'brasileirao-fluminense': ['#FFFFFF'],
+  'argentina-river': ['#171717', 'sash', ['#FFFFFF', '#D71920', '#171717']],
+  'argentina-boca': ['#F4D21F', 'tricolor-horizontal', ['#153E7E', '#F4D21F', '#153E7E']],
+  'brasileirao-vasco': ['#D71920', 'sash', ['#171717', '#FFFFFF', '#D71920']],
+  'eredivisie-ajax': ['#D71920', 'tricolor-vertical', ['#FFFFFF', '#D71920', '#FFFFFF']],
+};
+for (const [id, [tertiary, pattern, bands]] of Object.entries(KIT_TERTIARY)) {
+  const team = [...TEAMS, ...NATIONAL_TEAMS].find(item => item.id === id);
+  if (!team) continue;
+  team.tertiary = tertiary;
+  if (pattern) team.kitPattern = pattern;
+  if (bands) team.kitBands = bands;
+}
+const kitBands = team => team.kitBands || [team.primary || '#68746e', team.tertiary || team.secondary || team.primary || '#68746e', team.secondary || team.primary || '#68746e'];
+
 export function getKitBackground(team) {
   if (!team) return 'linear-gradient(90deg, #33413b 0 50%, #52645b 50% 100%)';
   const first = team.primary || '#68746e', second = team.secondary || first;
-  switch (team.kitPattern) {
+  const [a, b, c] = kitBands(team);
+  // Third colour on a classic pattern: a collar ring around the shirt.
+  const ring = team.tertiary && !THREE_COLOUR_PATTERNS.has(team.kitPattern) ? `radial-gradient(closest-side, transparent 80%, ${team.tertiary} 81% 99%, transparent 100%), ` : '';
+  return ring + kitPatternBackground(team.kitPattern, first, second, a, b, c);
+}
+function kitPatternBackground(pattern, first, second, a, b, c) {
+  switch (pattern) {
+    case 'tricolor-vertical': return `linear-gradient(90deg, ${a} 0 33.4%, ${b} 33.4% 66.6%, ${c} 66.6% 100%)`;
+    case 'tricolor-horizontal': return `linear-gradient(180deg, ${a} 0 33.4%, ${b} 33.4% 66.6%, ${c} 66.6% 100%)`;
+    case 'sash': return `linear-gradient(135deg, ${a} 0 36%, ${c} 36% 40%, ${b} 40% 60%, ${c} 60% 64%, ${a} 64% 100%)`;
     case 'horizontal-stripes': return `repeating-linear-gradient(0deg, ${first} 0 9px, ${second} 9px 17px)`;
     case 'vertical-stripes': return `repeating-linear-gradient(90deg, ${first} 0 9px, ${second} 9px 17px)`;
     case 'checkerboard': return `conic-gradient(${first} 25%, ${second} 0 50%, ${first} 0 75%, ${second} 0) 0 0 / 14px 14px`;

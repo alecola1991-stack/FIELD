@@ -46,7 +46,7 @@ export class Game {
     this.input.enabled = true; this.input.down.clear(); this.input.pressed.clear();
     this.trajectory = !!this.settings.trajectory; this.shotRangeTimer = 0; this.autosaveClock = 0; this.powerHudClock = 0;
     const localX = this.localSide === 'left' ? WORLD.width * .31 : WORLD.width * .69;
-    this.player = new Player({ x: localX, y: WORLD.height / 2, name: this.settings.name, number: this.settings.number, color: team?.primary || '#68746e', secondaryColor: team?.secondary || null, numberColor: team?.numberColor, kitPattern: team?.kitPattern, numberOutline: team?.numberOutline });
+    this.player = new Player({ x: localX, y: WORLD.height / 2, name: this.settings.name, number: this.settings.number, color: team?.primary || '#68746e', secondaryColor: team?.secondary || null, numberColor: team?.numberColor, kitPattern: team?.kitPattern, tertiaryColor: team?.tertiary || null, kitBands: team?.kitBands || null, numberOutline: team?.numberOutline });
     if (this.localSide === 'right') this.player.faceX = -1;
     const opponentTeam = options.opponentTeam || null;
     this.botAI.setTeamStrength(opponentTeam?.stars || 3);
@@ -55,7 +55,7 @@ export class Game {
     const opponentX = this.localSide === 'left' ? WORLD.width * .69 : WORLD.width * .31;
     const opponentName = mode === 'online' ? options.opponentName || 'RIVAL' : teamInitials(opponentTeam?.name || options.opponentName || 'BOT');
     const opponentNumber = mode === 'online' ? options.opponentNumber ?? 10 : [10, 9, 11][Math.floor(Math.random() * 3)];
-    this.bot = mode !== 'training' ? new Player({ x: opponentX, y: WORLD.height / 2, name: opponentName, number: opponentNumber, color: opponentTeam?.primary || '#f19676', secondaryColor: opponentTeam?.secondary || null, numberColor: opponentTeam?.numberColor, kitPattern: opponentTeam?.kitPattern, numberOutline: opponentTeam?.numberOutline, isBot: mode !== 'online', speed: mode === 'online' ? 305 : 280 }) : null;
+    this.bot = mode !== 'training' ? new Player({ x: opponentX, y: WORLD.height / 2, name: opponentName, number: opponentNumber, color: opponentTeam?.primary || '#f19676', secondaryColor: opponentTeam?.secondary || null, numberColor: opponentTeam?.numberColor, kitPattern: opponentTeam?.kitPattern, tertiaryColor: opponentTeam?.tertiary || null, kitBands: opponentTeam?.kitBands || null, numberOutline: opponentTeam?.numberOutline, isBot: mode !== 'online', speed: mode === 'online' ? 305 : 280 }) : null;
     if (this.bot && mode === 'online') this.bot.faceX = this.localSide === 'left' ? -1 : 1;
     this.squad = null; this.others = [];
     if (mode === 'online' && options.squad) this.setupSquad(options.squad);
@@ -82,7 +82,7 @@ export class Game {
     if (this.player) {
       const team = getTeamById(settings.teamId);
       this.player.name = settings.name; this.player.number = settings.number;
-      this.player.color = team?.primary || '#68746e'; this.player.secondaryColor = team?.secondary || null; this.player.numberColor = team?.numberColor || '#ffffff'; this.player.kitPattern = team?.kitPattern || 'half-vertical'; this.player.numberOutline = team?.numberOutline !== false;
+      this.player.color = team?.primary || '#68746e'; this.player.secondaryColor = team?.secondary || null; this.player.numberColor = team?.numberColor || '#ffffff'; this.player.kitPattern = team?.kitPattern || 'half-vertical'; this.player.tertiaryColor = team?.tertiary || null; this.player.kitBands = team?.kitBands || null; this.player.numberOutline = team?.numberOutline !== false;
     }
     this.botAI.setDifficulty(this.state.mode === 'legends' ? 'legend' : settings.difficulty); this.trajectory = !!settings.trajectory;
   }
@@ -509,7 +509,7 @@ export class Game {
     const kits = [getTeamById(seats[0].teamId), getTeamById(seats[2].teamId)];
     const bodies = seats.map((seat, index) => {
       const team = kits[index < 2 ? 0 : 1], fallback = index < 2 ? '#68746e' : '#f19676';
-      return new Player({ x: 0, y: 0, name: String(seat.name || 'JUGADOR').slice(0, 16), number: Number.isFinite(Number(seat.number)) ? Number(seat.number) : 10, color: team?.primary || fallback, secondaryColor: team?.secondary || null, numberColor: team?.numberColor, kitPattern: team?.kitPattern, numberOutline: team?.numberOutline, isBot: false, speed: 305 });
+      return new Player({ x: 0, y: 0, name: String(seat.name || 'JUGADOR').slice(0, 16), number: Number.isFinite(Number(seat.number)) ? Number(seat.number) : 10, color: team?.primary || fallback, secondaryColor: team?.secondary || null, numberColor: team?.numberColor, kitPattern: team?.kitPattern, tertiaryColor: team?.tertiary || null, kitBands: team?.kitBands || null, numberOutline: team?.numberOutline, isBot: false, speed: 305 });
     });
     const botSeat = localSeat < 2 ? 2 : 0;
     this.squad = { bodies, localSeat, botSeat, otherSeats: [0, 1, 2, 3].filter(seat => seat !== localSeat && seat !== botSeat), seats };
@@ -530,7 +530,7 @@ export class Game {
     ] });
     const [human, mate, rivalA, rivalB] = this.squad.bodies;
     // Rival kits fall back to the opponent colours when the team is not in the catalogue.
-    const kit = source => source && { color: source.primary || '#f19676', secondaryColor: source.secondary || null, numberColor: source.numberColor || '#ffffff', kitPattern: source.kitPattern || 'half-vertical', numberOutline: source.numberOutline !== false };
+    const kit = source => source && { color: source.primary || '#f19676', secondaryColor: source.secondary || null, numberColor: source.numberColor || '#ffffff', kitPattern: source.kitPattern || 'half-vertical', tertiaryColor: source.tertiary || null, kitBands: source.kitBands || null, numberOutline: source.numberOutline !== false };
     if (opponentTeam) for (const rival of [rivalA, rivalB]) Object.assign(rival, kit(opponentTeam));
     if (team) for (const body of [human, mate]) Object.assign(body, kit(team));
     for (const body of [mate, rivalA, rivalB]) { body.isBot = true; body.maxSpeed = 280; }

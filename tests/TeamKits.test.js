@@ -12,7 +12,7 @@ test('first division and national teams have visible, recognizable kit patterns'
 });
 
 test('every team gets a stable kit pattern and second divisions get a varied mix', () => {
-  const allowed = new Set(['horizontal-stripes', 'vertical-stripes', 'checkerboard', 'half-horizontal', 'half-vertical', 'quarters']);
+  const allowed = new Set(['horizontal-stripes', 'vertical-stripes', 'checkerboard', 'half-horizontal', 'half-vertical', 'quarters', 'tricolor-vertical', 'tricolor-horizontal', 'sash']);
   for (const team of PROFILE_TEAMS) assert.ok(allowed.has(team.kitPattern), `${team.id} is missing a kit pattern`);
   const secondDivision = PROFILE_TEAMS.filter(team => ['laliga2', 'championship', 'serie-b', 'ligue-2', 'bundesliga-2'].includes(team.league));
   assert.ok(new Set(secondDivision.map(team => team.kitPattern)).size >= 5);

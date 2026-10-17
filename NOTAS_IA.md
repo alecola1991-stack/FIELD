@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · Curva: solo con Shift/C mantenido + ESPACIO, y más pronunciada
-**Commit:** rama `curva-con-espacio`
+**Commit:** fusionado en main (rama `curva-con-espacio`, merge 886add9). Para deshacerlo: `git revert -m 1 886add9`
 **Archivos:** `src/game/Input.js`, `src/game/Ball.js`, `src/game/GamepadController.js`, `index.html`, `tests/CurveShot.test.js`
 **Qué y por qué:** Ale pidió que Shift o C no disparen por sí solas. El disparo es siempre con ESPACIO y solo sale curvo si se está pulsando Shift o C en ese momento. Mantener la tecla sigue mostrando la trayectoria curva. También pidió una curva más pronunciada.
 **Cómo:**

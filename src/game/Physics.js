@@ -87,6 +87,36 @@ export function resolvePlayerBall(player, ball, onHit = () => {}) {
   return true;
 }
 
+// Inside the goal after a goal: the net is soft. The ball sinks into the back net (spring)
+// and is kept between the side nets. Returns how deep it presses into the back net.
+export const NET_MAX_DEPTH = 26;
+export function netPressDepth(ball, world = ball.world || WORLD) {
+  const { left, right, goalTop, goalBottom, goalBack, width } = world;
+  if (ball.y < goalTop || ball.y > goalBottom) return { side: 0, depth: 0 };
+  const side = ball.x > right ? 1 : ball.x < left ? -1 : 0;
+  if (!side) return { side: 0, depth: 0 };
+  const back = side > 0 ? width - goalBack : goalBack, contact = back - side * ball.radius;
+  return { side, depth: Math.max(0, (ball.x - contact) * side) };
+}
+export function resolveBallNet(ball, dt, world = ball.world || WORLD) {
+  const { goalTop, goalBottom } = world, r = ball.radius;
+  const { side, depth } = netPressDepth(ball, world);
+  if (side && depth > 0) {
+    // Spring that stretches the net, and strong damping: the net swallows the ball instead of firing it back.
+    const outward = ball.vx * side;
+    ball.vx += side * (-620 * depth - (outward > 0 ? 6 : 48) * outward) * dt;
+    if (depth > NET_MAX_DEPTH) { ball.x -= side * (depth - NET_MAX_DEPTH); if (ball.vx * side > 0) ball.vx = 0; }
+    ball.vy *= Math.exp(-4 * dt);
+  }
+  // Inside the goal the ball dies quickly (it drops in the net).
+  if (side) { const drag = Math.exp(-2.2 * dt); ball.vx *= drag; ball.vy *= drag; }
+  if (side) {
+    if (ball.y < goalTop + r) { ball.y = goalTop + r; if (ball.vy < 0) ball.vy *= -.25; }
+    if (ball.y > goalBottom - r) { ball.y = goalBottom - r; if (ball.vy > 0) ball.vy *= -.25; }
+  }
+  return depth;
+}
+
 export function isGoal(ball) {
   const { left, right, goalTop, goalBottom, goalPostRadius } = ball.world || WORLD;
   // A goal counts only when the whole ball clears the rounded posts too.

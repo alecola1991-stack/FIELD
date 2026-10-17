@@ -49,3 +49,12 @@ test('Shift or C never shoot by themselves: Space shoots, curved only while one 
   input.press('Space'); assert.deepEqual(input.consumeKick(), { kick: true, curve: true });
   assert.deepEqual(input.consumeKick(), { kick: false, curve: false });
 });
+
+test('after a goal the ball sinks into the soft net and stays in the goal', async () => {
+  const { resolveBallNet } = await import('../src/game/Physics.js');
+  const ball = new Ball(1087, 330); ball.vx = 640; ball.vy = 50; let deepest = 0;
+  for (let i = 0; i < 300; i++) { ball.update(1 / 180); deepest = Math.max(deepest, resolveBallNet(ball, 1 / 180)); }
+  assert.ok(deepest > 12 && deepest <= 26, `the net stretches (${deepest.toFixed(1)} px)`);
+  assert.ok(ball.x > 1074, 'the ball stays inside the goal');
+  assert.ok(Math.hypot(ball.vx, ball.vy) < 20, 'and comes to rest');
+});

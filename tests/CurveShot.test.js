@@ -45,12 +45,13 @@ test('the curve fades, flips on a wall bounce and stops when a player touches th
   assert.equal(touched.curl, 0);
 });
 
-test('Shift or C shoots with curve; held while pressing Space it also curves', () => {
+test('Shift or C never shoot by themselves: Space shoots, curved only while one of them is held', () => {
   const input = new Input();
-  input.press('KeyC'); assert.deepEqual(input.consumeKick(), { kick: true, curve: true }); input.release('KeyC'); input.endFrame();
-  input.press('Space'); assert.deepEqual(input.consumeKick(), { kick: true, curve: false }); input.release('Space'); input.endFrame();
-  input.press('ShiftLeft'); input.endFrame();
-  assert.equal(input.curveHeld(), true);
+  input.press('KeyC'); assert.deepEqual(input.consumeKick(), { kick: false, curve: false }, 'C alone does not shoot');
+  assert.equal(input.curveHeld(), true, 'but it shows the curved path');
+  input.press('Space'); assert.deepEqual(input.consumeKick(), { kick: true, curve: true }); input.release('Space'); input.release('KeyC'); input.endFrame();
+  input.press('Space'); assert.deepEqual(input.consumeKick(), { kick: true, curve: false }, 'Space alone shoots straight'); input.release('Space'); input.endFrame();
+  input.press('ShiftLeft'); assert.deepEqual(input.consumeKick(), { kick: false, curve: false }); input.endFrame();
   input.press('Space'); assert.deepEqual(input.consumeKick(), { kick: true, curve: true });
   assert.deepEqual(input.consumeKick(), { kick: false, curve: false });
 });

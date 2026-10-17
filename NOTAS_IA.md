@@ -4,6 +4,20 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-17 · Claude · Curva: solo con Shift/C mantenido + ESPACIO, y más pronunciada
+**Commit:** rama `curva-con-espacio`
+**Archivos:** `src/game/Input.js`, `src/game/Ball.js`, `src/game/GamepadController.js`, `index.html`, `tests/CurveShot.test.js`
+**Qué y por qué:** Ale pidió que Shift o C no disparen por sí solas. El disparo es siempre con ESPACIO y solo sale curvo si se está pulsando Shift o C en ese momento. Mantener la tecla sigue mostrando la trayectoria curva. También pidió una curva más pronunciada.
+**Cómo:**
+- `Input.consumeKick()` ahora devuelve `{ kick: space, curve: space && curveHeld() }`.
+- Mando: LB/LT ya no disparan; solo activan `padCurve` y se combinan con el botón de disparo.
+- El botón táctil CURVA se mantiene pulsado mientras se toca DISPARAR (las pulsaciones son multitáctiles).
+- `Ball.CURL_RATE` sube de 1.1 a 1.9 y `CURL_DECAY` baja de 1.6 a 1.3. Desde 420 px, el desvío pasa de unos 112 px a unos 250 px.
+- Textos actualizados: ayuda de teclado, pie de la portada, protip y mensaje del mando.
+**Para el otro asistente:** para ajustar la intensidad, toca solo esas dos constantes de `Ball`.
+
+---
+
 ## 2026-10-17 · Claude · Disparo con curva (Shift / C) y ayuda de disparo curvada
 **Commit:** fusionado en main (rama `disparo-curva`, merge 513468d). Para deshacerlo: `git revert -m 1 513468d`
 **Archivos:** `src/game/Ball.js`, `src/game/Physics.js`, `src/game/Input.js`, `src/game/Game.js`, `src/game/OnlineMatch.js`, `src/game/Renderer.js`, `src/game/GamepadController.js`, `index.html`, `src/styles.css`, `tests/CurveShot.test.js`, `tests/OnlineMatch.test.js`

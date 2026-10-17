@@ -16,7 +16,7 @@ export class GamepadController {
   }
   status(text) { const node=document.getElementById('controller-status'); if(node) node.textContent=text; }
   startMapping() { if(this.index===null) { this.status('Conecta el mando y pulsa un botón antes de configurar.'); return; } this.mappingStep=0; this.custom={}; this.status('Pulsa el botón que quieras usar para disparar.'); }
-  resetMapping() { this.ui.settings.controllerMap={...DEFAULT_PAD_MAP}; this.mappingStep=-1; this.ui.persist(); this.status('Botones restablecidos: ✕ / A disparar; L1 / LB curva; ○ / B volver; Options / Menu pausar.'); }
+  resetMapping() { this.ui.settings.controllerMap={...DEFAULT_PAD_MAP}; this.mappingStep=-1; this.ui.persist(); this.status('Botones restablecidos: ✕ / A disparar; L1 / LB mantenido + disparar: curva; ○ / B volver; Options / Menu pausar.'); }
   poll(time) {
     let pads=[]; try { pads=[...(navigator.getGamepads?.() || [])].filter(p=>p?.connected!==false && p); } catch {}
     const pad=pads.find(p=>p.index===this.index) || pads.find(p=>p.buttons.some(b=>b.pressed)) || pads[0];
@@ -35,9 +35,8 @@ export class GamepadController {
     }
     const game=this.ui.currentView==='game', running=game&&!this.ui.game.state.paused&&!this.ui.game.state.matchOver;
     this.ui.game.input.padAxes=running?padAxes(pad):{x:0,y:0};
-    // LB/L1 or LT/L2: curved shot (held, it shows the curve in the shot help).
+    // LB/L1 or LT/L2 held: the next shot is curved (and the shot help shows the curve).
     this.ui.game.input.padCurve=running&&(pressed[4]||pressed[6]);
-    if(!changedView && running && (edge(4)||edge(6))) { this.ui.game.input.pressed.add('KeyC'); this.rumble(.25,70); this.ui.sound.unlock?.(); }
     if(!changedView && (running || (game && this.ui.game.replay)) && (edge(map.shoot)||edge(5)||edge(7))) { this.ui.game.input.pressed.add('Space'); this.rumble(.25,70); this.ui.sound.unlock?.(); }
     if(edge(map.pause) && game && !this.ui.game.state.matchOver) this.ui.pause(!this.ui.game.state.paused);
     else if(!changedView && !running) {

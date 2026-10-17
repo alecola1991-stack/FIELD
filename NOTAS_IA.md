@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · AdSense (fase 1): script, ads.txt y política de privacidad
-**Commit:** rama `adsense`
+**Commit:** fusionado en main (rama `adsense`, merge 34752f1). Para deshacerlo: `git revert -m 1 34752f1`
 **Archivos:** `vite.config.js`, `public/ads.txt`, `public/privacidad.html`, `index.html`, `src/styles.css`
 **Qué y por qué:** Ale quiere anuncios de AdSense en la portada y en los laterales durante los partidos, en futarcade.es (cliente `ca-pub-8681886004807247`). Esta primera fase deja el sitio listo para que Google lo verifique y lo apruebe.
 **Cómo:**

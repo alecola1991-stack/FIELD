@@ -16,6 +16,7 @@ import { MenuBackdrop } from './MenuBackdrop.js';
 import { Confetti } from './Confetti.js';
 import { clearCompetitionSave, loadCompetitionSave, setCompetitionSaveScope, storeCompetitionSave } from '../game/CompetitionSave.js';
 import { MISSION_TIERS } from '../game/Missions.js';
+import { Ads } from './Ads.js';
 import { LEGEND_MATCHES, LEGENDS_UNLOCK_LEVEL, resolveLegendMatch } from '../config/legends.js';
 
 const ROUND_NAMES = ['OCTAVOS DE FINAL', 'CUARTOS DE FINAL', 'SEMIFINAL', 'FINAL'];
@@ -1102,6 +1103,7 @@ export class UI {
 
   show(view) {
     this.currentView = view;
+    this.ads ||= new Ads(); this.ads.update(view, this.game?.renderer);
     const onlineTheme = ['online', 'leaderboard'].includes(view) || view === 'game' && this.currentMatchMode === 'online';
     document.body.classList.add('blue-theme');
     document.body.classList.toggle('online-theme', onlineTheme);

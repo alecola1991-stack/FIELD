@@ -1325,3 +1325,22 @@ body:not(.solo-duo) [data-duo-only]{display:none!important}
 .controls-hint>span:nth-child(7){margin:0 7px 0 2px;color:#75857b}
 
 .footer-link{color:inherit;text-decoration:none;border-bottom:1px solid currentColor}.footer-link:hover{color:var(--green)}
+
+/* AdSense: home banner and match rails (only in the web build; hidden when AdSense leaves them empty). */
+.ad-slot[hidden],.ad-slot:has(ins[data-ad-status="unfilled"]){display:none!important}
+.ad-slot{position:relative;z-index:1}
+.ad-label{position:absolute;top:-14px;left:0;font:9px var(--mono);letter-spacing:.16em;color:#7f93b3;pointer-events:none}
+.home-ad{width:min(728px,100%);height:90px;margin:14px auto 4px;flex:none}
+.home-ad ins.adsbygoogle{width:100%;height:90px}
+@media(max-width:600px){.home-ad{width:320px;height:100px}.home-ad ins.adsbygoogle{height:100px}}
+.match-rail{position:absolute;top:50%;transform:translateY(-50%);width:var(--rail-width,160px);height:min(600px,calc(100% - 40px))}
+.match-rail.left{left:var(--rail-gap,8px)}.match-rail.right{right:var(--rail-gap,8px)}
+.match-rail ins.adsbygoogle{width:100%;height:100%}
+/* Home with the ad banner on PC: slightly shorter tiles so the banner and the footer fit without scrolling. */
+@media(min-width:901px){
+  .home-screen:has(.home-ad:not([hidden])) .hub-grid>.hub-tile:not(.panel-tile){min-height:clamp(118px,16vh,200px);padding-bottom:46px}
+  .blue-theme .home-screen:has(.home-ad:not([hidden])) .hub-content{gap:18px;padding:10px 0 8px}
+  .home-screen:has(.home-ad:not([hidden])) .home-footer{height:40px}
+}
+@media(min-width:901px) and (max-height:860px){.home-ad{height:60px;margin-top:12px}.home-ad ins.adsbygoogle{height:60px}}
+@media(min-width:901px) and (max-height:800px){.blue-theme .home-screen:has(.home-ad:not([hidden])) .hub-content{gap:12px;padding:4px 0 4px}.home-ad{margin:10px auto 0}}

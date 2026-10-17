@@ -1314,3 +1314,12 @@ body:not(.solo-duo) [data-duo-only]{display:none!important}
   .result-panel:has(.tournament-bracket-panel:not(.hidden)) #result-next{display:inline-flex;width:calc(74% - 8px);margin:0 8px 0 0;vertical-align:middle}
   .result-panel:has(.tournament-bracket-panel:not(.hidden)) #result-finish{display:inline-block;width:26%;margin:0;vertical-align:middle;min-height:46px}
 }
+
+/* Curved shot: touch button next to the kick button. */
+.touch-actions{display:flex;align-items:flex-end;gap:10px;pointer-events:none}
+.touch-actions>button{pointer-events:auto}
+.touch-curve{display:grid;place-items:center;align-content:center;width:62px;height:62px;margin-bottom:6px;border:2px solid #9fd2ffa0;border-radius:50%;background:radial-gradient(circle at 35% 28%,#2f5d8f,#173353 72%);color:#e3f1ff;box-shadow:0 7px 18px #0008;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+.touch-curve span{font-size:22px;line-height:1}.touch-curve b{font:800 10px var(--mono)}
+.touch-curve.pressed{background:radial-gradient(circle at 35% 28%,#bfe3ff,#4f97d8 75%);color:#08182b;transform:scale(.92)}
+.controls-hint .curve-key{padding:0 5px;margin-left:6px}
+.controls-hint>span:nth-child(7){margin:0 7px 0 2px;color:#75857b}

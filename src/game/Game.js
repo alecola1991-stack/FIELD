@@ -106,8 +106,8 @@ export class Game {
         const discrete = [axes.x, axes.y].every(value => [-1, 0, 1].includes(value));
         if (!this.lastOnlineAxes || (changed && (discrete || this.onlineInputClock >= ONLINE_PACKET_INTERVAL)) || this.onlinePendingKick || this.onlineInputClock >= .2) {
           this.onlineInputClock = 0; this.lastOnlineAxes = axes;
-          this.hooks.onOnlineInput?.({ x: axes.x, y: axes.y, kick: this.onlinePendingKick });
-          this.onlinePendingKick = false;
+          this.hooks.onOnlineInput?.({ x: axes.x, y: axes.y, kick: this.onlinePendingKick, curve: this.onlinePendingKick && this.onlinePendingCurve });
+          this.onlinePendingKick = false; this.onlinePendingCurve = false;
         }
       } else this.update(dt);
       this.captureReplayFrame(dt);
@@ -126,7 +126,7 @@ export class Game {
     if (this.renderEnabled !== false) {
       const view = this.replayView();
       this.renderer.render(view ? { ...view, trajectory: false, shotPreview: false, goalTimer: 0, goalSide: 0, world: this.world || WORLD, fieldTheme: this.fieldTheme, competitionRound: this.competitionRound, shotRangeTimer: 0, replay: true }
-        : { player: this.player, bot: this.bot, others: this.others, ball: this.ball, trajectory: this.trajectory, shotPreview: !!this.settings.shotPreview && this.countdown === 0 && this.state.goalTimer <= 0 && !this.state.matchOver && !this.replay, goalTimer: this.state.goalTimer, goalSide: this.state.goalSide, world: this.world || WORLD, fieldTheme: this.fieldTheme, competitionRound: this.competitionRound, shotRangeTimer: this.shotRangeTimer }, this.state.paused ? 0 : dt);
+        : { player: this.player, bot: this.bot, others: this.others, ball: this.ball, trajectory: this.trajectory, shotPreview: !!this.settings.shotPreview && this.countdown === 0 && this.state.goalTimer <= 0 && !this.state.matchOver && !this.replay, curveAim: this.input.curveHeld?.() || false, goalTimer: this.state.goalTimer, goalSide: this.state.goalSide, world: this.world || WORLD, fieldTheme: this.fieldTheme, competitionRound: this.competitionRound, shotRangeTimer: this.shotRangeTimer }, this.state.paused ? 0 : dt);
     }
     this.input.endFrame();
   }
@@ -155,14 +155,15 @@ export class Game {
     }
     if (this.squad) { this.updateSquad(dt); return; }
     const move = this.input.axes(); this.player.move(move.x, move.y, dt);
-    if (this.input.consume('Space')) {
+    const shotInput = this.readKick();
+    if (shotInput.kick) {
       this.shotRangeTimer = .62;
       const powered = this.player.powerCooldown <= 0;
       const kicked = kickBall(this.player, this.ball, () => {
         this.sound.play('kick');
         if (powered) { this.renderer.fireBurst(this.ball.x, this.ball.y); this.player.powerFlash = .48; }
         else this.renderer.burst(this.ball.x, this.ball.y, '#c5f4d8', 7, 100);
-      }, null, powered ? 1.45 : 1);
+      }, null, powered ? 1.45 : 1, shotInput.curve);
       if (kicked) this.matchStats.shotsPlayer++;
       if (kicked && powered) { this.player.powerCooldown = (this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS); this.hooks.onPowerCooldown?.(this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS); }
     }
@@ -180,7 +181,7 @@ export class Game {
             this.sound.play('kick');
             if (powered) { this.renderer.fireBurst(this.ball.x, this.ball.y); this.bot.powerFlash = .48; }
             else this.renderer.burst(this.ball.x, this.ball.y, '#c5f4d8', 7, 100);
-          }, null, powered ? 1.45 : 1);
+          }, null, powered ? 1.45 : 1, command.curve === true);
           if (kicked) this.matchStats.shotsOpponent++;
           if (kicked && powered) this.bot.powerCooldown = (this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS);
         }
@@ -312,9 +313,9 @@ export class Game {
       this.onlinePendingKick = false; return;
     }
     const axes = this.input.axes();
-    const kickPressed = this.input.consume('Space');
+    const shotInput = this.readKick(), kickPressed = shotInput.kick;
     if (this.countdown > 0 || this.state.goalTimer > 0 || this.state.matchOver) { this.onlinePendingKick = false; return; }
-    if (kickPressed) this.onlinePendingKick = true;
+    if (kickPressed) { this.onlinePendingKick = true; this.onlinePendingCurve = shotInput.curve; }
     this.player.powerCooldown = Math.max(0, this.player.powerCooldown - dt);
     this.player.powerFlash = Math.max(0, this.player.powerFlash - dt);
     this.shotRangeTimer = Math.max(0, this.shotRangeTimer - dt);
@@ -337,11 +338,13 @@ export class Game {
         this.sound.play('kick');
         if (powered) { this.renderer.fireBurst(this.ball.x, this.ball.y); this.player.powerFlash = .48; }
         else this.renderer.burst(this.ball.x, this.ball.y, '#c5f4d8', 7, 100);
-      }, null, powered ? 1.45 : 1);
+      }, null, powered ? 1.45 : 1, shotInput.curve);
       if (kicked) this.matchStats.shotsPlayer++;
       if (kicked && powered) this.player.powerCooldown = (this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS);
     }
   }
+  // Shot input this frame: { kick, curve }. Simple inputs without curve support shoot straight.
+  readKick() { return this.input.consumeKick ? this.input.consumeKick() : { kick: this.input.consume('Space'), curve: false }; }
   recordGoal(side) {
     this.state.goalSide = side;
     const playerScored = this.state.mode === 'training' || (this.state.mode === 'online'
@@ -405,7 +408,7 @@ export class Game {
     this.remoteInput = {
       x: Math.max(-1, Math.min(1, Number(input.x) || 0)),
       y: Math.max(-1, Math.min(1, Number(input.y) || 0)),
-      kick: input.kick === true,
+      kick: input.kick === true, curve: input.curve === true,
     };
   }
   applyOnlineSnapshot(snapshot) {
@@ -548,7 +551,7 @@ export class Game {
     const aiCommands = this.squad.ai ? this.squad.ai.update(bodies, this.ball, dt) : null;
     bodies.forEach((body, seat) => {
       let command;
-      if (seat === localSeat) { const axes = this.input.axes(); command = { x: axes.x, y: axes.y, kick: this.input.consume('Space') }; }
+      if (seat === localSeat) { const axes = this.input.axes(); command = { x: axes.x, y: axes.y, ...this.readKick() }; }
       else if (aiCommands) {
         command = aiCommands[seat] || { x: 0, y: 0 };
         body.move(Number(command.x) || 0, Number(command.y) || 0, dt, command.speed ?? 1);
@@ -571,7 +574,7 @@ export class Game {
         this.sound.play('kick');
         if (powered) { this.renderer.fireBurst(this.ball.x, this.ball.y); body.powerFlash = .48; }
         else this.renderer.burst(this.ball.x, this.ball.y, '#c5f4d8', 7, 100);
-      }, null, powered ? 1.45 : 1);
+      }, null, powered ? 1.45 : 1, command.curve === true);
       if (kicked) { if ((seat < 2) === leftLocal) this.matchStats.shotsPlayer++; else this.matchStats.shotsOpponent++; }
       if (kicked && powered) { body.powerCooldown = (this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS); if (seat === localSeat) this.hooks.onPowerCooldown?.(body.powerCooldown); }
     });

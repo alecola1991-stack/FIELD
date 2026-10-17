@@ -1,7 +1,9 @@
+// Curved shot keys: pressed alone they shoot with curve; held while pressing Space they curve the shot.
+export const CURVE_KEYS = ['ShiftLeft', 'ShiftRight', 'KeyC'];
 const MOVE = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 export class Input {
   constructor() {
-    this.enabled = true; this.padAxes = { x: 0, y: 0 }; this.down = new Set(); this.pressed = new Set();
+    this.enabled = true; this.padAxes = { x: 0, y: 0 }; this.padCurve = false; this.down = new Set(); this.pressed = new Set();
     this.onKeyDown = e => {
       if (!this.enabled) return;
       // Keep gameplay shortcuts out of form fields and native controls. In
@@ -42,6 +44,13 @@ export class Input {
     // Controls are screen-relative: with the pitch rotated (portrait), screen up
     // moves toward the attacked goal (+x) and screen right moves toward +y.
     return this.rotated ? { x: -screen.y || 0, y: screen.x || 0 } : screen;
+  }
+  curveHeld() { return this.enabled && (this.padCurve || CURVE_KEYS.some(code => this.down.has(code))); }
+  // One shot per frame: Space, or a curve key (alone, or held while pressing Space) for a curved shot.
+  consumeKick() {
+    const curvePressed = CURVE_KEYS.map(code => this.consume(code)).some(Boolean);
+    const space = this.consume('Space');
+    return { kick: space || curvePressed, curve: curvePressed || (space && this.curveHeld()) };
   }
   consume(code) { const hit = this.pressed.has(code); this.pressed.delete(code); return hit; }
   press(code) { if (!this.down.has(code)) this.pressed.add(code); this.down.add(code); }

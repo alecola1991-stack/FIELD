@@ -209,7 +209,7 @@ test('2v2: el anfitrión arranca con los tres invitados, recibe entradas por asi
   assert.equal(info.get(1).squad.localSeat, 1);
 
   peers[3].sendInput({ x: 1, y: -1, kick: true });
-  assert.deepEqual(peers[0].getSeatInput(3), { x: 1, y: -1, kick: true });
+  assert.deepEqual(peers[0].getSeatInput(3), { x: 1, y: -1, kick: true, curve: false });
   assert.equal(peers[0].getSeatInput(3).kick, false, 'a kick is consumed once');
   assert.deepEqual(peers[0].getSeatInput(2), { x: 0, y: 0, kick: false });
   // Seat 2 claiming to be seat 1 is ignored.

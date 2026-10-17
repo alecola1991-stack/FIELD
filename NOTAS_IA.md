@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · Curva: sin dirección no curva y sentido invertido
-**Commit:** rama `curva-invertida`
+**Commit:** fusionado en main (rama `curva-invertida`, merge a6899c6). Para deshacerlo: `git revert -m 1 a6899c6`
 **Archivos:** `src/game/Physics.js`, `src/game/Game.js`, `src/game/Renderer.js`, `index.html`, `tests/CurveShot.test.js`
 **Qué y por qué:** Ale pidió que, si no se pulsa ninguna dirección, el tiro sea normal aunque se mantenga Shift o C, y que el sentido de la curva sea el contrario al que se pulsa.
 **Cómo:**

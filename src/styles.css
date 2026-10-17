@@ -1323,3 +1323,5 @@ body:not(.solo-duo) [data-duo-only]{display:none!important}
 .touch-curve.pressed{background:radial-gradient(circle at 35% 28%,#bfe3ff,#4f97d8 75%);color:#08182b;transform:scale(.92)}
 .controls-hint .curve-key{padding:0 5px;margin-left:6px}
 .controls-hint>span:nth-child(7){margin:0 7px 0 2px;color:#75857b}
+
+.footer-link{color:inherit;text-decoration:none;border-bottom:1px solid currentColor}.footer-link:hover{color:var(--green)}

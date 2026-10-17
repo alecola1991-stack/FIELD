@@ -4,6 +4,21 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-17 · Claude · AdSense (fase 1): script, ads.txt y política de privacidad
+**Commit:** rama `adsense`
+**Archivos:** `vite.config.js`, `public/ads.txt`, `public/privacidad.html`, `index.html`, `src/styles.css`
+**Qué y por qué:** Ale quiere anuncios de AdSense en la portada y en los laterales durante los partidos, en futarcade.es (cliente `ca-pub-8681886004807247`). Esta primera fase deja el sitio listo para que Google lo verifique y lo apruebe.
+**Cómo:**
+- `vite.config.js`: el plugin `field-adsense` inyecta el script `adsbygoogle.js?client=ca-pub-…` antes de `</head>` solo cuando el modo no es `desktop`. La Portable de Windows (`--mode desktop`) no lo lleva, porque AdSense no permite anuncios en aplicaciones.
+- `public/ads.txt`: `google.com, pub-8681886004807247, DIRECT, f08c47fec0942fa0`.
+- `public/privacidad.html`: página estática con la política de privacidad. Cubre el almacenamiento local, la cuenta en Supabase y el inicio de sesión con Google, las cookies de AdSense, el aviso de consentimiento, los derechos RGPD y la AEPD.
+- `index.html`: enlace «PRIVACIDAD» en el pie de la portada (`.footer-link`).
+**Para el otro asistente:**
+- El correo de contacto de la política es el que dio Ale.
+- Fase 2, pendiente: los huecos `<ins class="adsbygoogle">` de la portada y de los laterales del partido. Necesitan los `data-ad-slot` que Ale creará en AdSense.
+
+---
+
 ## 2026-10-17 · Claude · Contorno negro fino en el balón
 **Commit:** fusionado en main (rama `balon-contorno`, merge 6981af3). Para deshacerlo: `git revert -m 1 6981af3`
 **Archivos:** `src/game/Renderer.js`, `src/ui/MenuBackdrop.js`

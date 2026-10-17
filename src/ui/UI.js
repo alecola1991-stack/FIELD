@@ -1118,7 +1118,10 @@ export class UI {
       button.classList.toggle('active', active); if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
     });
     for (const [key, screen] of Object.entries(this.screens)) screen.classList.toggle('hidden', key !== view);
-    this.menuBackdrop?.setActive(view === 'home');
+    // Animated background: one canvas moves into the visible menu and draws its scene.
+    const backdropScene = { home: 'home', play: 'play', online: 'online', settings: 'settings', tournament: 'champions', league: 'league' }[view];
+    if (backdropScene && this.screens[view]) this.menuBackdrop?.setScene(backdropScene, this.screens[view]);
+    this.menuBackdrop?.setActive(!!backdropScene);
     if (view === 'profile') { this.renderProfile(); this.social?.setTab(this.social.tab); } else this.social?.closePlayer();
     if (view === 'missions') this.renderMissions();
     if (view === 'play') this.refreshContinueButton();

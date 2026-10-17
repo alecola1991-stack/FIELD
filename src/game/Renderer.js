@@ -1,5 +1,5 @@
 import { WORLD } from '../config/settings.js';
-import { FEDERATION_LEAGUE_IDS } from '../config/teams.js';
+import { FEDERATION_LEAGUE_IDS, TEAM_LEAGUES } from '../config/teams.js';
 import { Ball } from './Ball.js';
 import { predictShot, shotRangeRadius, resolveBallWalls, isGoal, curveFor, netPressDepth } from './Physics.js';
 
@@ -38,14 +38,13 @@ const PITCH_GREEN = [
   [/^(euro|copa-america|copa-libertadores)$/, .425],
   [/^league-(laliga|premier|serie-a|ligue-1|bundesliga)$/, .40],
   [/^(arcade)$/, .385],
-  [/^league-(argentina|liga-mx|brasileirao|mls|liga-portugal|belgian-pro|super-lig)$/, .37],
   [/^(training)$/, .35],
-  [/^league-(laliga2|championship|serie-b|ligue-2|bundesliga-2)$/, .33],
-  [/^league-primera-rfef/, .295],
-  [/^league-segunda-rfef/, .26],
 ];
+// National leagues by division: other top flights, second, third and fourth tiers.
+const TIER_GREEN = { 1: .37, 2: .33, 3: .295, 4: .26 };
 function pitchGreen(themeName = 'arcade') {
-  const l = PITCH_GREEN.find(([pattern]) => pattern.test(themeName))?.[1] ?? .385;
+  const league = themeName.startsWith('league-') ? TEAM_LEAGUES.find(item => item.id === themeName.slice(7)) : null;
+  const l = PITCH_GREEN.find(([pattern]) => pattern.test(themeName))?.[1] ?? (league ? TIER_GREEN[league.tier] : null) ?? .385;
   // Darker pitches keep a bit less saturation so they read as deep grass, not neon.
   return { h: 132, s: Math.min(.47, .35 + (l - .26) * .9), l };
 }

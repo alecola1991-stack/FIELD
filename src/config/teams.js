@@ -1,3 +1,5 @@
+import { MORE_LEAGUES, MORE_COUNTRIES, MORE_TEAM_ROWS, MORE_FOUR_STAR } from './teams-more.js';
+
 // Current first-division club selector. Only names and color palettes are used;
 // there are no crests, kit images, or copied league graphics.
 export const TEAM_LEAGUES = [
@@ -27,7 +29,11 @@ export const TEAM_LEAGUES = [
   { id: 'liga-portugal', label: 'Liga Portugal Betclic · Portugal 26/27' },
   { id: 'belgian-pro', label: 'Jupiler Pro League · Bélgica 26/27' },
   { id: 'super-lig', label: 'Süper Lig · Turquía 26/27' },
+  ...MORE_LEAGUES.map(({ country, ...league }) => league),
 ];
+// Division level of every league (1 = top flight); the Champions draw only uses first divisions.
+const SECOND_TIERS = new Set(['laliga2', 'championship', 'serie-b', 'ligue-2', 'bundesliga-2']);
+for (const league of TEAM_LEAGUES) league.tier ??= SECOND_TIERS.has(league.id) ? 2 : league.id.startsWith('primera-rfef') ? 3 : league.id.startsWith('segunda-rfef') ? 4 : 1;
 
 export const FEDERATION_LEAGUE_IDS = new Set(TEAM_LEAGUES.filter(league => league.federation).map(league => league.id));
 
@@ -56,6 +62,9 @@ export const TEAM_COUNTRIES = [
   { id: 'national', label: 'Selecciones', groups: ['europe', 'america'] },
   { id: 'honorary', label: 'Honoríficos', groups: ['honorificos'] },
 ];
+// New divisions join their country; new countries go after the club countries (before national teams).
+for (const country of MORE_COUNTRIES) TEAM_COUNTRIES.splice(TEAM_COUNTRIES.findIndex(item => item.id === 'national'), 0, { ...country, groups: [] });
+for (const league of MORE_LEAGUES) TEAM_COUNTRIES.find(country => country.id === league.country)?.groups.push(league.id);
 
 const define = (league, rows) => rows.map(([id, name, primary, secondary]) => ({ league, id: `${league}-${id}`, name: `${name} CF`, primary, secondary }));
 const defineExact = (league, rows) => rows.map(([id, name, primary, secondary]) => ({ league, id: `${league}-${id}`, name, primary, secondary }));
@@ -278,6 +287,7 @@ export const TEAMS = [
   ...defineExact('belgian-pro', [
     ['cercle','Cercle Brugge','#167A48','#171717'],['club-brugge','Club Brugge','#1766AA','#171717'],['gent','KAA Gent','#1766AA','#FFFFFF'],['genk','KRC Genk','#1766AA','#FFFFFF'],['kortrijk','KV Kortrijk','#D71920','#FFFFFF'],['mechelen','KV Mechelen','#D71920','#F5D21B'],['westerlo','KVC Westerlo','#F5D21B','#1766AA'],['lommel','Lommel SK','#167A48','#FFFFFF'],['leuven','OH Leuven','#D71920','#171717'],['la-louviere','RAAL La Louvière','#167A48','#FFFFFF'],['antwerp','Royal Antwerp FC','#D71920','#FFFFFF'],['union-sg','Union Saint-Gilloise','#F5D21B','#1766AA'],['anderlecht','RSC Anderlecht','#6B3FA0','#FFFFFF'],['beveren','SK Beveren','#F5D21B','#1766AA'],['charleroi','Sporting Charleroi','#171717','#FFFFFF'],['standard','Standard de Liège','#D71920','#FFFFFF'],['stvv','STVV','#F5D21B','#1766AA'],['zulte-waregem','Zulte Waregem','#D71920','#167A48'],
   ]),
+  ...Object.entries(MORE_TEAM_ROWS).flatMap(([league, rows]) => defineExact(league, rows)),
   ...defineExact('super-lig', [
     ['alanyaspor','Alanyaspor','#F07825','#167A48'],['amedspor','Amedspor','#167A48','#D71920'],['basaksehir','Başakşehir','#F07825','#1766AA'],['besiktas','Beşiktaş','#171717','#FFFFFF'],['corum','Çorum FK','#D71920','#171717'],['erzurumspor','Erzurumspor FK','#1766AA','#FFFFFF'],['eyupspor','Eyüpspor','#6B3FA0','#F5D21B'],['fenerbahce','Fenerbahçe','#1766AA','#F5D21B'],['galatasaray','Galatasaray','#D71920','#F5D21B'],['gaziantep','Gaziantep FK','#D71920','#171717'],['genclerbirligi','Gençlerbirliği','#D71920','#171717'],['goztepe','Göztepe','#D71920','#F5D21B'],['kasimpasa','Kasımpaşa','#1766AA','#FFFFFF'],['kocaelispor','Kocaelispor','#167A48','#171717'],['konyaspor','Konyaspor','#167A48','#FFFFFF'],['rizespor','Çaykur Rizespor','#167A48','#1766AA'],['samsunspor','Samsunspor','#D71920','#FFFFFF'],['trabzonspor','Trabzonspor','#7D2444','#1766AA'],
   ]),
@@ -497,6 +507,9 @@ const ONE_STAR = new Set([
 ]);
 for (const team of [...TEAMS, ...NATIONAL_TEAMS]) {
   team.stars = FIVE_STAR.has(team.id) ? 5 : FOUR_STAR.has(team.id) ? 4 : ONE_STAR.has(team.id) ? 1 : team.league.endsWith('2') || team.league === 'championship' || team.league === 'serie-b' || team.league === 'ligue-2' || FEDERATION_LEAGUE_IDS.has(team.league) ? 2 : 3;
+  // New leagues: by division (3 / 2 / 1 stars), with the best-known clubs at 4.
+  const extra = MORE_LEAGUES.find(league => league.id === team.league);
+  if (extra) team.stars = MORE_FOUR_STAR.includes(team.id) ? 4 : extra.tier === 1 ? 3 : extra.tier === 2 ? 2 : 1;
 }
 
 export const TEAM_GROUPS = [...TEAM_LEAGUES, ...NATIONAL_GROUPS, ...HONORARY_GROUPS];

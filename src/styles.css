@@ -1350,3 +1350,14 @@ body:not(.solo-duo) [data-duo-only]{display:none!important}
 .sub-screen>.menu-backdrop{position:absolute;inset:0;z-index:-1;width:100%;height:100%;opacity:.55;pointer-events:none}
 .blue-theme .home-screen>.menu-backdrop{opacity:.5}
 .ad-slot .ad-label{display:none}.ad-slot:has(ins[data-ad-status="filled"]) .ad-label{display:block}
+/* Flags of the countries added with the new leagues. */
+.flag-netherlands{background:linear-gradient(#AE1C28 0 33.4%,#fff 33.4% 66.6%,#21468B 66.6%)}
+.flag-scotland{background:linear-gradient(33deg,transparent 45%,#fff 45% 55%,transparent 55%),linear-gradient(-33deg,transparent 45%,#fff 45% 55%,transparent 55%),#005EB8}
+.flag-saudi-arabia{background:linear-gradient(transparent 62%,#fff 62% 66%,transparent 66%),#006C35}
+.flag-colombia{background:linear-gradient(#FCD116 0 50%,#003893 50% 75%,#CE1126 75%)}
+.flag-chile{background:linear-gradient(90deg,#0039A6 0 38%,transparent 38%) top/100% 50% no-repeat,linear-gradient(#fff 0 50%,#D52B1E 50%)}
+.flag-uruguay{background:radial-gradient(circle at 20% 28%,#FCD116 0 12%,transparent 13%),linear-gradient(90deg,#fff 0 40%,transparent 40%) top/100% 55% no-repeat,repeating-linear-gradient(#fff 0 11.1%,#0038A8 11.1% 22.2%)}
+.flag-austria{background:linear-gradient(#ED2939 0 33.4%,#fff 33.4% 66.6%,#ED2939 66.6%)}
+.flag-switzerland{background:linear-gradient(90deg,transparent 42%,#fff 42% 58%,transparent 58%) center/60% 60% no-repeat,linear-gradient(transparent 42%,#fff 42% 58%,transparent 58%) center/60% 60% no-repeat,#DA291C}
+/* With 20 countries the league picker uses 5 compact columns on PC so it still fits without scrolling. */
+@media(min-width:901px){#league-screen .league-country-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}#league-screen .league-country-tile{min-height:0;padding:7px 8px;gap:1px 7px}#league-screen .league-country-tile b{font-size:12px}#league-screen .league-country-tile .league-flag{width:24px;height:16px}}

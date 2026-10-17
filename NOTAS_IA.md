@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · Real Madrid totalmente blanco y dorsal sin borde
-**Commit:** rama `real-madrid-blanco` (pendiente de aprobación de Ale)
+**Commit:** fusionado en main (rama `real-madrid-blanco`, merge 9c431d2). Para deshacerlo: `git revert -m 1 9c431d2`
 **Archivos:** `src/config/teams.js`, `src/game/Player.js`, `src/game/Renderer.js`, `src/game/Game.js`, `src/ui/UI.js`, `src/styles.css`
 **Qué y por qué:** Ale pidió la equipación del Real Madrid toda blanca y el dorsal sin borde negro.
 **Cómo:**

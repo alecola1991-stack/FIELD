@@ -1234,3 +1234,35 @@ body.blue-theme.online-theme{--bg:#020713;--panel:#071329;--green:#83b4ff;--mute
 @media(min-width:1024px) and (max-height:820px){.settings-wrap>.editor-copy{display:none}}
 @media(min-width:1024px){.leaderboard-panels .leaderboard-list{max-height:calc(100vh - 420px)}[data-profile-panel=trophies] .trophy-grid{max-height:calc(100vh - 510px)}#settings-panel-controls .controller-settings p{margin:6px 0}}
 @media(min-width:1024px) and (max-height:720px){#tournament-screen .competition-layout{gap:6px;padding-bottom:8px}}
+/* Formato 1v1 / 2v2 con IA compañera */
+.solo-format{display:flex;flex-direction:column;gap:6px;min-width:0}
+.solo-format .field-label{margin:0}
+.solo-format-options{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border:1px solid #91b9ff30;border-radius:10px;background:#0a1530}
+.solo-format-options button{min-height:38px;padding:6px 10px;border:0;border-radius:7px;background:transparent;color:#adc2df;font:700 14px Manrope,system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+.solo-format-options button small{font:500 10px 'DM Mono',monospace;letter-spacing:.08em;opacity:.8}
+.solo-format-options button:hover{color:#fff;background:#18294a}
+.solo-format-options button.active{background:#dcecff;color:#0b1c38}
+.solo-format-hint{font-size:12px;color:#9fb6d8;line-height:1.35}
+.cup-format{margin:10px 0 2px}
+.league-format{margin:0}
+@media(min-width:1024px){
+#quick-screen .match-setup-actions{grid-template-columns:minmax(220px,280px) auto minmax(160px,220px) minmax(200px,260px)}
+#quick-screen .quick-format .solo-format-hint,#quick-screen .quick-format .field-label{display:none}
+.cup-format{flex-direction:row;align-items:center;gap:14px}
+.cup-format .solo-format-options{min-width:280px}
+.league-format{flex-direction:row;align-items:center;gap:14px}
+.league-format .solo-format-options{min-width:260px}
+}
+@media(min-width:1024px) and (max-height:720px){.cup-format .solo-format-hint,.league-format .solo-format-hint{display:none}}
+@media(min-width:1024px){
+#quick-screen .match-setup-actions{grid-template-columns:auto auto minmax(150px,190px) minmax(190px,230px);gap:10px}
+#quick-screen .quick-format .solo-format-options button{padding:6px 12px}
+.league-division-panel .league-options{max-height:calc(100vh - 520px)}
+}
+@media(min-width:1024px){
+#quick-screen .match-setup-actions{display:flex;flex-wrap:nowrap;align-items:center;justify-content:flex-end;gap:10px;min-width:0}
+#quick-screen .match-setup-actions .text-input{width:170px;flex:none}
+#quick-screen .match-setup-actions .primary-button{width:210px;flex:none}
+#quick-screen .match-setup-actions>.field-label{white-space:nowrap}
+}
+@media(min-width:1024px) and (max-width:1300px){#quick-screen .match-setup-actions>.field-label{display:none}}

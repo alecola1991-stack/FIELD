@@ -42,7 +42,7 @@ export class UI {
       missions: document.querySelector('#missions-screen'),
       modifiers: document.querySelector('#modifiers-screen'), quick: document.querySelector('#quick-screen'), legends: document.querySelector('#legends-screen'),
     };
-    this.cacheElements(); this.menuBackdrop = new MenuBackdrop(this.menu_backdrop); this.populateTeamPicker(); this.populateLeagueCompetitions(); this.fillInputs(); this.bind(); this.updateLeaguePreview(); this.renderProgress(); this.show('home'); this.refreshContinueButton();
+    this.cacheElements(); this.menuBackdrop = new MenuBackdrop(this.menu_backdrop); this.populateTeamPicker(); this.populateLeagueCompetitions(); this.fillInputs(); this.bind(); this.renderSoloFormat(); this.updateLeaguePreview(); this.renderProgress(); this.show('home'); this.refreshContinueButton();
   }
 
   cacheElements() {
@@ -221,6 +221,10 @@ export class UI {
   }
 
   bind() {
+    document.addEventListener('click', event => {
+      const option = event.target.closest('[data-solo-format]');
+      if (option) { this.sound?.play('click'); this.setSoloFormat(option.dataset.soloFormat); }
+    });
     document.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', () => {
       this.sound?.play('click');
       this.selectMode(button.dataset.action);
@@ -675,6 +679,23 @@ export class UI {
     else this.start(mode);
   }
 
+  // 1v1 or 2v2 (with an AI teammate) for matches against the AI. Leagues and cups keep
+  // the format they started with; new ones use the current choice.
+  soloFormat() { return this.settings.soloFormat === '2v2' ? '2v2' : '1v1'; }
+  setSoloFormat(format) {
+    this.settings.soloFormat = format === '2v2' ? '2v2' : '1v1'; this.persist(); this.renderSoloFormat();
+  }
+  renderSoloFormat() {
+    const current = this.soloFormat();
+    document.querySelectorAll('[data-solo-format]').forEach(button => {
+      const active = button.dataset.soloFormat === current;
+      button.classList.toggle('active', active); button.setAttribute('aria-checked', String(active));
+    });
+    document.querySelectorAll('[data-solo-format-hint]').forEach(node => {
+      node.textContent = current === '2v2' ? 'Juegas con una IA compañera que defiende y te busca el pase.' : 'Tú contra la IA, uno contra uno.';
+    });
+  }
+
   openQuickSetup() {
     this.quickChoices.player = getTeamById(this.settings.teamId)?.id || 'laliga-barcelona';
     if (!getTeamById(this.quickChoices.rival)) this.quickChoices.rival = 'laliga-real-madrid';
@@ -746,7 +767,7 @@ export class UI {
     if (choice && this.progression.level < choice.unlock) return;
     this.settings.teamId = player.id; this.settings.difficulty = difficulty; this.persist(); this.updateHomeClub();
     const label = difficultyLabel(difficulty).toUpperCase();
-    this.start('bot', { opponentTeam: rival, opponentName: rival.name, difficulty, label: `PARTIDO RÁPIDO · ${label} · A 5 GOLES` });
+    this.start('bot', { opponentTeam: rival, opponentName: rival.name, difficulty, duo: this.soloFormat() === '2v2', label: `PARTIDO RÁPIDO · ${label} · A 5 GOLES` });
   }
 
   openLegends() { this.renderLegends(); this.show('legends'); }
@@ -1300,13 +1321,14 @@ export class UI {
 
   launchTournamentRound() {
     const cup = this.tournament;
+    cup.format ||= this.soloFormat();
     cup.round++;
     const stage = roundName(cup.size, cup.round);
     // Saves made before the bracket existed keep the original random pick.
     const bracketRival = cup.bracket ? bracketOpponent(cup.bracket, cup.round - 1, this.settings.teamId) : null;
     const opponentTeam = (bracketRival && (cup.teams.find(team => team.id === bracketRival) || getTeamById(bracketRival))) || pickChampionsOpponent(cup.teams, cup.round);
     const competition = CUP_COMPETITIONS.find(item => item.id === cup.competitionId) || CUP_COMPETITIONS[0];
-    this.start('tournament', { opponentName: opponentTeam.name, opponentTeam, label: `${competition.name.toUpperCase()} · ${stage} · ${cup.round}/${cup.totalRounds}`, fieldTheme: competition.fieldTheme, competitionRound: cup.round }, true);
+    this.start('tournament', { opponentName: opponentTeam.name, opponentTeam, label: `${competition.name.toUpperCase()} · ${stage} · ${cup.round}/${cup.totalRounds}`, fieldTheme: competition.fieldTheme, competitionRound: cup.round, duo: cup.format === '2v2' }, true);
   }
 
   beginLeague() {
@@ -1321,7 +1343,7 @@ export class UI {
       return getTeamById(fixture.homeId === team.id ? fixture.awayId : fixture.homeId);
     });
     const goalTarget = [2, 3, 5].includes(Number(this.league_goal_target.value)) ? Number(this.league_goal_target.value) : 2;
-    this.league = { jornada: 1, wins: 0, losses: 0, points: 0, status: 'playing', competitionId, playerTeamId: team.id, schedule, opponents, standings: createLeagueStandings(competitionId), matchResults: [], goalTarget };
+    this.league = { jornada: 1, wins: 0, losses: 0, points: 0, status: 'playing', competitionId, playerTeamId: team.id, schedule, opponents, standings: createLeagueStandings(competitionId), matchResults: [], goalTarget, format: this.soloFormat() };
     this.tournament = null; this.launchLeagueRound();
   }
 
@@ -1357,7 +1379,7 @@ export class UI {
     const totalRounds = this.league.opponents?.length || 16;
     const opponentTeam = this.league.opponents[round - 1] || null;
     const opponentName = opponentTeam?.name || 'RIVAL FC';
-    this.start('league', { opponentName, opponentTeam, label: `LIGA NACIONAL · ${competition.label.split(' · ')[0].toUpperCase()} · JORNADA ${round}/${totalRounds} · A ${this.league.goalTarget}`, fieldTheme: `league-${competition.id}`, competitionRound: round, goalTarget: this.league.goalTarget }, true);
+    this.start('league', { opponentName, opponentTeam, label: `LIGA NACIONAL · ${competition.label.split(' · ')[0].toUpperCase()} · JORNADA ${round}/${totalRounds} · A ${this.league.goalTarget}`, fieldTheme: `league-${competition.id}`, competitionRound: round, goalTarget: this.league.goalTarget, duo: this.league.format === '2v2' }, true);
   }
 
   start(mode, options = {}, preserveCompetition = false, snapshot = null) {
@@ -1383,7 +1405,9 @@ export class UI {
     const baseLabel = options.label || (mode === 'training' ? 'MODO ENTRENAMIENTO' : `PARTIDO · ${difficultyLabel(this.settings.difficulty).toUpperCase()}`);
     const target = `A ${this.game.goalTarget} ${this.game.goalTarget === 1 ? 'GOL' : 'GOLES'}`;
     const label = mode === 'training' ? baseLabel : /\bA \d+(?: GOLES)?\b/.test(baseLabel) ? baseLabel.replace(/\bA \d+(?: GOLES)?\b/g, target) : `${baseLabel} · ${target}`;
-    this.mode_label.textContent = (modifiersAreDefault(options.modifiers) ? '' : 'REGLAS PERSONALIZADAS · ') + label;
+    const duo = !!options.duo && ['bot', 'tournament', 'league'].includes(mode);
+    this.mode_label.textContent = (duo ? '2 CONTRA 2 · ' : '') + (modifiersAreDefault(options.modifiers) ? '' : 'REGLAS PERSONALIZADAS · ') + label;
+    if (duo) this.hud_player_name.textContent = `${this.settings.name.toUpperCase()} + IA`;
     this.training_tools.classList.toggle('hidden', mode !== 'training');
     this.pause_overlay.classList.add('hidden'); this.result_overlay.classList.add('hidden'); this.goal_banner.classList.add('hidden');
     document.getElementById('pause-button').textContent = 'Ⅱ';

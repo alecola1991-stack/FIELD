@@ -4,6 +4,24 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-17 · Claude · Modo 2v2 en solitario con IA compañera (rápido, ligas y copas)
+**Commit:** rama `modo-2v2-solitario` (pendiente de aprobación de Ale)
+**Archivos:** `src/game/SquadAI.js` (nuevo), `src/game/Game.js`, `src/ui/UI.js`, `src/config/settings.js`, `index.html`, `src/styles.css`, `tests/Duo.test.js` (nuevo)
+**Qué y por qué:** Ale pidió un 2v2 sin conexión: el jugador más una IA compañera que defiende y busca pasársela, contra dos IA rivales, disponible en ligas y competiciones (y también en partido rápido).
+**Cómo:**
+- `Game.start(mode, difficulty, { duo: true })`, en los modos bot, tournament y league, llama a `setupDuo()`, que reutiliza `setupSquad()` del 2v2 online. Asientos: 0 humano, 1 compañera «IA» (dorsal 7 u 8), 2 y 3 rivales. Cada pareja lleva su equipación; las IA van a velocidad de bot. `this.squad.offline = true` y `this.squad.ai = new SquadAI(...)`.
+- `updateSquad()`: si existe `squad.ai`, los asientos 1–3 se mueven con sus órdenes (dirección, velocidad, chut con dirección `aim` y potencia `power`).
+- `SquadAI`:
+  - Compañera: si el humano tiene el balón, se desmarca por delante en la otra banda. Si lo ganan los rivales, defiende como portera entre el balón y la portería. Cuando tiene el balón, pasa al humano si está mejor situado y la línea está libre; si no, regatea o tira con el BotAI en espejo.
+  - Rivales: uno presiona con el BotAI de 1v1 y el otro cubre la portería o espera el rechace.
+  - Si el balón queda atascado contra las paredes, lo desatasca. Además, nunca chuta hacia la pared cuando el balón está pegado a la banda.
+- Ajuste nuevo `settings.soloFormat` ('1v1' | '2v2'), elegible en Partido rápido, Liga y Copas. En las pantallas, `[data-solo-format]` con `UI.setSoloFormat()`/`renderSoloFormat()`.
+- Ligas y copas guardan `format` al empezar (`league.format`, `tournament.format`) y mantienen ese formato toda la competición. `currentMatchOptions.duo` se guarda con la partida, así que al continuar se sigue en 2v2.
+- `captureSnapshot()` sin conexión guarda `others`. `notifyReplay` solo cuenta los 4 jugadores en el online, así que offline se salta la repetición con un solo ESPACIO.
+- La etiqueta del partido empieza por «2 CONTRA 2 ·» y en el marcador aparece «NOMBRE + IA».
+**Para el otro asistente:** sin SQL. Las estadísticas de tiros y goles cuentan para el equipo, incluidos los de la compañera. Leyendas y Entrenamiento siguen siendo 1v1.
+
+
 ## 2026-10-17 · Claude · Pantalla de carga con logo, carga giratoria y protips
 **Commit:** fusionado en main (rama `pantalla-carga`, merge 6a1d879). Para deshacerlo: `git revert -m 1 6a1d879`
 **Archivos:** `index.html`, `src/main.js`

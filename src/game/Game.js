@@ -4,6 +4,7 @@ import { Player } from './Player.js';
 import { Ball } from './Ball.js';
 import { Input } from './Input.js';
 import { BotAI } from './BotAI.js';
+import { SquadAI } from './SquadAI.js';
 import { Renderer } from './Renderer.js';
 import { GameState } from './GameState.js';
 import { getTeamById } from '../config/teams.js';
@@ -58,6 +59,7 @@ export class Game {
     if (this.bot && mode === 'online') this.bot.faceX = this.localSide === 'left' ? -1 : 1;
     this.squad = null; this.others = [];
     if (mode === 'online' && options.squad) this.setupSquad(options.squad);
+    else if (options.duo && this.bot && !['training', 'legends', 'online'].includes(mode)) this.setupDuo(team, opponentTeam, difficulty, opponentName, opponentNumber);
     this.ball.reset(WORLD.width / 2, WORLD.height / 2); this.goalResetTimer = 0; this.last = 0;
     this.applyModifiers();
     this.beginCountdown();
@@ -265,7 +267,7 @@ export class Game {
   }
   notifyReplay() {
     const replay = this.replay;
-    this.hooks.onReplay?.(replay && { online: this.state.mode === 'online', localSkip: replay.localSkip, remoteSkip: replay.remoteSkip, duration: replay.duration, ...(this.squad ? { players: 4, skipped: this.replaySkipCount() } : {}) });
+    this.hooks.onReplay?.(replay && { online: this.state.mode === 'online', localSkip: replay.localSkip, remoteSkip: replay.remoteSkip, duration: replay.duration, ...(this.squad && this.state.mode === 'online' ? { players: 4, skipped: this.replaySkipCount() } : {}) });
   }
   // Guest side: follow the host's replay phase using the locally recorded clip.
   syncGuestReplay(info) {
@@ -369,6 +371,7 @@ export class Game {
       matchStats: online ? this.matchStats : this.matchSummary(),
       player: entity(this.player), bot: entity(this.bot), ball: entity(this.ball),
       ...(online && this.squad ? { seats: this.squad.bodies.map(entity) } : {}),
+      ...(!online && this.squad ? { others: this.others.map(entity) } : {}),
       ...(online ? {} : { difficulty: this.botAI.difficulty, ai: { thinkTimer: this.botAI.thinkTimer, targetX: this.botAI.targetX, targetY: this.botAI.targetY, shotsTaken: this.botAI.shotsTaken, mode: this.botAI.mode } }),
     };
   }
@@ -508,6 +511,28 @@ export class Game {
     this.player = bodies[localSeat]; this.bot = bodies[botSeat]; this.others = this.squad.otherSeats.map(seat => bodies[seat]);
     bodies.forEach((body, seat) => this.placeSquadBody(body, seat));
   }
+  // ---- 2v2 offline -----------------------------------------------------------
+  // The human (seat 0) plays with an AI teammate (seat 1) against two AI rivals
+  // (seats 2 and 3). Reuses the 2v2 seat layout and simulation of the online mode.
+  setupDuo(team, opponentTeam, difficulty, opponentName, opponentNumber) {
+    const ownNumber = Number(this.settings.number) || 10, mateNumber = ownNumber === 7 ? 8 : 7;
+    const rivalTeamId = opponentTeam?.id || null;
+    this.setupSquad({ localSeat: 0, seats: [
+      { name: this.settings.name, number: ownNumber, teamId: team?.id },
+      { name: 'IA', number: mateNumber, teamId: team?.id },
+      { name: opponentName, number: opponentNumber, teamId: rivalTeamId },
+      { name: opponentName, number: opponentNumber === 9 ? 11 : 9, teamId: rivalTeamId },
+    ] });
+    const [human, mate, rivalA, rivalB] = this.squad.bodies;
+    // Rival kits fall back to the opponent colours when the team is not in the catalogue.
+    const kit = source => source && { color: source.primary || '#f19676', secondaryColor: source.secondary || null, numberColor: source.numberColor || '#ffffff', kitPattern: source.kitPattern || 'half-vertical' };
+    if (opponentTeam) for (const rival of [rivalA, rivalB]) Object.assign(rival, kit(opponentTeam));
+    if (team) for (const body of [human, mate]) Object.assign(body, kit(team));
+    for (const body of [mate, rivalA, rivalB]) { body.isBot = true; body.maxSpeed = 280; }
+    human.isBot = false;
+    this.squad.offline = true;
+    this.squad.ai = new SquadAI({ difficulty: this.botAI.difficulty || difficulty, rivalStars: opponentTeam?.stars || 3, mateStars: team?.stars || 3 });
+  }
   placeSquadBody(body, seat) {
     body.x = WORLD.width * (seat < 2 ? .3 : .7); body.y = WORLD.height * (seat % 2 === 0 ? .38 : .62);
     body.faceX = seat < 2 ? 1 : -1; body.faceY = 0; body.stop(); body._rx = body.x; body._ry = body.y;
@@ -520,9 +545,19 @@ export class Game {
   // Host simulation of the four bodies; guest seats move with their last input.
   updateSquad(dt) {
     const { bodies, localSeat } = this.squad, leftLocal = this.localSide === 'left';
+    const aiCommands = this.squad.ai ? this.squad.ai.update(bodies, this.ball, dt) : null;
     bodies.forEach((body, seat) => {
       let command;
       if (seat === localSeat) { const axes = this.input.axes(); command = { x: axes.x, y: axes.y, kick: this.input.consume('Space') }; }
+      else if (aiCommands) {
+        command = aiCommands[seat] || { x: 0, y: 0 };
+        body.move(Number(command.x) || 0, Number(command.y) || 0, dt, command.speed ?? 1);
+        resolvePlayerWalls(body);
+        if (command.kick && kickBall(body, this.ball, () => { this.sound.play('kick'); this.renderer.burst(this.ball.x, this.ball.y, seat < 2 ? '#c5f4d8' : '#ffd1bf', 5, 78); }, command.aim || null, command.power ?? 1)) {
+          if ((seat < 2) === leftLocal) this.matchStats.shotsPlayer++; else this.matchStats.shotsOpponent++;
+        }
+        return;
+      }
       else {
         command = this.hooks.getSeatInput?.(seat) || { x: 0, y: 0, kick: false };
         body.powerCooldown = Math.max(0, body.powerCooldown - dt); body.powerFlash = Math.max(0, body.powerFlash - dt);

@@ -4,6 +4,17 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-17 · Claude · Césped: tonos menos intensos
+**Commit:** rama `cesped-suave`
+**Archivos:** `src/game/Renderer.js`
+**Qué y por qué:** Ale pidió bajar un poco la intensidad de los verdes del campo.
+**Cómo:**
+- En `pitchGreen()`, la saturación pasa de `min(.58, .44 + (l - .26) * 1.1)` a `min(.47, .35 + (l - .26) * .9)`, unos 10 puntos menos.
+- La luminosidad por competición no cambia, así que se mantiene la gradación de la Champions (más clara) a la Segunda RFEF (más oscura).
+**Para el otro asistente:** la intensidad del césped se ajusta solo con esa línea.
+
+---
+
 ## 2026-10-17 · Claude · Campo con textura de césped, verde según la competición y líneas y porterías blancas
 **Commit:** fusionado en main (rama `cesped-vivo`, merge 9749178). Para deshacerlo: `git revert -m 1 9749178`
 **Archivos:** `src/game/Renderer.js`

@@ -47,7 +47,7 @@ const PITCH_GREEN = [
 function pitchGreen(themeName = 'arcade') {
   const l = PITCH_GREEN.find(([pattern]) => pattern.test(themeName))?.[1] ?? .385;
   // Darker pitches keep a bit less saturation so they read as deep grass, not neon.
-  return { h: 132, s: Math.min(.58, .44 + (l - .26) * 1.1), l };
+  return { h: 132, s: Math.min(.47, .35 + (l - .26) * .9), l };
 }
 // Small deterministic random so the texture is identical every time it is drawn.
 function seeded(seed) { let value = seed >>> 0 || 1; return () => (value = (value * 1664525 + 1013904223) >>> 0) / 4294967296; }

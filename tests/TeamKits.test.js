@@ -26,3 +26,14 @@ test('first-division and national shirts use their dorsal font colors', () => {
   assert.equal(byId.get('bundesliga-dortmund').numberColor, '#171717');
   for (const team of PROFILE_TEAMS) assert.match(team.numberColor, /^#[0-9a-f]{6}$/i, `${team.id} needs a dorsal color`);
 });
+
+test('dorsal and name text never share the colour of their outline', async () => {
+  const { PROFILE_TEAMS, dorsalStyle } = await import('../src/config/teams.js');
+  const lum = hex => { const v = hex.replace('#', ''); return [0, 2, 4].map(o => Number.parseInt(v.slice(o, o + 2), 16)).reduce((s, c, i) => s + c * [.299, .587, .114][i], 0); };
+  for (const team of PROFILE_TEAMS) {
+    const fill = (team.numberColor || '#ffffff').toUpperCase(), { outline } = dorsalStyle(fill);
+    assert.notEqual(outline, fill, team.id);
+    assert.ok(Math.abs(lum(outline) - lum(fill.length === 4 ? '#' + fill.slice(1).split('').map(c => c + c).join('') : fill)) > 60, `${team.id}: outline contrasts with the text`);
+  }
+  assert.equal(dorsalStyle('#172027').outline, '#FFFFFF'); assert.equal(dorsalStyle('#ffffff').outline, '#000000');
+});

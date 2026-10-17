@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · Más ligas: segundas y terceras divisiones y 8 países nuevos
-**Commit:** rama `mas-ligas`
+**Commit:** fusionado en main (rama `mas-ligas`, merge 6a275b0). Para deshacerlo: `git revert -m 1 6a275b0`
 **Archivos:** `src/config/teams-more.js` (nuevo), `src/config/teams.js`, `src/game/Competitions.js`, `src/game/Renderer.js`, `src/ui/UI.js`, `src/styles.css`, `tests/MoreLeagues.test.js` (nuevo)
 **Qué y por qué:** Ale pidió más ligas: las segundas y terceras divisiones de los países que no las tenían, y países nuevos con su primera división.
 **Cómo:**

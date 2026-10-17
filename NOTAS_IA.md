@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · Balón amarillo y red que se deforma con el gol
-**Commit:** rama `balon-amarillo-red`
+**Commit:** fusionado en main (rama `balon-amarillo-red`, merge 496d873). Para deshacerlo: `git revert -m 1 496d873`
 **Archivos:** `src/game/Renderer.js`, `src/game/Physics.js`, `src/game/Game.js`, `src/ui/MenuBackdrop.js`, `tests/CurveShot.test.js`
 **Qué y por qué:** Ale pidió un balón amarillo y que, cuando el balón entre en la portería, la red se deforme como una real. Pidió que el cambio fuera reversible.
 **Cómo:**

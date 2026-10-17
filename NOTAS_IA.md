@@ -4,6 +4,20 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-17 · Claude · Logo nuevo FA (con balón) en todas partes
+**Commit:** rama `logo-nuevo`
+**Archivos:** `src/assets/logo.svg`, `index.html`, `public/favicon.svg`, `public/favicon.png`, `public/apple-touch-icon.png`, `desktop/create-icon.cjs`
+**Qué y por qué:** Ale pasó un logo nuevo («FA» con el rayo y medio balón debajo), en PNG blanco con transparencia, y pidió que sustituya al anterior en todas partes.
+**Cómo:**
+- Vectoricé el canal alfa del PNG con potrace (escalado ×4 antes de trazar). Es un único `path` con `fill-rule="evenodd"` y `viewBox="0 0 293 267"`.
+- `src/assets/logo.svg`: lo usa la máscara CSS `.brand-mark` de todas las cabeceras.
+- `index.html`: el SVG en línea de la pantalla de carga (`.boot-logo`, en `currentColor`).
+- `public/favicon.svg`: azul `#02385e`, y blanco en modo oscuro, como antes.
+- `favicon.png` (48 px) e icono de la Portable (256 px, base64 en `desktop/create-icon.cjs`): logo azul sobre una baldosa blanca redondeada, como el anterior. `apple-touch-icon.png` (180 px): logo sobre fondo blanco.
+**Para el otro asistente:** para cambiar el color o el tamaño, toca el `path` de `src/assets/logo.svg` y no rehagas el trazado. El mismo `d` está en `index.html` y en `public/favicon.svg`. Los PNG se generaron con cairosvg a partir de ese `path`.
+
+---
+
 ## 2026-10-17 · Claude · IA compañera: remate preciso tras el pase del jugador
 **Commit:** fusionado en main (rama `companera-precisa`, merge bc58719). Para deshacerlo: `git revert -m 1 bc58719`
 **Archivos:** `src/game/SquadAI.js`, `tests/Duo.test.js`

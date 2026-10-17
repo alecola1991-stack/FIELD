@@ -15,7 +15,7 @@ import { CUP_COMPETITIONS, createChampionsDraw, createInternationalDraw, createL
 import { MenuBackdrop } from './MenuBackdrop.js';
 import { Confetti } from './Confetti.js';
 import { clearCompetitionSave, loadCompetitionSave, setCompetitionSaveScope, storeCompetitionSave } from '../game/CompetitionSave.js';
-import { MISSION_DEFINITIONS, getLeagueMission } from '../game/Missions.js';
+import { MISSION_TIERS } from '../game/Missions.js';
 import { LEGEND_MATCHES, LEGENDS_UNLOCK_LEVEL, resolveLegendMatch } from '../config/legends.js';
 
 const ROUND_NAMES = ['OCTAVOS DE FINAL', 'CUARTOS DE FINAL', 'SEMIFINAL', 'FINAL'];
@@ -1221,22 +1221,22 @@ export class UI {
   }
 
   renderMissions() {
-    const team = getTeamById(this.settings.teamId);
-    const definitions = [...MISSION_DEFINITIONS, ...(team && TEAM_LEAGUES.some(league => league.id === team.league) ? [{ ...getLeagueMission(team.id), description: `Gana la liga con ${team.name}.` }] : [])];
+    const missions = this.career.activeMissions(this.progression.level);
     this.missions_list.replaceChildren();
-    const done = definitions.filter(mission => this.career.missions[mission.id]?.completed).length;
     const summary = document.getElementById('missions-summary');
-    if (summary) summary.innerHTML = `<b>${done}/${definitions.length}</b><span>COMPLETADAS</span><small>${definitions.filter(mission => !this.career.missions[mission.id]?.completed).reduce((sum, mission) => sum + mission.xp, 0)} XP por ganar</small>`;
-    definitions.forEach((mission, index) => {
-      const state = this.career.missions[mission.id] || { progress: 0, completed: false };
-      const card = document.createElement('article'); card.className = `mission-card${state.completed ? ' completed' : ''}`;
+    if (summary) summary.innerHTML = `<b>${this.career.missionsCompleted()}</b><span>COMPLETADAS</span><small>${missions.reduce((sum, mission) => sum + mission.xp, 0)} XP en juego</small>`;
+    missions.forEach(mission => {
+      const card = document.createElement('article'); card.className = `mission-card tier-${mission.tier}`;
       const heading = document.createElement('div'); heading.className = 'mission-card-heading';
       const copy = document.createElement('div'); const title = document.createElement('b'); title.textContent = mission.title;
       const description = document.createElement('p'); description.textContent = mission.description; copy.append(title, description);
-      const number = document.createElement('span'); number.className = 'tile-index mission-index'; number.textContent = `${String(index + 1).padStart(2, '0')} / MISIÓN`; card.append(number);
-      const status = document.createElement('span'); status.className = 'mission-status'; status.textContent = state.completed ? 'COMPLETADA' : `${Math.min(state.progress, mission.goal)}/${mission.goal}`;
+      const number = document.createElement('span'); number.className = 'tile-index mission-index';
+      const stars = MISSION_TIERS.findIndex(tier => tier.id === mission.tier) + 1;
+      number.innerHTML = `<span class="mission-tier">${mission.tierLabel.toUpperCase()}</span><span class="mission-stars" aria-label="Dificultad ${stars} de 4">${'★'.repeat(stars)}${'☆'.repeat(4 - stars)}</span>`;
+      card.append(number);
+      const status = document.createElement('span'); status.className = 'mission-status'; status.textContent = `${mission.progress}/${mission.goal}`;
       heading.append(copy, status);
-      const track = document.createElement('div'); track.className = 'mission-progress'; const fill = document.createElement('i'); fill.style.width = `${Math.min(100, state.progress / mission.goal * 100)}%`; track.append(fill);
+      const track = document.createElement('div'); track.className = 'mission-progress'; const fill = document.createElement('i'); fill.style.width = `${Math.min(100, mission.progress / mission.goal * 100)}%`; track.append(fill);
       const reward = document.createElement('small'); reward.textContent = `RECOMPENSA · ${mission.xp} XP`;
       card.append(heading, track, reward); this.missions_list.append(card);
     });
@@ -1968,12 +1968,13 @@ export class UI {
     this.tournament_bracket_panel.classList.add('hidden');
     if (result.mode === 'tournament' && this.tournament?.bracket) this.renderBracketPanel(this.tournament);
     const team = getTeamById(this.settings.teamId);
-    const newMissions = this.career.processMissionEvent({
-      competitionMode: result.mode === 'tournament' || result.mode === 'league', won,
-      competitionId: this.tournament?.competitionId || (result.mode === 'league' ? this.league?.competitionId : ''),
-      isFinal: cupFinal, isChampion: cupChampion, playerGoals: result.playerScore,
-      leagueId: leagueFinished ? this.league?.competitionId : '', isLeagueChampion: leagueChampion, teamId: team?.id,
-    });
+    const newMissions = result.mode === 'training' ? Object.assign([], { added: [] }) : this.career.processMissionEvent({
+      mode: result.mode, won, goalsFor: result.playerScore, goalsAgainst: result.botScore,
+      difficulty: result.mode === 'online' ? '' : this.game?.botAI?.difficulty, duo: !!(this.currentMatchOptions?.duo || this.currentMatchOptions?.squad),
+      competitionMode: result.mode === 'tournament' || result.mode === 'league',
+      competitionId: result.mode === 'tournament' ? this.tournament?.competitionId : (result.mode === 'league' ? this.league?.competitionId : ''),
+      isFinal: cupFinal, isChampion: cupChampion, isLeagueChampion: leagueChampion,
+    }, this.progression.level);
     const missionXp = newMissions.reduce((sum, mission) => sum + mission.xp, 0);
     if (missionXp) {
       const missionReward = this.progression.awardXP(missionXp);
@@ -1982,7 +1983,7 @@ export class UI {
       this.result_xp.textContent = totalGained ? `+${totalGained} XP` : 'NIVEL MÁXIMO';
       this.result_level.textContent = `NIVEL ${this.progression.level}`;
       this.result_xp_fill.style.width = `${this.progression.progressRatio() * 100}%`;
-      this.result_copy.textContent += ` Misiones: ${newMissions.map(mission => mission.title).join(', ')} (+${missionXp} XP).`;
+      this.result_copy.textContent += ` Misión completada: ${newMissions.map(mission => `${mission.title} (${mission.tierLabel})`).join(', ')} (+${missionXp} XP). Nueva misión: ${newMissions.added.map(mission => mission.title).join(', ')}.`;
       if (missionReward.leveledUp) this.result_copy.textContent += ` ¡Has subido al nivel ${this.progression.level}!`;
     }
     if (cupFinal || leagueFinished) this.showCompetitionResultStats(result, cupChampion || leagueChampion, leagueFinished ? this.league : null, leagueChampion);

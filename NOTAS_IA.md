@@ -4,6 +4,29 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-17 · Claude · Misiones por dificultad que se renuevan al completarlas
+**Commit:** rama `misiones-dificultad`
+**Archivos:** `src/game/Missions.js`, `src/game/CareerProfile.js`, `src/ui/UI.js`, `index.html`, `src/styles.css`, `tests/CareerProfile.test.js`
+**Qué y por qué:** Ale pidió que, al completar una misión, se añada una nueva, que las misiones se clasifiquen por dificultad y que las difíciles den más recompensa.
+**Cómo:**
+- `Missions.js` se ha rehecho:
+  - `MISSION_TIERS` (Fácil 60 XP, Media 150, Difícil 300, Élite 600) y `MISSION_TEMPLATES` (20 plantillas, de 5 en 5 por nivel). Cada una es `count` (suma por partido) o `streak` (racha: cualquier partido que no sea victoria la reinicia).
+  - `createMission`, `advanceMission`, `describeMission`, `missionStats`. El objetivo crece con `grow` cada 2 misiones completadas en ese nivel, hasta `max`. El XP sube un 10 % por cada completada, hasta +100 %.
+  - Las plantillas con `minLevel` (Experto 5, Profesional 10, Champions 15) solo salen si el jugador ya tiene esa dificultad desbloqueada.
+- Se han eliminado `MISSION_DEFINITIONS` y `getLeagueMission`.
+- `CareerProfile`:
+  - Nuevo `missionBoard` = `{ seq, done: {tier: n}, active: [{uid, tier, template, goal, xp, progress}] }`, guardado en `toJSON()` y en la nube.
+  - `activeMissions(level)` rellena los niveles que faltan.
+  - `processMissionEvent(event, level)` devuelve el array de completadas con `.added`, las nuevas que las sustituyen. La sustituta nunca repite la plantilla recién completada.
+  - `missionsCompleted()`.
+  - En `merge()` gana el tablero con más misiones completadas; si empatan, se queda el progreso máximo de cada misión.
+  - Se conserva el mapa antiguo `missions`, pero ya no se muestra.
+- `UI.handleMatchEnd`: ahora cuenta en todos los modos menos el entrenamiento. Envía `{ mode, won, goalsFor, goalsAgainst, difficulty (botAI; vacío online), duo, competitionMode, competitionId, isFinal, isChampion, isLeagueChampion }`. En el resultado aparecen la misión completada y la nueva.
+- Pantalla de misiones: 4 tarjetas (una por nivel) con una etiqueta de color, estrellas de 1 a 4 y la recompensa. El resumen muestra el total de misiones completadas y el XP que hay en juego.
+**Para el otro asistente:** para añadir misiones basta con añadir plantillas a `MISSION_TEMPLATES`. El `id` de plantilla se guarda en el perfil, así que no lo renombres. Las misiones antiguas (racha competitiva, gol en la final de la Champions, Mundial, liga) siguen dentro como plantillas, pero el progreso que hubiera en ellas no se traslada al tablero nuevo.
+
+---
+
 ## 2026-10-17 · Claude · Logo nuevo FA (con balón) en todas partes
 **Commit:** fusionado en main (rama `logo-nuevo`, merge f58e41b). Para deshacerlo: `git revert -m 1 f58e41b`
 **Archivos:** `src/assets/logo.svg`, `index.html`, `public/favicon.svg`, `public/favicon.png`, `public/apple-touch-icon.png`, `desktop/create-icon.cjs`

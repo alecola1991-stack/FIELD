@@ -702,6 +702,7 @@ export class UI {
     // Teammate difficulty: same unlock levels as the rival's.
     const level = this.progression.level, mate = this.mateDifficulty();
     document.querySelectorAll('.solo-format').forEach(node => node.classList.toggle('is-duo', current === '2v2'));
+    document.body.classList.toggle('solo-duo', current === '2v2');
     document.querySelectorAll('[data-mate-difficulty]').forEach(select => {
       for (const option of select.options) {
         const item = DIFFICULTIES.find(entry => entry.id === option.value); if (!item) continue;

@@ -26,21 +26,46 @@ test('trophy awards are unique and persist with their date', () => {
   assert.ok(Number.isFinite(Date.parse(reloaded.trophies[0].date)));
 });
 
-test('competition missions give XP progress once and survive profile merge', () => {
+test('mission board: one mission per tier, completing one adds a new harder mission with a bigger reward', () => {
   memoryStorage();
-  const profile = new CareerProfile('missions-player');
-  assert.deepEqual(profile.processMissionEvent({ competitionMode: true, won: true }), []);
-  assert.deepEqual(profile.processMissionEvent({ competitionMode: true, won: true }), []);
-  const earned = profile.processMissionEvent({ competitionMode: true, won: true });
-  assert.equal(earned[0].id, 'competition-wins');
-  assert.deepEqual(profile.processMissionEvent({ competitionMode: true, won: true }), []);
-  profile.processMissionEvent({ competitionId: 'champions', isFinal: true, playerGoals: 1 });
-  profile.processMissionEvent({ competitionId: 'world-cup', isChampion: true });
-  profile.processMissionEvent({ leagueId: 'laliga', isLeagueChampion: true, teamId: 'laliga-barcelona' });
-  const snapshot = profile.toJSON();
-  const merged = new CareerProfile('missions-remote'); merged.merge(snapshot);
-  assert.equal(merged.missions['competition-wins'].completed, true);
-  assert.equal(merged.missions['league-champion:laliga-barcelona'].completed, true);
+  const profile = new CareerProfile('missions-player'); profile.random = () => 0;
+  const active = profile.activeMissions(1);
+  assert.deepEqual(active.map(mission => mission.tier), ['easy', 'medium', 'hard', 'elite']);
+  const xp = Object.fromEntries(active.map(mission => [mission.tier, mission.xp]));
+  assert.ok(xp.easy < xp.medium && xp.medium < xp.hard && xp.hard < xp.elite, 'harder tiers pay more');
+  assert.ok(active.every(mission => !['expert-wins', 'expert-clean', 'pro-wins', 'champions-wins'].includes(mission.template)), 'no locked difficulty missions at level 1');
+  // The first easy mission (random 0) is "play 3 matches".
+  assert.equal(active[0].template, 'play'); assert.equal(active[0].goal, 3);
+  const match = { mode: 'bot', won: false, goalsFor: 1, goalsAgainst: 3, difficulty: 'easy' };
+  assert.equal(profile.processMissionEvent(match, 1).length, 0);
+  assert.equal(profile.processMissionEvent(match, 1).length, 0);
+  const done = profile.processMissionEvent(match, 1);
+  assert.equal(done.length, 1); assert.equal(done[0].template, 'play'); assert.equal(done[0].xp, xp.easy);
+  assert.equal(done.added.length, 1); assert.equal(done.added[0].tier, 'easy'); assert.notEqual(done.added[0].template, 'play', 'a different mission replaces it');
+  const next = profile.activeMissions(1).find(mission => mission.tier === 'easy');
+  assert.equal(next.progress, 0); assert.ok(next.xp > xp.easy, 'reward grows with completed missions');
+  assert.equal(profile.missionsCompleted(), 1);
+  // Survives reload and merges into another device's profile.
+  const reloaded = new CareerProfile('missions-player');
+  assert.equal(reloaded.activeMissions(1).find(mission => mission.tier === 'easy').uid, next.uid);
+  const other = new CareerProfile('missions-remote'); other.merge(profile.toJSON());
+  assert.equal(other.missionsCompleted(), 1);
+});
+
+test('streak missions reset on a loss and elite missions need titles', () => {
+  memoryStorage();
+  const profile = new CareerProfile('streaks'); profile.random = () => 0;
+  profile.activeMissions(1);
+  const medium = profile.missionBoard.active.find(mission => mission.tier === 'medium');
+  medium.template = 'streak-3'; medium.goal = 3; medium.progress = 0;
+  const win = { mode: 'bot', won: true, goalsFor: 3, goalsAgainst: 1, difficulty: 'normal' };
+  profile.processMissionEvent(win, 1); profile.processMissionEvent(win, 1);
+  profile.processMissionEvent({ ...win, won: false, goalsFor: 0 }, 1);
+  assert.equal(profile.missionBoard.active.find(mission => mission.tier === 'medium').progress, 0);
+  const elite = profile.missionBoard.active.find(mission => mission.tier === 'elite');
+  elite.template = 'cup-champion'; elite.goal = 1; elite.progress = 0;
+  assert.ok(!profile.processMissionEvent(win, 1).some(mission => mission.tier === 'elite'));
+  assert.ok(profile.processMissionEvent({ ...win, mode: 'tournament', competitionMode: true, isFinal: true, isChampion: true }, 1).some(mission => mission.tier === 'elite'));
 });
 
 test('old economy data is removed on load and cloud merge without losing career or missions', () => {

@@ -1,4 +1,4 @@
-import { MISSION_DEFINITIONS, getLeagueMission } from './Missions.js';
+import { MISSION_TIERS, createMission, advanceMission, describeMission, templateOf } from './Missions.js';
 
 const BASE_KEY = 'field-career-profile';
 const statKeys = ['matches', 'wins', 'losses', 'goalsFor', 'goalsAgainst', 'trainingGoals', 'leagueSeasons', 'timePlayedSeconds', 'bestScore'];
@@ -16,6 +16,7 @@ export class CareerProfile {
     this.stats = sumShards(this.shards);
     this.trophies = Array.isArray(saved.trophies) ? saved.trophies.filter(item => item && typeof item.id === 'string').slice(0, 200) : [];
     this.missions = normalizeMissions(saved.missions);
+    this.missionBoard = normalizeBoard(saved.missionBoard);
     this.save(); // Persist the normalized profile without retired economy data.
   }
 
@@ -33,24 +34,34 @@ export class CareerProfile {
     shard.timePlayedSeconds += safeCount(elapsedSeconds); shard.bestScore = Math.max(shard.bestScore, safeCount(playerScore));
     this.refreshStats(); this.save();
   }
-  processMissionEvent(event = {}) {
-    const completed = [];
-    const advance = (definition, amount = 1) => {
-      const state = this.missions[definition.id] || (this.missions[definition.id] = { progress: 0, completed: false });
-      if (state.completed) return;
-      state.progress = Math.min(definition.goal, state.progress + safeCount(amount));
-      if (state.progress >= definition.goal) {
-        state.completed = true;
-        completed.push({ ...definition });
-      }
-    };
-    if (event.competitionMode && event.won) advance(MISSION_DEFINITIONS[0]);
-    if (event.competitionId === 'champions' && event.isFinal && event.playerGoals > 0) advance(MISSION_DEFINITIONS[1]);
-    if (event.competitionId === 'world-cup' && event.isChampion) advance(MISSION_DEFINITIONS[2]);
-    if (event.leagueId && event.isLeagueChampion) advance(getLeagueMission(event.teamId));
-    this.refreshStats(); this.save();
-    return completed;
+  // Active missions, one per tier; missing tiers get a new mission for the player's level.
+  activeMissions(level = 1) {
+    const board = this.missionBoard; let changed = false;
+    for (const tier of MISSION_TIERS) {
+      if (board.active.some(mission => mission.tier === tier.id)) continue;
+      board.active.push(createMission(tier.id, { level, completed: board.done[tier.id] || 0, seq: ++board.seq, random: this.random || Math.random })); changed = true;
+    }
+    board.active.sort((a, b) => MISSION_TIERS.findIndex(tier => tier.id === a.tier) - MISSION_TIERS.findIndex(tier => tier.id === b.tier));
+    if (changed) this.save();
+    return board.active.map(describeMission);
   }
+  // One finished match. Returns the completed missions (with their XP) and the new ones that replace them.
+  processMissionEvent(event = {}, level = 1) {
+    this.activeMissions(level);
+    const board = this.missionBoard, completed = [], added = [];
+    board.active = board.active.map(mission => {
+      if (!advanceMission(mission, event)) return mission;
+      completed.push(describeMission(mission));
+      board.done[mission.tier] = (board.done[mission.tier] || 0) + 1;
+      const exclude = [mission.template, ...board.active.map(item => item.template)];
+      const next = createMission(mission.tier, { level, completed: board.done[mission.tier], exclude, seq: ++board.seq, random: this.random || Math.random });
+      added.push(describeMission(next));
+      return next;
+    });
+    this.refreshStats(); this.save();
+    return Object.assign(completed, { added });
+  }
+  missionsCompleted() { return Object.values(this.missionBoard.done).reduce((sum, value) => sum + value, 0); }
   recordLeagueSeason() { this.deviceShard().leagueSeasons++; this.refreshStats(); this.save(); }
   ensureProgressionWins(wins) {
     const shard = this.deviceShard(); shard.wins = Math.max(shard.wins, safeCount(wins));
@@ -64,7 +75,7 @@ export class CareerProfile {
   toJSON() {
     const shards = {};
     for (const [device, stats] of Object.entries(this.shards)) shards[device] = { ...stats };
-    return { stats: { ...this.stats }, shards, trophies: this.trophies.map(item => ({ ...item })), missions: structuredClone(this.missions) };
+    return { stats: { ...this.stats }, shards, trophies: this.trophies.map(item => ({ ...item })), missions: structuredClone(this.missions), missionBoard: structuredClone(this.missionBoard) };
   }
   apply(value = {}) {
     this.shards = normalizeShards(value.shards);
@@ -72,6 +83,7 @@ export class CareerProfile {
     this.refreshStats();
     this.trophies = Array.isArray(value.trophies) ? value.trophies.filter(item => item && typeof item.id === 'string').slice(0, 200) : [];
     this.missions = normalizeMissions(value.missions);
+    this.missionBoard = normalizeBoard(value.missionBoard);
     this.save();
   }
   merge(value = {}) {
@@ -91,6 +103,15 @@ export class CareerProfile {
       const current = this.missions[id] || { progress: 0, completed: false };
       this.missions[id] = { progress: Math.max(current.progress, incoming.progress), completed: current.completed || incoming.completed };
     }
+    // Mission board: the one with more completed missions wins; on a tie, keep ours with the best progress.
+    const incomingBoard = normalizeBoard(value.missionBoard), total = board => Object.values(board.done).reduce((sum, n) => sum + n, 0);
+    if (total(incomingBoard) > total(this.missionBoard)) this.missionBoard = incomingBoard;
+    else if (total(incomingBoard) === total(this.missionBoard)) {
+      for (const mission of this.missionBoard.active) {
+        const match = incomingBoard.active.find(item => item.uid === mission.uid && item.template === mission.template);
+        if (match) mission.progress = Math.max(mission.progress, match.progress);
+      }
+    }
     this.refreshStats(); this.save();
   }
   deviceShard() { return this.shards[getDeviceId()] || (this.shards[getDeviceId()] = normalizeStats({})); }
@@ -108,6 +129,20 @@ function normalizeShards(value) {
 function normalizeMissions(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   return Object.fromEntries(Object.entries(value).slice(0, 500).filter(([id, state]) => typeof id === 'string' && state && typeof state === 'object').map(([id, state]) => [id.slice(0, 120), { progress: safeCount(state.progress), completed: state.completed === true }]));
+}
+function normalizeBoard(value) {
+  const board = { seq: 0, done: {}, active: [] };
+  if (!value || typeof value !== 'object') return board;
+  board.seq = safeCount(value.seq);
+  for (const tier of MISSION_TIERS) board.done[tier.id] = safeCount(value.done?.[tier.id]);
+  const seen = new Set();
+  for (const mission of Array.isArray(value.active) ? value.active : []) {
+    if (!mission || !templateOf(mission.template) || templateOf(mission.template).tier !== mission.tier || seen.has(mission.tier)) continue;
+    seen.add(mission.tier);
+    const goal = Math.max(1, safeCount(mission.goal));
+    board.active.push({ uid: String(mission.uid || '').slice(0, 40), tier: mission.tier, template: mission.template, goal, xp: safeCount(mission.xp), progress: Math.min(goal, safeCount(mission.progress)) });
+  }
+  return board;
 }
 function sumShards(shards) { const total = normalizeStats({}); for (const shard of Object.values(shards)) for (const key of statKeys) total[key] = key === 'bestScore' ? Math.max(total[key], safeCount(shard[key])) : Math.min(1_000_000_000, total[key] + safeCount(shard[key])); return total; }
 function getDeviceId() {

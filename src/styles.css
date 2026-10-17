@@ -1284,3 +1284,7 @@ body:not(.solo-duo) [data-duo-only]{display:none!important}
 #quick-screen .rules-entry{padding-left:16px;padding-right:16px;white-space:nowrap}
 }
 @media(min-width:1024px){#quick-screen .rules-entry{align-self:end;height:46px;min-height:46px;display:flex;align-items:center}}
+
+.mission-index{display:flex;justify-content:space-between;align-items:center;gap:8px}.mission-tier{font:700 11px var(--mono);letter-spacing:.14em;padding:3px 7px;border-radius:3px;background:var(--tier-bg,#ffffff14);color:var(--tier,#cfe0f5)}.mission-stars{color:var(--tier,#cfe0f5);letter-spacing:2px;font-size:12px}
+.mission-card.tier-easy{--tier:#8ff0bf;--tier-bg:#8ff0bf1f}.mission-card.tier-medium{--tier:#8cc4ff;--tier-bg:#8cc4ff22}.mission-card.tier-hard{--tier:#ffb36b;--tier-bg:#ffb36b22}.mission-card.tier-elite{--tier:#ffd85e;--tier-bg:#ffd85e26;border-color:#ffd85e55}
+.missions-layout .mission-card.tier-elite{background:linear-gradient(135deg,#2b2a3aee,#1a1d33ee);border-color:#ffd85e66}.mission-card .mission-progress i{background:linear-gradient(90deg,var(--tier,#45c985),#ffffffcc)}

@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · Rivales del 2v2: defensa que corta la línea de pase y delantero que espera arriba
-**Commit:** rama `roles-rivales` (pendiente de aprobación de Ale)
+**Commit:** fusionado en main (rama `roles-rivales`, merge ab3def0). Para deshacerlo: `git revert -m 1 ab3def0`
 **Archivos:** `src/game/SquadAI.js`, `tests/Duo.test.js`
 **Qué y por qué:** Ale pidió dos roles fijos para las IA rivales: una que defienda y otra que espere el balón en el campo contrario para rematar. La que defiende, en su campo, debe intentar cortar la línea de pase entre el jugador y la IA compañera.
 **Cómo:**

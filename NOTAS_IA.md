@@ -4,6 +4,21 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-17 · Claude · IA compañera: remate preciso tras el pase del jugador
+**Commit:** rama `companera-precisa`
+**Archivos:** `src/game/SquadAI.js`, `tests/Duo.test.js`
+**Qué y por qué:** Ale vio que la IA compañera fallaba muchas ocasiones después de un pase suyo. Al depurarlo aparecieron cuatro causas: el pase rebotaba en su cuerpo porque se metía en la trayectoria; el tiro salía desviado porque no descontaba la velocidad que ya traía el balón; el defensa rival estaba en el centro y lo tapaba; y los tiros eran flojos porque golpeaba al límite del alcance.
+**Cómo:**
+- Nuevo `compensateAim(body, ball, aim, power)`, que resuelve `v_balón + fuerza·dir = k·objetivo` para que la velocidad final vaya justo donde apunta. `update()` lo aplica a todo disparo de la compañera, salvo a los que ya llevan `compensated: true`.
+- `shotLine(ball, rivals, world, minMargin = -6, shotSpeed = 820)` se ha reescrito. Recorre puntos de la portería, separados de los postes, y le da a cada rival un alcance (su velocidad de dificultad ×0.85 × el tiempo que tarda el balón en llegar a él). Devuelve el punto con más margen, o `null` si el margen no supera `minMargin`. Tras un pase del jugador usa -30, para que «tire siempre que haya tiro».
+- Recepción: mientras viaja el pase del jugador hacia campo rival, la compañera se coloca al lado de la línea del balón, en el lado contrario a la portería. Así el balón pasa junto a su cuerpo y no choca contra él. Al llegar, se queda quieta y golpea justo antes del contacto o cuando el balón le pasa por delante. Si el balón va a darle en el cuerpo, se aparta de la trayectoria.
+- El error de puntería se aplica en la boca de gol, limitado a dentro de los postes. La potencia es 1.45 tras un pase y 1.35 en los tiros propios. Si no hay tiro propio claro, conserva el balón y abre ángulo.
+- La ventana de `fromHuman` tras su primer toque pasa de 1.2 s a 2 s.
+- Banco (scratchpad, 400 pases del jugador en campo rival, con el defensa rival en posición aleatoria): con rival en difícil, de 52 a 133 goles; en normal, de 68 a 155; en champions, de 26 a 93. En partido completo, el marcador sigue equilibrado.
+**Para el otro asistente:** en el test 2 de `tests/Duo.test.js` ahora se comprueba el desplazamiento máximo durante los 3 s y no la posición final. El defensa rival podía volver casualmente a su punto de salida. Para tocar la puntería de la compañera, usa `compensateAim` y `shotLine` y no apuntes directamente al centro.
+
+---
+
 ## 2026-10-17 · Claude · Rivales del 2v2: defensa que corta la línea de pase y delantero que espera arriba
 **Commit:** fusionado en main (rama `roles-rivales`, merge ab3def0). Para deshacerlo: `git revert -m 1 ab3def0`
 **Archivos:** `src/game/SquadAI.js`, `tests/Duo.test.js`

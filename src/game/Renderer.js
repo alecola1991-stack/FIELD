@@ -177,10 +177,11 @@ export class Renderer {
     c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineJoin = 'round';
     const name = String(player.name || '').toUpperCase();
     c.font = `900 ${Math.round(r * .6)}px "DM Mono",monospace`;
-    c.lineWidth = whiteDorsal ? 4.3 : 2.3; c.strokeStyle = dorsalOutline; c.strokeText(name, 0, -r * .5, r * 1.6);
+    const outline = player.numberOutline !== false;
+    c.lineWidth = whiteDorsal ? 4.3 : 2.3; c.strokeStyle = dorsalOutline; if (outline) c.strokeText(name, 0, -r * .5, r * 1.6);
     c.fillStyle = numberColor; c.fillText(name, 0, -r * .5, r * 1.6);
     c.font = `900 ${Math.round(r * 1.15)}px "DM Mono",monospace`;
-    c.lineWidth = whiteDorsal ? 5 : 2.8; c.strokeText(String(player.number), 0, r * .32, r * 1.5);
+    c.lineWidth = whiteDorsal ? 5 : 2.8; if (outline) c.strokeText(String(player.number), 0, r * .32, r * 1.5);
     c.fillText(String(player.number), 0, r * .32, r * 1.5);
     c.restore();
   }

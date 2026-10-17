@@ -4,6 +4,17 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-17 · Claude · Real Madrid totalmente blanco y dorsal sin borde
+**Commit:** rama `real-madrid-blanco` (pendiente de aprobación de Ale)
+**Archivos:** `src/config/teams.js`, `src/game/Player.js`, `src/game/Renderer.js`, `src/game/Game.js`, `src/ui/UI.js`, `src/styles.css`
+**Qué y por qué:** Ale pidió la equipación del Real Madrid toda blanca y el dorsal sin borde negro.
+**Cómo:**
+- El color secundario de Real Madrid, Castilla y Real Madrid C pasa de morado a `#F7F7F7`.
+- Nueva propiedad `team.numberOutline = false` para esos tres equipos (el conjunto `PLAIN_DORSAL` de teams.js). `Player` acepta `numberOutline`, y `Renderer.drawPlayer` no dibuja el contorno del nombre ni del dorsal cuando vale `false`. Game la pasa en todas las creaciones de jugadores (1v1, 2v2 online y 2v2 sin conexión).
+- En las vistas previas, `paintPlayerPreview` añade la clase `.plain-dorsal`, que quita el `-webkit-text-stroke` y la sombra. El dorsal sigue en azul marino `#17274b`.
+**Para el otro asistente:** para quitar el borde del dorsal a otro equipo, añade su id a `PLAIN_DORSAL`.
+
+
 ## 2026-10-17 · Claude · Modo 2v2 en solitario con IA compañera (rápido, ligas y copas)
 **Commit:** fusionado en main (rama `modo-2v2-solitario`, merge f020a72). Para deshacerlo: `git revert -m 1 f020a72`
 **Archivos:** `src/game/SquadAI.js` (nuevo), `src/game/Game.js`, `src/ui/UI.js`, `src/config/settings.js`, `index.html`, `src/styles.css`, `tests/Duo.test.js` (nuevo)

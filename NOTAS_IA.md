@@ -4,6 +4,21 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-17 · Claude · Curva: sin dirección no curva y sentido invertido
+**Commit:** rama `curva-invertida`
+**Archivos:** `src/game/Physics.js`, `src/game/Game.js`, `src/game/Renderer.js`, `index.html`, `tests/CurveShot.test.js`
+**Qué y por qué:** Ale pidió que, si no se pulsa ninguna dirección, el tiro sea normal aunque se mantenga Shift o C, y que el sentido de la curva sea el contrario al que se pulsa.
+**Cómo:**
+- Nuevo `curveSide(curveHeld, axisY)`, que devuelve +1, -1 o 0. Usa la entrada vertical del que dispara (con un umbral de 0.3), no su velocidad, porque la inercia mantenía la curva después de soltar la tecla. Abajo da -1 (curva hacia arriba), arriba da +1 (curva hacia abajo), y sin arriba ni abajo da 0.
+- `curveFor(side, velocity)`: la firma ha cambiado; antes era `(player, ball, velocity)`.
+- `kickBall(..., curve = 0)`: el sexto parámetro ahora es el lado de la curva (un número), no un booleano.
+- `Game` lo calcula en los cuatro caminos (1v1, rival online, predicción del invitado y squad) a partir del eje `y` de esa entrada. `curveAim` del render ya es el lado.
+- Por la red sigue viajando el booleano `curve` junto con `y`.
+- Textos de ayuda y protip actualizados.
+**Para el otro asistente:** la dirección lateral sola (izquierda o derecha) no curva.
+
+---
+
 ## 2026-10-17 · Claude · Curva: solo con Shift/C mantenido + ESPACIO, y más pronunciada
 **Commit:** fusionado en main (rama `curva-con-espacio`, merge 886add9). Para deshacerlo: `git revert -m 1 886add9`
 **Archivos:** `src/game/Input.js`, `src/game/Ball.js`, `src/game/GamepadController.js`, `index.html`, `tests/CurveShot.test.js`

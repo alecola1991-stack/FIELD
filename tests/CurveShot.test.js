@@ -1,37 +1,31 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Ball } from '../src/game/Ball.js';
-import { kickBall, resolveBallWalls, resolvePlayerBall } from '../src/game/Physics.js';
+import { kickBall, curveSide, resolveBallWalls, resolvePlayerBall } from '../src/game/Physics.js';
 import { Input } from '../src/game/Input.js';
 
 globalThis.window ??= { addEventListener() {} };
 globalThis.document ??= { addEventListener() {}, querySelectorAll: () => [] };
 
 const shooter = (vy = 0) => ({ x: 600, y: 350, vx: 120, vy, radius: 22, faceX: 1, faceY: 0, shotCooldown: 0, shotPower: 1 });
-const flight = (curve, vy) => {
+const flight = (side, vy = 0) => {
   const ball = new Ball(636, 350), player = shooter(vy);
-  assert.ok(kickBall(player, ball, () => {}, null, 1, curve));
+  assert.ok(kickBall(player, ball, () => {}, null, 1, side));
   for (let i = 0; i < 30; i++) ball.update(1 / 60);
   return ball;
 };
 
-test('a curved shot bends down when the player runs down, up when running up; a normal shot goes straight', () => {
-  const straight = flight(false, 0);
+test('holding the curve key, down bends the shot up and up bends it down; no up/down direction shoots straight', () => {
+  assert.equal(curveSide(true, 1), -1, 'pressing down: bends up');
+  assert.equal(curveSide(true, -1), 1, 'pressing up: bends down');
+  assert.equal(curveSide(true, 0), 0, 'no direction: normal shot');
+  assert.equal(curveSide(true, .1), 0, 'a tiny stick tilt is not a direction');
+  assert.equal(curveSide(false, 1), 0, 'without Shift / C: normal shot');
+  const straight = flight(0);
   assert.equal(straight.curl, 0);
   assert.ok(Math.abs(straight.y - 350) < 1, 'straight shot keeps its line');
-  const down = flight(true, 200), up = flight(true, -200);
-  // The kick itself adds part of the player's run; compare with an uncurved shot of the same run.
-  assert.ok(down.y > flight(false, 200).y + 25, `curves down (y=${down.y.toFixed(0)})`);
-  assert.ok(up.y < flight(false, -200).y - 25, `curves up (y=${up.y.toFixed(0)})`);
-});
-
-test('without a vertical run the curve goes towards the middle of the pitch', () => {
-  const ball = new Ball(636, 200), player = { ...shooter(0), y: 200 };
-  kickBall(player, ball, () => {}, null, 1, true);
-  assert.ok(ball.curl > 0, 'upper half: bends down towards the middle');
-  const low = new Ball(636, 520), lowPlayer = { ...shooter(0), y: 520 };
-  kickBall(lowPlayer, low, () => {}, null, 1, true);
-  assert.ok(low.curl < 0, 'lower half: bends up towards the middle');
+  assert.ok(flight(1).y > 350 + 25, 'side +1 bends down the screen');
+  assert.ok(flight(-1).y < 350 - 25, 'side -1 bends up the screen');
 });
 
 test('the curve fades, flips on a wall bounce and stops when a player touches the ball', () => {

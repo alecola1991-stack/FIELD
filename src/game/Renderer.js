@@ -237,13 +237,13 @@ export class Renderer {
     for (let i = 0; i <= steps; i++) { const time = t * i / steps, x = ball.x + ball.vx * (1 - Math.exp(-drag * time)) / drag, y = ball.y + ball.vy * (1 - Math.exp(-drag * time)) / drag; if (i === 0) c.moveTo(x, y); else c.lineTo(x, y); }
     c.setLineDash([4, 7]); c.lineWidth = 2; c.strokeStyle = 'rgba(220,245,229,.33)'; c.stroke(); c.setLineDash([]);
   }
-  drawShotPreview(c, player, ball, position, curve = false) {
+  drawShotPreview(c, player, ball, position, curve = 0) {
     const powered = player.powerCooldown <= 0;
     const shot = predictShot(player, ball, null, powered ? 1.45 : 1);
     if (!shot) return;
     const ghost = new Ball(ball.x, ball.y); ghost.radius = ball.radius; ghost.world = ball.world; ghost.maxSpeed = ball.maxSpeed; ghost.vx = shot.vx; ghost.vy = shot.vy;
     // Holding the curve key (Shift / C): show the bent path of the curved shot.
-    ghost.curl = curve ? curveFor(player, ball, shot) : 0;
+    ghost.curl = curveFor(curve, shot);
     const offsetX = position[0] - ball.x, offsetY = position[1] - ball.y;
     c.save(); c.beginPath(); c.moveTo(...position);
     let previousX = ghost.x, previousY = ghost.y;

@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · Pantalla entre partidos de torneo sin scroll y ESPACIO para seguir
-**Commit:** rama `cuadro-sin-scroll`
+**Commit:** fusionado en main (rama `cuadro-sin-scroll`, merge ede7299). Para deshacerlo: `git revert -m 1 ede7299`
 **Archivos:** `src/ui/UI.js`, `src/styles.css`
 **Qué y por qué:** Ale pidió que entre partidos de la Champions se vea el cuadro completo sin hacer scroll, y poder pasar al siguiente partido pulsando espacio.
 **Cómo:**

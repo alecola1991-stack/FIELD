@@ -81,13 +81,13 @@ export class MenuBackdrop {
     const r = Math.max(8, Math.min(this.width, this.height) * .015);
     c.save(); c.translate(x, y); c.globalAlpha = .18;
     c.fillStyle = '#000'; c.beginPath(); c.ellipse(2, r * .55, r * 1.15, r * .7, 0, 0, Math.PI * 2); c.fill();
-    c.rotate(entity.spin); c.shadowColor = '#e8f4ed'; c.shadowBlur = 12;
-    c.fillStyle = '#dce8e0'; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill(); c.shadowBlur = 0;
-    c.fillStyle = '#31443a';
-    for (let i = 0; i < 5; i++) {
-      const angle = i * Math.PI * 2 / 5;
-      c.beginPath(); c.arc(Math.cos(angle) * r * .48, Math.sin(angle) * r * .48, r * .16, 0, Math.PI * 2); c.fill();
-    }
+    // Same look as the match ball: white with relief, no dark patches.
+    c.shadowColor = '#e8f4ed'; c.shadowBlur = 12;
+    const body = c.createRadialGradient(-r * .38, -r * .42, r * .08, 0, 0, r * 1.05);
+    body.addColorStop(0, '#ffffff'); body.addColorStop(.5, '#eef3f0'); body.addColorStop(1, '#aebbb4');
+    c.fillStyle = body; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill(); c.shadowBlur = 0;
+    c.rotate(entity.spin); c.strokeStyle = 'rgba(120,138,130,.35)'; c.lineWidth = Math.max(.8, r * .07); c.beginPath();
+    c.arc(-r * 1.15, 0, r * .95, -.9, .9); c.arc(r * 1.15, 0, r * .95, Math.PI - .9, Math.PI + .9); c.stroke();
     c.restore();
   }
 }

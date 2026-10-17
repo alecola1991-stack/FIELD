@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-18 · Claude · El borde del dorsal y del nombre nunca es del mismo color que el texto
-**Commit:** rama `dorsal-contraste`
+**Commit:** fusionado en main (rama `dorsal-contraste`, merge a6dbc3e). Para deshacerlo: `git revert -m 1 a6dbc3e`
 **Archivos:** `src/config/teams.js`, `src/game/Renderer.js`, `src/ui/UI.js`, `src/styles.css`, `tests/TeamKits.test.js`
 **Qué y por qué:** Ale pidió que el texto del dorsal y del nombre y su borde no puedan ser del mismo color. Pasaba en dos sitios:
 - En el campo, con camisetas blancas el borde se forzaba a negro aunque el dorsal fuera oscuro.

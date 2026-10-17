@@ -21,7 +21,7 @@ export const DIFFICULTIES = Object.freeze([
   { id: 'champions', label: 'Champions', unlock: 15 },
 ]);
 export function difficultyLabel(id) { return id === 'legend' ? 'Leyenda' : DIFFICULTIES.find(item => item.id === id)?.label || 'Principiante'; }
-const defaults = { name: 'JUGADOR', number: 10, teamId: '', profileReady: false, leagueCompetition: 'laliga', leagueGoalTarget: 2, difficulty: 'easy', sound: true, volume: 45, musicEnabled: true, musicVolume: 35, ambienceEnabled: true, ambienceVolume: 50, effectsVolume: 100, controllerVibration: true, controllerMap: {}, trajectory: false, shotPreview: false, goalReplays: true, verticalField: true, modifiers: {}, soloFormat: '1v1' };
+const defaults = { name: 'JUGADOR', number: 10, teamId: '', profileReady: false, leagueCompetition: 'laliga', leagueGoalTarget: 2, difficulty: 'easy', sound: true, volume: 45, musicEnabled: true, musicVolume: 35, ambienceEnabled: true, ambienceVolume: 50, effectsVolume: 100, controllerVibration: true, controllerMap: {}, trajectory: false, shotPreview: false, goalReplays: true, verticalField: true, modifiers: {}, soloFormat: '1v1', mateDifficulty: 'normal' };
 let storageScope = 'guest';
 function storageKey() { return storageScope === 'guest' ? 'field-settings' : `field-settings:${storageScope}`; }
 export function setSettingsScope(scope) {

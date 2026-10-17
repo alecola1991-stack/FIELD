@@ -24,6 +24,8 @@ const BALL_DRAG = .72;        // Ball.update: speed lost per pixel travelled
 const mirror = (body, width) => body && ({ x: width - body.x, y: body.y, vx: -(body.vx || 0), vy: body.vy || 0, radius: body.radius, world: body.world, maxSpeed: body.maxSpeed, shotCooldown: body.shotCooldown, speedScale: body.speedScale });
 const unmirror = decision => ({ ...decision, x: -decision.x, kickDirection: decision.kickDirection ? { x: -decision.kickDirection.x, y: decision.kickDirection.y } : null });
 
+// Precision of the teammate's passes and shots by its own difficulty (pixels of error at the target).
+const MATE_ERROR = Object.freeze({ easy: 54, normal: 34, hard: 20, pro: 10, champions: 4, legend: 4 });
 export const MATE_LEVEL = Object.freeze({ easy: 'normal', normal: 'normal', hard: 'hard', pro: 'pro', champions: 'pro', legend: 'pro' });
 // Passing and wall play of the rivals by difficulty (they always pass and use walls; better levels do it more and more precisely).
 const RIVAL_PLAY = Object.freeze({
@@ -174,7 +176,10 @@ export class SquadAI {
     const fromHuman = (this.lastToucher === 0 && humanBall > human.radius + ball.radius + 20) || (this.lastToucher === 1 && this.prevToucher === 0 && this.touchTime < 1.2);
     if (fromHuman && ball.x > W / 2 && canKickBall(mate, ball) && mate.shotCooldown <= 0) {
       const shot = this.shotLine(ball, rivals, world);
-      if (shot) { this.lastShot = { fromHuman: true }; return { x: 0, y: 0, speed, kick: true, aim: shot.aim, power: 1.25, shot: true }; }
+      if (shot) {
+        const error = (MATE_ERROR[this.mateLevel] ?? 20) * 1.6, aim = { x: shot.aim.x, y: shot.aim.y + (this.random() - .5) * error };
+        this.lastShot = { fromHuman: true }; return { x: 0, y: 0, speed, kick: true, aim, power: 1.25, shot: true };
+      }
     }
 
     // A rival controls the ball: stay goal side and contain instead of diving in (it is often the last defender).
@@ -263,6 +268,8 @@ export class SquadAI {
       if (!(ahead > 40 || mateBlocked || (humanFree && ahead > -60) || wellPlaced)) return null;
     }
     const target = wellPlaced || longBall ? this.receivePoint(human, world, longBall ? .45 : .32) : { x: human.x + (human.vx || 0) * .32, y: human.y + (human.vy || 0) * .32 };
+    const error = MATE_ERROR[this.mateLevel] ?? 20;
+    target.x += (this.random() - .5) * error; target.y += (this.random() - .5) * error;
     const line = this.bestPassLine(ball, target, rivals, world, longBall ? 34 : 40);
     if (!line) return null;
     this.passCooldown = longBall ? .8 : 1.1; this.lastPass = { x: target.x, y: target.y, bank: line.bank, long: longBall };

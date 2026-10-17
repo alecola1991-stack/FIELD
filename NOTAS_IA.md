@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · Partido rápido: selector de formato e IA compañera ordenado
-**Commit:** rama `selector-partido-rapido` (pendiente de aprobación de Ale)
+**Commit:** fusionado en main (rama `selector-partido-rapido`, merge e5b97fc). Para deshacerlo: `git revert -m 1 e5b97fc`
 **Archivos:** `index.html`, `src/styles.css`, `src/ui/UI.js`
 **Qué y por qué:** Ale pidió colocar bien dónde se elige el formato y la IA compañera en Partido rápido. Antes, según el ancho de pantalla, los selectores se montaban unos sobre otros o el botón saltaba a otra línea.
 **Cómo:** `#quick-screen .match-setup-actions` pasa a llamarse `.quick-actions` y tiene tres campos `.quick-field` con la etiqueta encima (FORMATO, IA COMPAÑERA, DIFICULTAD DEL RIVAL) más el botón «Empezar partido», todos de 46 px de alto y en una sola fila en PC. En móvil van apilados a lo ancho. El campo de la IA compañera lleva `data-duo-only` y solo se ve en 2v2: `renderSoloFormat()` pone en `<body>` la clase `solo-duo`. Se han eliminado las reglas CSS anteriores de esa fila. En PC, el botón de Modificadores de esta pantalla muestra solo su nombre. Se conservan los IDs `quick-difficulty` y `quick-start` y los atributos `data-solo-format` y `data-mate-difficulty`.

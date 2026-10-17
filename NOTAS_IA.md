@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · IA del 2v2: pases largos de la compañera y rivales con roles, pases y paredes
-**Commit:** rama `ia-2v2-mejorada` (pendiente de aprobación de Ale)
+**Commit:** fusionado en main (rama `ia-2v2-mejorada`, merge 02853a3). Para deshacerlo: `git revert -m 1 02853a3`
 **Archivos:** `src/game/SquadAI.js`, `tests/Duo.test.js`
 **Qué y por qué:** Ale pidió dos cosas. La compañera, desde su campo y con el jugador en el campo rival, debe hacer lo posible por darle el balón con un pase fuerte, por la mejor trayectoria y dejándoselo bien para disparar. Los rivales no deben defender los dos la portería: uno defiende y el otro sube a esperar el balón, se dan pases y regatean usando las paredes, sea cual sea la dificultad.
 **Cómo:**

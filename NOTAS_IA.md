@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · Dificultad propia para la IA compañera
-**Commit:** rama `dificultad-companera` (pendiente de aprobación de Ale)
+**Commit:** fusionado en main (rama `dificultad-companera`, merge f9b3e17). Para deshacerlo: `git revert -m 1 f9b3e17`
 **Archivos:** `index.html`, `src/styles.css`, `src/ui/UI.js`, `src/config/settings.js`, `src/game/Game.js`, `src/game/SquadAI.js`, `tests/Duo.test.js`
 **Qué y por qué:** Ale quiere elegir la dificultad de su IA compañera aparte de la del rival.
 **Cómo:**

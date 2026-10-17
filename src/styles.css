@@ -1266,3 +1266,4 @@ body.blue-theme.online-theme{--bg:#020713;--panel:#071329;--green:#83b4ff;--mute
 #quick-screen .match-setup-actions>.field-label{white-space:nowrap}
 }
 @media(min-width:1024px) and (max-width:1300px){#quick-screen .match-setup-actions>.field-label{display:none}}
+.player-circle-preview.plain-dorsal :is(.circle-preview-name,.circle-preview-number){-webkit-text-stroke:0!important;text-shadow:none!important}

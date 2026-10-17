@@ -1022,6 +1022,7 @@ export class UI {
     circle.style.background = getKitBackground(team);
     circle.style.setProperty('--dorsal-color', team?.numberColor || '#ffffff');
     circle.classList.toggle('white-dorsal', [team?.numberColor || '#ffffff', team?.primary, team?.secondary].some(value => /^#(?:fff|ffffff|f5fff8|f7f7f7|f4f3ee|f4f2e9)$/i.test(value || '')));
+    circle.classList.toggle('plain-dorsal', team?.numberOutline === false);
     circle.style.setProperty('--preview-name-size', String(Math.min(16, 75 / Math.max(1, label.length * .65))));
   }
 

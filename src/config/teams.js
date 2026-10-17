@@ -69,7 +69,7 @@ export const TEAMS = [
     ['levante', 'Levante', '#D71920', '#142D4E'], ['malaga', 'Málaga', '#5AADE0', '#FFFFFF'],
     ['racing', 'Racing Santander', '#147347', '#FFFFFF'], ['rayo', 'Rayo Vallecano', '#FFFFFF', '#D71920'],
     ['deportivo', 'Deportivo La Coruña', '#0875BC', '#FFFFFF'], ['espanyol', 'Espanyol', '#007FC8', '#FFFFFF'],
-    ['betis', 'Real Betis', '#16834A', '#FFFFFF'], ['real-madrid', 'Real Madrid', '#F7F7F7', '#7B58A5'],
+    ['betis', 'Real Betis', '#16834A', '#FFFFFF'], ['real-madrid', 'Real Madrid', '#F7F7F7', '#F7F7F7'],
     ['sociedad', 'Real Sociedad', '#1766AA', '#FFFFFF'], ['sevilla', 'Sevilla', '#D71920', '#FFFFFF'],
     ['valencia', 'Valencia', '#171717', '#FFFFFF'], ['villarreal', 'Villarreal', '#FFE500', '#0755A4'],
   ]),
@@ -106,7 +106,7 @@ export const TEAMS = [
     ['europa', 'CE Europa', '#FFFFFF', '#1766AA'], ['majadahonda', 'Rayo Majadahonda', '#FFFFFF', '#D71920'],
     ['cartagena', 'Cartagena', '#171717', '#FFFFFF'], ['gimnastic', 'Gimnàstic de Tarragona', '#C8102E', '#171717'],
     ['hercules', 'Hércules', '#1766AA', '#FFFFFF'], ['torremolinos', 'Juventud Torremolinos', '#1766AA', '#FFFFFF'],
-    ['jaen', 'Real Jaén', '#FFFFFF', '#6B3FA0'], ['castilla', 'Real Madrid Castilla', '#F7F7F7', '#7B58A5'],
+    ['jaen', 'Real Jaén', '#FFFFFF', '#6B3FA0'], ['castilla', 'Real Madrid Castilla', '#F7F7F7', '#F7F7F7'],
     ['murcia', 'Real Murcia', '#D71920', '#FFFFFF'], ['zaragoza', 'Real Zaragoza', '#FFFFFF', '#1766AA'],
     ['huesca', 'Huesca', '#1766AA', '#8A2438'], ['ibiza', 'UD Ibiza', '#79BCE8', '#FFFFFF'],
     ['sant-andreu', 'Sant Andreu', '#D71920', '#F5D21B'], ['villarreal-b', 'Villarreal B', '#FFE500', '#0755A4'],
@@ -162,7 +162,7 @@ export const TEAMS = [
     ['calvo-sotelo', 'Calvo Sotelo', '#1766AA', '#FFFFFF'], ['conquense', 'Conquense', '#FFFFFF', '#1766AA'],
     ['getafe-b', 'Getafe B', '#0053A0', '#FFFFFF'], ['segoviana', 'Gimnástica Segoviana', '#D71920', '#FFFFFF'],
     ['guadalajara', 'Guadalajara', '#6B3FA0', '#FFFFFF'], ['navalcarnero', 'Navalcarnero', '#1766AA', '#FFFFFF'],
-    ['numancia', 'Numancia', '#D71920', '#1766AA'], ['real-madrid-c', 'Real Madrid C', '#F7F7F7', '#7B58A5'],
+    ['numancia', 'Numancia', '#D71920', '#1766AA'], ['real-madrid-c', 'Real Madrid C', '#F7F7F7', '#F7F7F7'],
     ['salamanca', 'Salamanca UDS', '#FFFFFF', '#171717'], ['sanse', 'San Sebastián de los Reyes', '#D71920', '#FFFFFF'],
     ['talavera', 'Talavera de la Reina', '#1766AA', '#FFFFFF'], ['valladolid-promesas', 'Valladolid Promesas', '#6B3FA0', '#FFFFFF'],
   ]),
@@ -454,7 +454,10 @@ function contrastingNumberColor(hex) {
   const luminance = .2126 * rgb[0] + .7152 * rgb[1] + .0722 * rgb[2];
   return luminance > .45 ? '#172027' : '#ffffff';
 }
+// All-white kits whose dorsal is printed without an outline.
+const PLAIN_DORSAL = new Set(['laliga-real-madrid', 'primera-rfef-2-castilla', 'segunda-rfef-5-real-madrid-c']);
 for (const team of [...TEAMS, ...NATIONAL_TEAMS, ...HONORARY_TEAMS]) {
+  if (PLAIN_DORSAL.has(team.id)) team.numberOutline = false;
   const usesTeamDorsalColor = team.type === 'national' || ['laliga', 'premier', 'serie-a', 'ligue-1', 'bundesliga', 'liga-portugal', 'belgian-pro', 'super-lig'].includes(team.league);
   team.numberColor = (usesTeamDorsalColor ? KIT_NUMBER_COLORS[team.id] : null) || contrastingNumberColor(team.primary || '#68746e');
 }

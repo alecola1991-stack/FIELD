@@ -4,6 +4,22 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-18 · Claude · El borde del dorsal y del nombre nunca es del mismo color que el texto
+**Commit:** rama `dorsal-contraste`
+**Archivos:** `src/config/teams.js`, `src/game/Renderer.js`, `src/ui/UI.js`, `src/styles.css`, `tests/TeamKits.test.js`
+**Qué y por qué:** Ale pidió que el texto del dorsal y del nombre y su borde no puedan ser del mismo color. Pasaba en dos sitios:
+- En el campo, con camisetas blancas el borde se forzaba a negro aunque el dorsal fuera oscuro.
+- En las vistas previas CSS, el borde era siempre `#07100c`.
+**Cómo:**
+- Nuevo `dorsalStyle(numberColor)` en `teams.js`. Devuelve `{ light, outline }` según la luminancia del color del texto: si el texto es claro, borde negro (`#000000`); si es oscuro, borde blanco (`#FFFFFF`).
+- `Renderer.drawPlayer` lo usa en lugar de mirar la camiseta. `light` mantiene el borde grueso de antes cuando el texto es claro.
+- `UI.paintPlayerPreview` pone `--dorsal-outline` y la clase `white-dorsal` (texto claro). El CSS de `.circle-preview-name` y `.circle-preview-number` usa `var(--dorsal-outline)`.
+- Los equipos con `numberOutline: false` (Real Madrid, Castilla, Real Madrid C) siguen sin borde.
+- Test nuevo: en los 1.078 equipos, el borde es distinto del texto y contrasta con él.
+**Para el otro asistente:** cualquier sitio nuevo que dibuje un dorsal debe sacar el color del borde de `dorsalStyle`.
+
+---
+
 ## 2026-10-17 · Claude · Las 211 selecciones de la FIFA
 **Commit:** fusionado en main (rama `todas-selecciones`, merge 09bcfbe). Para deshacerlo: `git revert -m 1 09bcfbe`
 **Archivos:** `src/config/teams-nations.js` (nuevo), `src/config/teams.js`, `src/game/Competitions.js`, `tests/MoreLeagues.test.js`

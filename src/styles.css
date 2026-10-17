@@ -1361,3 +1361,10 @@ body:not(.solo-duo) [data-duo-only]{display:none!important}
 .flag-switzerland{background:linear-gradient(90deg,transparent 42%,#fff 42% 58%,transparent 58%) center/60% 60% no-repeat,linear-gradient(transparent 42%,#fff 42% 58%,transparent 58%) center/60% 60% no-repeat,#DA291C}
 /* With 20 countries the league picker uses 5 compact columns on PC so it still fits without scrolling. */
 @media(min-width:901px){#league-screen .league-country-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}#league-screen .league-country-tile{min-height:0;padding:7px 8px;gap:1px 7px}#league-screen .league-country-tile b{font-size:12px}#league-screen .league-country-tile .league-flag{width:24px;height:16px}}
+
+/* Dorsal previews: the stroke follows the text colour (black around light text, white around dark text). */
+.player-circle-preview .circle-preview-name{-webkit-text-stroke:.35px var(--dorsal-outline,#000)}
+.player-circle-preview .circle-preview-number{paint-order:stroke fill;-webkit-text-stroke:1.2px var(--dorsal-outline,#000)}
+.player-circle-preview.white-dorsal .circle-preview-name{-webkit-text-stroke:.65px var(--dorsal-outline,#000)}
+.player-circle-preview.white-dorsal .circle-preview-number{-webkit-text-stroke:1.5px var(--dorsal-outline,#000)}
+.player-circle-preview:not(.white-dorsal) :is(.circle-preview-name,.circle-preview-number){text-shadow:0 1px 2px #0006}

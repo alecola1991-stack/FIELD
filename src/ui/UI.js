@@ -10,7 +10,7 @@ import { loadSettings, saveSettings, setSettingsScope, DIFFICULTIES, difficultyL
 import { Progression } from '../game/Progression.js';
 import { CareerProfile } from '../game/CareerProfile.js';
 import { TROPHY_CATALOG, formatPlayTime } from '../game/Achievements.js';
-import { TEAM_LEAGUES, NATIONAL_GROUPS, TEAM_GROUPS, TEAM_CLUB_GROUPS, TEAM_COUNTRIES, PROFILE_TEAMS, TEAMS, getTeamById, getKitBackground } from '../config/teams.js';
+import { TEAM_LEAGUES, NATIONAL_GROUPS, TEAM_GROUPS, TEAM_CLUB_GROUPS, TEAM_COUNTRIES, PROFILE_TEAMS, TEAMS, getTeamById, getKitBackground, dorsalStyle } from '../config/teams.js';
 import { CUP_COMPETITIONS, createChampionsDraw, createInternationalDraw, createLibertadoresDraw, createClubWorldCupDraw, isLibertadoresEligibleTeam, isClubWorldCupEligibleTeam, createLeagueSchedule, createLeagueStandings, updateLeagueStandings, sortLeagueStandings, pickChampionsOpponent, createBracket, playBracketRound, simulateRemainingBracket, bracketOpponent, bracketChampion } from '../game/Competitions.js';
 import { MenuBackdrop } from './MenuBackdrop.js';
 import { Confetti } from './Confetti.js';
@@ -1047,8 +1047,10 @@ export class UI {
     name.textContent = label;
     number.textContent = preview.number ?? (this.player_number.value === '' ? '—' : clamp(Number(this.player_number.value) || 0, 0, 99));
     circle.style.background = getKitBackground(team);
+    const dorsal = dorsalStyle(team?.numberColor || '#ffffff');
     circle.style.setProperty('--dorsal-color', team?.numberColor || '#ffffff');
-    circle.classList.toggle('white-dorsal', [team?.numberColor || '#ffffff', team?.primary, team?.secondary].some(value => /^#(?:fff|ffffff|f5fff8|f7f7f7|f4f3ee|f4f2e9)$/i.test(value || '')));
+    circle.style.setProperty('--dorsal-outline', dorsal.outline);
+    circle.classList.toggle('white-dorsal', dorsal.light);
     circle.classList.toggle('plain-dorsal', team?.numberOutline === false);
     circle.style.setProperty('--preview-name-size', String(Math.min(16, 75 / Math.max(1, label.length * .65))));
   }

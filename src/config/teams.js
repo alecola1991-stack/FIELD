@@ -463,6 +463,16 @@ const KIT_NUMBER_COLORS = {
   'america-canada': '#ffffff', 'america-costa-rica': '#ffffff', 'america-jamaica': '#f3d344', 'america-panama': '#ffffff',
   'america-honduras': '#ffffff', 'america-guatemala': '#173b73',
 };
+// Dorsal and name text: the outline is always the opposite of the text colour (black around light
+// text, white around dark text), so the text and its border are never the same colour.
+export function dorsalStyle(numberColor = '#ffffff') {
+  let value = String(numberColor).replace('#', '');
+  if (value.length === 3) value = value.split('').map(char => char + char).join('');
+  value = value.padEnd(6, '0').slice(0, 6);
+  const rgb = [0, 2, 4].map(offset => Number.parseInt(value.slice(offset, offset + 2), 16) / 255).map(channel => channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4);
+  const light = .2126 * rgb[0] + .7152 * rgb[1] + .0722 * rgb[2] > .3;
+  return { light, outline: light ? '#000000' : '#FFFFFF' };
+}
 function contrastingNumberColor(hex) {
   const value = hex.replace('#', '');
   const rgb = [0, 2, 4].map(offset => Number.parseInt(value.slice(offset, offset + 2), 16) / 255).map(channel => channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4);

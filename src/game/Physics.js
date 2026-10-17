@@ -38,8 +38,9 @@ export function resolvePlayerPlayers(first, second, onCollision = () => {}) {
   return true;
 }
 
-export function resolveBallWalls(ball, onBounce = () => {}) {
+export function resolveBallWalls(ball, onWallBounce = () => {}) {
   const world = ball.world || WORLD;
+  const onBounce = () => { if (ball.curl) ball.curl *= -.5; onWallBounce(); };
   const { left, right, top, bottom, goalTop, goalBottom, goalBack } = world, r = ball.radius;
   if (ball.y - r < top) { ball.y = top + r; if (ball.vy < 0) { ball.vy *= -.78; onBounce(); } }
   if (ball.y + r > bottom) { ball.y = bottom - r; if (ball.vy > 0) { ball.vy *= -.78; onBounce(); } }
@@ -77,6 +78,7 @@ export function resolvePlayerBall(player, ball, onHit = () => {}) {
   ball.x += nx * overlap * .84; ball.y += ny * overlap * .84;
   const rel = (ball.vx - player.vx) * nx + (ball.vy - player.vy) * ny;
   if (rel < 0) {
+    ball.curl = 0;
     const impulse = -rel * 1.26 + 41;
     ball.vx += nx * impulse; ball.vy += ny * impulse;
     player.vx -= nx * impulse * .16; player.vy -= ny * impulse * .16;
@@ -130,10 +132,18 @@ export function predictShot(player, ball, aim = null, powerMultiplier = 1) {
   return { vx, vy };
 }
 
-export function kickBall(player, ball, onKick = () => {}, aim = null, powerMultiplier = 1) {
+// Curved shots bend up or down the screen following the player's vertical run
+// (no vertical run: towards the middle of the pitch).
+export function curveFor(player, ball, velocity) {
+  const world = ball.world || WORLD;
+  const run = Math.abs(player.vy || 0) > 25 ? Math.sign(player.vy) : Math.abs(player.faceY || 0) > .35 ? Math.sign(player.faceY) : (ball.y < world.height / 2 ? 1 : -1);
+  return run * (velocity.vx < 0 ? -1 : 1) * Ball.CURL_RATE;
+}
+
+export function kickBall(player, ball, onKick = () => {}, aim = null, powerMultiplier = 1, curve = false) {
   const shot = predictShot(player, ball, aim, powerMultiplier);
   if (!shot) return false;
-  ball.vx = shot.vx; ball.vy = shot.vy;
+  ball.vx = shot.vx; ball.vy = shot.vy; ball.curl = curve ? curveFor(player, ball, shot) : 0;
   player.shotCooldown = .36; player.kickScale = .22; ball.kickScale = .18;
   onKick(); return true;
 }

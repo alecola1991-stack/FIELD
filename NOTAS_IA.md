@@ -4,6 +4,31 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-17 · Claude · Disparo con curva (Shift / C) y ayuda de disparo curvada
+**Commit:** rama `disparo-curva`
+**Archivos:** `src/game/Ball.js`, `src/game/Physics.js`, `src/game/Input.js`, `src/game/Game.js`, `src/game/OnlineMatch.js`, `src/game/Renderer.js`, `src/game/GamepadController.js`, `index.html`, `src/styles.css`, `tests/CurveShot.test.js`, `tests/OnlineMatch.test.js`
+**Qué y por qué:** Ale pidió disparos con curva con Shift o C. El efecto va hacia arriba o hacia abajo según la dirección en la que corre el jugador, y la ayuda de disparo debe mostrar la curva.
+**Cómo:**
+- Física:
+  - `Ball.curl` (rad/s) gira la velocidad en cada `update` y decae con `Ball.CURL_DECAY` (1.6). Se anula por debajo de 60 px/s.
+  - `Ball.CURL_RATE` = 1.1 es la fuerza de la curva: es el valor que hay que tocar para afinarla.
+  - En `resolveBallWalls`, cada rebote en banda o poste hace `curl *= -.5`. En `resolvePlayerBall`, un contacto anula la curva.
+- Disparo:
+  - `kickBall(..., curve = false)`, con el sexto parámetro nuevo. Las patadas normales y la IA ponen `curl = 0`.
+  - `curveFor(player, ball, velocity)` decide el sentido: si `vy > 25` hacia abajo, si `vy < -25` hacia arriba, si no por `faceY`, y si no hacia el centro del campo.
+- Controles:
+  - `Input.consumeKick()` → `{kick, curve}` y `Input.curveHeld()`, con `CURVE_KEYS` = ShiftLeft, ShiftRight, KeyC.
+  - Shift o C sueltos disparan con curva. Mantenidos mientras se pulsa ESPACIO, también curvan.
+  - Mando: LB/L1 o LT/L2 (botones 4 y 6), con `input.padCurve` para la vista previa.
+  - Táctil: botón `.touch-curve` (`data-touch-code="KeyC"`) junto a DISPARAR.
+- `Game.readKick()` sustituye a `consume('Space')` en los tres caminos (1v1, invitado online y squad). Si el input no tiene `consumeKick`, como los mocks de los tests, dispara recto.
+- Online: el campo `curve` viaja con `kick` en `sendInput`, `latestInput`, `seatInputs`, `getSeatInput`, `setRemoteInput` y `onOnlineInput`. Un cliente antiguo simplemente no curva.
+- Ayuda de disparo: el render recibe `curveAim` (`curveHeld`) y `drawShotPreview` simula la bola fantasma con `curl`, con trazo de puntos azul/dorado. `drawTrajectory` simula el recorrido cuando la bola lleva curva.
+- Textos: ayuda de teclado en Ajustes → Controles, pie de la portada, un protip nuevo y el mensaje de restablecer el mando.
+**Para el otro asistente:** cualquier patada nueva debe pasar por `kickBall`, que resetea `curl`. Si se crea una bola a mano para predecir trayectorias, copia `curl`. Para deshacer la función entera basta con revertir el merge.
+
+---
+
 ## 2026-10-17 · Claude · Pantalla entre partidos de torneo sin scroll y ESPACIO para seguir
 **Commit:** fusionado en main (rama `cuadro-sin-scroll`, merge ede7299). Para deshacerlo: `git revert -m 1 ede7299`
 **Archivos:** `src/ui/UI.js`, `src/styles.css`

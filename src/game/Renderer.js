@@ -1,7 +1,7 @@
 import { WORLD } from '../config/settings.js';
 import { FEDERATION_LEAGUE_IDS } from '../config/teams.js';
 import { Ball } from './Ball.js';
-import { predictShot, shotRangeRadius, resolveBallWalls, isGoal } from './Physics.js';
+import { predictShot, shotRangeRadius, resolveBallWalls, isGoal, curveFor } from './Physics.js';
 
 const FIELD_THEMES = {
   training: { grass: '#18352d', stripe: '#ffffff05', line: 'rgba(197,235,215,.31)', net: '#172428', accent: '#8ec8aa' },
@@ -92,7 +92,7 @@ export class Renderer {
     if (game.trajectory) this.drawTrajectory(c, game.ball);
     if (game.shotRangeTimer > 0) this.drawShotRange(c, game.player, game.ball, game.shotRangeTimer);
     const ballPosition = this.smooth(game.ball);
-    if (game.shotPreview) this.drawShotPreview(c, game.player, game.ball, ballPosition);
+    if (game.shotPreview) this.drawShotPreview(c, game.player, game.ball, ballPosition, game.curveAim);
     if (game.bot) this.drawPlayer(c, game.bot, game.bot.color);
     for (const other of game.others || []) this.drawPlayer(c, other, other.color);
     // 2v2: a ring under your own player tells you apart from your teammate.
@@ -225,16 +225,25 @@ export class Renderer {
   }
   drawTrajectory(c, ball) {
     const speed = Math.hypot(ball.vx, ball.vy); if (speed < 35) return;
+    if (ball.curl) {
+      // A curving ball: simulate the path instead of the straight-line formula.
+      const ghost = new Ball(ball.x, ball.y); Object.assign(ghost, { radius: ball.radius, world: ball.world, maxSpeed: ball.maxSpeed, vx: ball.vx, vy: ball.vy, curl: ball.curl });
+      c.beginPath(); c.moveTo(ghost.x, ghost.y);
+      for (let step = 0; step < 36 && Math.hypot(ghost.vx, ghost.vy) > 35; step++) { ghost.update(1 / 30); c.lineTo(ghost.x, ghost.y); }
+      c.setLineDash([4, 7]); c.lineWidth = 2; c.strokeStyle = 'rgba(220,245,229,.33)'; c.stroke(); c.setLineDash([]); return;
+    }
     const drag = .72, t = Math.min(1.25, Math.log(1 + speed * drag / 95) / drag), steps = 18;
     c.beginPath();
     for (let i = 0; i <= steps; i++) { const time = t * i / steps, x = ball.x + ball.vx * (1 - Math.exp(-drag * time)) / drag, y = ball.y + ball.vy * (1 - Math.exp(-drag * time)) / drag; if (i === 0) c.moveTo(x, y); else c.lineTo(x, y); }
     c.setLineDash([4, 7]); c.lineWidth = 2; c.strokeStyle = 'rgba(220,245,229,.33)'; c.stroke(); c.setLineDash([]);
   }
-  drawShotPreview(c, player, ball, position) {
+  drawShotPreview(c, player, ball, position, curve = false) {
     const powered = player.powerCooldown <= 0;
     const shot = predictShot(player, ball, null, powered ? 1.45 : 1);
     if (!shot) return;
     const ghost = new Ball(ball.x, ball.y); ghost.radius = ball.radius; ghost.world = ball.world; ghost.maxSpeed = ball.maxSpeed; ghost.vx = shot.vx; ghost.vy = shot.vy;
+    // Holding the curve key (Shift / C): show the bent path of the curved shot.
+    ghost.curl = curve ? curveFor(player, ball, shot) : 0;
     const offsetX = position[0] - ball.x, offsetY = position[1] - ball.y;
     c.save(); c.beginPath(); c.moveTo(...position);
     let previousX = ghost.x, previousY = ghost.y;
@@ -246,7 +255,7 @@ export class Renderer {
       c.lineTo(ghost.x + offsetX, ghost.y + offsetY);
       if (goal) break;
     }
-    c.setLineDash([6, 6]); c.strokeStyle = powered ? '#ffbc70cc' : '#b2f6d6cc'; c.lineWidth = 2; c.stroke(); c.setLineDash([]);
+    c.setLineDash(curve ? [3, 5] : [6, 6]); c.strokeStyle = curve ? (powered ? '#ffd56bdd' : '#9fd2ffdd') : powered ? '#ffbc70cc' : '#b2f6d6cc'; c.lineWidth = 2; c.stroke(); c.setLineDash([]);
     const angle = Math.atan2(ghost.y - previousY, ghost.x - previousX), x = ghost.x + offsetX, y = ghost.y + offsetY;
     c.beginPath(); c.moveTo(x - Math.cos(angle - .5) * 10, y - Math.sin(angle - .5) * 10); c.lineTo(x, y); c.lineTo(x - Math.cos(angle + .5) * 10, y - Math.sin(angle + .5) * 10); c.stroke(); c.restore();
   }

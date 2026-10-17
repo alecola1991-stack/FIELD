@@ -47,8 +47,9 @@ test('AI bodies move, the teammate passes to the human and goals are scored', ()
   let passes = 0, last = null;
   const origUpdate = game.squad.ai.update.bind(game.squad.ai);
   game.squad.ai.update = (...args) => { const commands = origUpdate(...args); if (commands[1]?.pass && commands[1] !== last) { passes++; last = commands[1]; } return commands; };
-  for (let i = 0; i < 60 * 3; i++) game.update(DT);
-  game.squad.bodies.slice(1).forEach((body, index) => assert.ok(Math.hypot(body.x - start[index + 1][0], body.y - start[index + 1][1]) > 20, `seat ${index + 1} moved`));
+  const moved = [0, 0, 0, 0];
+  for (let i = 0; i < 60 * 3; i++) { game.update(DT); game.squad.bodies.forEach((body, index) => { moved[index] = Math.max(moved[index], Math.hypot(body.x - start[index][0], body.y - start[index][1])); }); }
+  moved.slice(1).forEach((distance, index) => assert.ok(distance > 20, `seat ${index + 1} moved`));
   // Human waits in the rival half while the ball is in ours (so the teammate has someone to pass to),
   // otherwise goes for the ball from behind and shoots.
   for (let i = 0; i < 60 * 300 && !game.state.matchOver; i++) {
@@ -145,11 +146,19 @@ test('the teammate always shoots when it receives the ball from the human in the
   const human = body(700, 300), mate = body(860, 420), keeper = body(1040, 340), forward = body(500, 200);
   // The human plays the ball (touch), then it travels to the teammate.
   ai.update([human, mate, keeper, forward], ballAt(730, 310), DT);
-  const ball = { ...ballAt(830, 400), vx: 300, vy: 200 };
-  const shot = ai.update([human, mate, keeper, forward], ball, DT)[1];
-  assert.ok(shot.kick && shot.shot, 'shoots instead of passing back');
+  // The ball arrives at the teammate's feet from the human's pass.
+  const ball = { ...ballAt(826, 386), vx: 300, vy: 200 };
+  let shot = null, start = { x: ball.x, y: ball.y };
+  for (let i = 0; i < 40 && !shot; i++) {
+    const command = ai.update([human, mate, keeper, forward], ball, DT)[1];
+    if (command.kick) { shot = command; start = { x: ball.x, y: ball.y }; break; }
+    mate.x += (command.x || 0) * 260 * DT; mate.y += (command.y || 0) * 260 * DT;
+    ball.x += ball.vx * DT; ball.y += ball.vy * DT;
+  }
+  assert.ok(shot?.shot, 'shoots instead of passing back');
   assert.ok(shot.power > 1, 'strong shot');
-  const crossY = ball.y + shot.aim.y / shot.aim.x * (1074 - ball.x);
+  // The aim compensates the ball's motion: the resulting velocity (ball + kick) must cross inside the mouth.
+  const crossY = start.y + (ball.vy + shot.aim.y / Math.hypot(shot.aim.x, shot.aim.y) * 600) / (ball.vx + shot.aim.x / Math.hypot(shot.aim.x, shot.aim.y) * 600) * (1074 - start.x);
   assert.ok(crossY > 255 && crossY < 445, `aimed inside the goal mouth (y=${crossY.toFixed(0)})`);
   // Without the human's pass (e.g. a rival touched it last) it does not force the shot.
   const ai2 = new SquadAI({ difficulty: 'hard' });

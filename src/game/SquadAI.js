@@ -67,7 +67,24 @@ export class SquadAI {
       if (ball.y < world.top + edge && aim.y < 0) aim.y = Math.abs(aim.x) * .35;
       if (ball.y > world.bottom - edge && aim.y > 0) aim.y = -Math.abs(aim.x) * .35;
     }
+    // The teammate aims where it wants the ball to go: correct for the ball's and its own motion.
+    const mateCommand = commands[1];
+    if (mateCommand?.kick && mateCommand.aim && !mateCommand.compensated) mateCommand.aim = this.compensateAim(bodies[1], ball, mateCommand.aim, mateCommand.power ?? 1);
     return commands;
+  }
+
+  // A kick adds to the ball's current velocity (and a bit of the kicker's), see predictShot. To send the
+  // ball along `aim`, kick in the direction that cancels that drift.
+  compensateAim(body, ball, aim, power = 1) {
+    const d = unit(aim.x, aim.y);
+    const gap = Math.max(0, dist(body, ball) - body.radius - ball.radius), proximity = clamp(1 - gap / 42, 0, 1);
+    const move = Math.hypot(body.vx || 0, body.vy || 0);
+    const strength = (365.5 + Math.min(76.5, move * .17)) * power * (1 + (power > 1 ? .30 : .25) * proximity) * (body.shotPower || 1);
+    const wx = (ball.vx || 0) + (body.vx || 0) * .187, wy = (ball.vy || 0) + (body.vy || 0) * .187;
+    const along = d.x * wx + d.y * wy, disc = along * along - (wx * wx + wy * wy) + strength * strength;
+    if (disc <= 0) return aim;
+    const k = along + Math.sqrt(disc);
+    return { x: (k * d.x - wx) / strength, y: (k * d.y - wy) / strength };
   }
 
   // Who touched the ball last (seat index) and who before them, to know when a ball comes from the human.
@@ -79,19 +96,24 @@ export class SquadAI {
   }
 
   // Best direct shot at the right goal: the aim point (near post, centre, far post) whose lane is clearest.
-  shotLine(ball, rivals, world) {
+  shotLine(ball, rivals, world, minMargin = -6, shotSpeed = 820) {
+    // Aim points along the goal mouth (keeping clear of the posts). Each rival gets a reach: how far it can
+    // move before the ball passes it. The best aim is the one that beats every rival by the widest margin.
+    const clearance = ball.radius + (world.goalPostRadius || 6) + 10;
     let best = null;
-    for (const y of [world.goalTop + 20, world.height / 2, world.goalBottom - 20]) {
-      const aim = { x: world.right + 4, y };
-      if (!this.laneOpen(ball, aim, rivals, 14)) continue;
-      const lx = aim.x - ball.x, ly = aim.y - ball.y, length2 = lx * lx + ly * ly || 1;
-      const clearance = Math.min(...rivals.map(rival => {
+    for (let y = world.goalTop + clearance; y <= world.goalBottom - clearance + .1; y += 12) {
+      const aim = { x: world.right + 6, y };
+      const lx = aim.x - ball.x, ly = aim.y - ball.y, length = Math.hypot(lx, ly) || 1, length2 = length * length;
+      let margin = Infinity;
+      for (const rival of rivals) {
         const t = clamp(((rival.x - ball.x) * lx + (rival.y - ball.y) * ly) / length2, 0, 1);
-        return Math.hypot(ball.x + lx * t - rival.x, ball.y + ly * t - rival.y);
-      }));
-      if (!best || clearance > best.clearance) best = { aim: { x: lx, y: ly }, clearance };
+        const gap = Math.hypot(ball.x + lx * t - rival.x, ball.y + ly * t - rival.y) - rival.radius - ball.radius;
+        const reach = (BOT_LEVELS[this.difficulty]?.speed || 220) * .85 * (t * length / shotSpeed) + 4;
+        margin = Math.min(margin, gap - reach);
+      }
+      if (!best || margin > best.margin) best = { aim: { x: lx, y: ly }, margin };
     }
-    return best;
+    return best && best.margin > minMargin ? best : null;
   }
 
   // Four bodies can trap the ball against a wall or in a corner. When it has barely
@@ -173,12 +195,55 @@ export class SquadAI {
     const nearestRival = rivals.reduce((best, rival) => dist(rival, ball) < dist(best, ball) ? rival : best, rivals[0]);
 
     // A ball from the human in the rival half with a shot on: always shoot, first time or after the first touch.
-    const fromHuman = (this.lastToucher === 0 && humanBall > human.radius + ball.radius + 20) || (this.lastToucher === 1 && this.prevToucher === 0 && this.touchTime < 1.2);
+    const fromHuman = (this.lastToucher === 0 && humanBall > human.radius + ball.radius + 20) || (this.lastToucher === 1 && this.prevToucher === 0 && this.touchTime < 2);
+    // Receiving the human's pass in the rival half: stand beside the line, on the side away from goal, so the ball
+    // runs past the body (not into it) and can be struck first time towards goal.
+    const passSpeed = Math.hypot(ball.vx, ball.vy);
+    if (this.lastToucher === 0 && humanBall > human.radius + ball.radius + 20 && passSpeed > 150 && !canKickBall(mate, ball)) {
+      const path = { x: ball.vx / passSpeed, y: ball.vy / passSpeed };
+      const along = (mate.x - ball.x) * path.x + (mate.y - ball.y) * path.y;
+      const meet = { x: ball.x + path.x * along, y: ball.y + path.y * along };
+      const inside = meet.x > W / 2 && meet.x < world.right - 30 && meet.y > world.top + 30 && meet.y < world.bottom - 30;
+      if (along > 40 && dist(mate, meet) < 130 && inside) {
+        const toGoal = unit(world.right + 4 - meet.x, centerY - meet.y);
+        let side = { x: -path.y, y: path.x };
+        if (side.x * toGoal.x + side.y * toGoal.y > 0) side = { x: -side.x, y: -side.y };
+        const offset = mate.radius + ball.radius + 8;
+        return this.moveTo(mate, { x: meet.x + side.x * offset, y: meet.y + side.y * offset }, speed, 3);
+      }
+    }
     if (fromHuman && ball.x > W / 2 && canKickBall(mate, ball) && mate.shotCooldown <= 0) {
-      const shot = this.shotLine(ball, rivals, world);
+      const shot = this.shotLine(ball, rivals, world, -30);
       if (shot) {
-        const error = (MATE_ERROR[this.mateLevel] ?? 20) * 1.6, aim = { x: shot.aim.x, y: shot.aim.y + (this.random() - .5) * error };
-        this.lastShot = { fromHuman: true }; return { x: 0, y: 0, speed, kick: true, aim, power: 1.25, shot: true };
+        // Timing: let an incoming ball come onto the foot (full power, clean contact) unless a rival is closing in.
+        const gap = mateBall - mate.radius - ball.radius;
+        const incoming = ((ball.vx - (mate.vx || 0)) * (mate.x - ball.x) + (ball.vy - (mate.vy || 0)) * (mate.y - ball.y)) / (mateBall || 1);
+        const pressure = rivals.some(rival => dist(rival, ball) < rival.radius + ball.radius + 55);
+        // Hold still (stepping into it makes the ball bounce off the body) and strike one frame before contact.
+        if (gap > 14 + incoming * dt * 2.5 && incoming > 60 && !pressure) return { x: 0, y: 0, speed: 0, kick: false };
+        // Aim error is applied at the goal mouth, so better levels pick their corner.
+        const error = (MATE_ERROR[this.mateLevel] ?? 20) * .8, safe = ball.radius + (world.goalPostRadius || 6) + 6;
+        const target = { x: ball.x + shot.aim.x, y: clamp(ball.y + shot.aim.y + (this.random() - .5) * error, world.goalTop + safe, world.goalBottom - safe) };
+        const aim = this.compensateAim(mate, ball, { x: target.x - ball.x, y: target.y - ball.y }, 1.45);
+        // The kick must send the ball away from the body; otherwise get behind the ball first.
+        const away = unit(ball.x - mate.x, ball.y - mate.y), dir = unit(aim.x, aim.y);
+        if (dir.x * away.x + dir.y * away.y < .3) {
+          const toGoal = unit(world.right + 4 - ball.x, world.height / 2 - ball.y), contact = mate.radius + ball.radius + 4;
+          const ballSpeed = Math.hypot(ball.vx, ball.vy);
+          // Ball running past the body towards goal: step out of its path if needed, then wait for it to come by.
+          if (ballSpeed > 110 && ball.vx * toGoal.x + ball.vy * toGoal.y > -.2 * ballSpeed) {
+            const path = { x: ball.vx / ballSpeed, y: ball.vy / ballSpeed };
+            const side = (mate.x - ball.x) * -path.y + (mate.y - ball.y) * path.x, ahead = (mate.x - ball.x) * path.x + (mate.y - ball.y) * path.y;
+            if (ahead > 0 && Math.abs(side) < mate.radius + ball.radius + 2) {
+              const sign = side >= 0 ? 1 : -1;
+              return this.moveTo(mate, { x: mate.x - path.y * sign * 40, y: mate.y + path.x * sign * 40 }, speed, 4);
+            }
+            if (ahead > -mate.radius) return { x: 0, y: 0, speed: 0, kick: false };
+          }
+          return this.moveTo(mate, { x: ball.x - toGoal.x * contact, y: ball.y - toGoal.y * contact }, speed, 8);
+        }
+        this.lastShot = { fromHuman: true };
+        return { x: 0, y: 0, speed, kick: true, aim, power: 1.45, shot: true, compensated: true };
       }
     }
 
@@ -215,6 +280,22 @@ export class SquadAI {
         return this.moveTo(mate, { x: ball.x - forward.x * (mate.radius + ball.radius + 4), y: ball.y - forward.y * (mate.radius + ball.radius + 4) }, speed, 10);
       }
       const decision = unmirror(this.mateBot.update(mirror(mate, W), mirror(ball, W), mirror(nearestRival, W), dt));
+      const shooting = decision.kick && decision.kickDirection && decision.kickDirection.x > 0
+        && Math.abs(ball.y + decision.kickDirection.y / decision.kickDirection.x * (world.right - ball.x) - centerY) < (world.goalBottom - world.goalTop) / 2 + 40;
+      if (shooting) {
+        // Its own shots: pick the corner the keeper cannot reach; with no real chance, keep the ball and open an angle.
+        const shot = this.shotLine(ball, rivals, world);
+        if (shot) {
+          const error = (MATE_ERROR[this.mateLevel] ?? 20) * .8, safe = ball.radius + (world.goalPostRadius || 6) + 6;
+          const target = { x: ball.x + shot.aim.x, y: clamp(ball.y + shot.aim.y + (this.random() - .5) * error, world.goalTop + safe, world.goalBottom - safe) };
+          return { x: 0, y: 0, speed, kick: true, aim: { x: target.x - ball.x, y: target.y - ball.y }, power: 1.35, shot: true };
+        }
+        if (ball.x > W * .6) {
+          const keeper = rivals.reduce((best, rival) => rival.x > best.x ? rival : best, rivals[0]);
+          const side = ball.y >= keeper.y ? 1 : -1;
+          return this.moveTo(mate, { x: ball.x - 24, y: clamp(ball.y - side * 30, world.top + 40, world.bottom - 40) }, speed, 8);
+        }
+      }
       return { x: decision.x, y: decision.y, speed: decision.speedMultiplier ?? speed, kick: !!decision.kick, aim: decision.kickDirection, power: 1 };
     }
 

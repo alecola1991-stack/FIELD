@@ -4,6 +4,29 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-17 · Claude · AdSense (fase 2): banner en la portada y laterales en los partidos
+**Commit:** rama `anuncios`
+**Archivos:** `src/ui/Ads.js` (nuevo), `src/ui/UI.js`, `src/styles.css`
+**Qué y por qué:** Ale creó los bloques «Portada» (`1179611412`) y «Laterales partido» (`2319187280`) y quiere los anuncios en la portada y a los lados del campo durante los partidos.
+**Cómo:**
+- Nuevo `src/ui/Ads.js`, con la clase `Ads`. `UI.show(view)` la crea y llama a `ads.update(view, game.renderer)` en cada cambio de vista.
+  - Solo se activa si existe el `<script adsbygoogle.js>` (que inyecta Vite en la web), no estamos en modo `desktop` y el navegador no es Electron.
+- Cada hueco es un `<aside class="ad-slot">` con la etiqueta «PUBLICIDAD» y un `<ins class="adsbygoogle" data-full-width-responsive="false">`.
+  - `push({})` se hace una sola vez, la primera vez que el hueco es visible y tiene tamaño.
+  - Si AdSense lo deja vacío (`data-ad-status="unfilled"`), por ejemplo antes de la aprobación o con un bloqueador, el hueco se oculta.
+- Portada (`.home-ad`, formato horizontal):
+  - Va bajo el menú: 728×90 en PC, 728×60 en pantallas de menos de 860 px de alto y 320×100 en móvil.
+  - Mientras está visible, las baldosas del menú se compactan un poco.
+  - En PC, si con el banner la portada tuviera scroll, el banner no se muestra.
+- Partido (`.match-rail.left/.right`, formato vertical):
+  - Va dentro de `.field-wrap`, en el margen libre entre el borde del canvas y el campo (`renderer.ox / dpr`). Ancho entre 120 y 300 px, alto hasta 600 px.
+  - Solo se muestra si caben al menos 120 px, en horizontal y sin pantalla táctil. El campo no se encoge.
+  - Resultado: hay laterales en 1920×1000 (153 px) y 2560 (210 px), pero no en 1366×768, porque solo quedan 100 px.
+  - Los overlays de pausa y resultado quedan por encima.
+**Para el otro asistente:** no metas anuncios sobre el canvas ni junto a los controles, porque AdSense penaliza los clics accidentales. Los ID de bloque están en `AD_SLOTS`.
+
+---
+
 ## 2026-10-17 · Claude · AdSense (fase 1): script, ads.txt y política de privacidad
 **Commit:** fusionado en main (rama `adsense`, merge 34752f1). Para deshacerlo: `git revert -m 1 34752f1`
 **Archivos:** `vite.config.js`, `public/ads.txt`, `public/privacidad.html`, `index.html`, `src/styles.css`

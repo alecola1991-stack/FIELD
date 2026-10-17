@@ -271,12 +271,22 @@ export class Renderer {
   drawBall(c, ball, position = null) {
     const [x, y] = position || this.smooth(ball), r = ball.radius;
     c.save(); c.translate(x, y); if (this.rotated) c.rotate(Math.PI / 2); c.fillStyle = '#0007'; c.beginPath(); c.ellipse(2, 5, r * 1.08, r * .76, 0, 0, Math.PI * 2); c.fill();
-    c.rotate(ball.spin); c.scale(1 + ball.kickScale * .16, 1 - ball.kickScale * .12);
-    const sizeScale = r / 12;
-    const [ballColor, patchColor, glow] = ['#e8eee9', '#23352d', '#e9f4ee70'];
-    c.shadowColor = glow; c.shadowBlur = 9; c.fillStyle = ballColor; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill(); c.shadowBlur = 0;
-    c.fillStyle = patchColor; c.beginPath(); c.arc(0, 0, 3.3 * sizeScale, 0, Math.PI * 2); c.fill();
-    for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5; c.beginPath(); c.arc(Math.cos(a) * 7 * sizeScale, Math.sin(a) * 7 * sizeScale, 2.1 * sizeScale, 0, Math.PI * 2); c.fill(); }
+    c.scale(1 + ball.kickScale * .16, 1 - ball.kickScale * .12);
+    // Plain white ball with relief: fixed light from the top-left, soft shade at the bottom-right.
+    c.shadowColor = '#e9f4ee70'; c.shadowBlur = 9;
+    const body = c.createRadialGradient(-r * .38, -r * .42, r * .08, 0, 0, r * 1.05);
+    body.addColorStop(0, '#ffffff'); body.addColorStop(.45, '#f1f5f2'); body.addColorStop(.82, '#cdd6d1'); body.addColorStop(1, '#a9b5af');
+    c.fillStyle = body; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill(); c.shadowBlur = 0;
+    // Faint seams turn with the ball so its spin stays visible.
+    c.save(); c.beginPath(); c.arc(0, 0, r - .5, 0, Math.PI * 2); c.clip(); c.rotate(ball.spin);
+    c.strokeStyle = 'rgba(120,138,130,.32)'; c.lineWidth = Math.max(.8, r * .07); c.beginPath();
+    c.arc(-r * 1.15, 0, r * .95, -.9, .9); c.arc(r * 1.15, 0, r * .95, Math.PI - .9, Math.PI + .9);
+    c.stroke(); c.restore();
+    // Specular highlight and a thin rim.
+    const shine = c.createRadialGradient(-r * .42, -r * .46, 0, -r * .42, -r * .46, r * .55);
+    shine.addColorStop(0, 'rgba(255,255,255,.95)'); shine.addColorStop(1, 'rgba(255,255,255,0)');
+    c.fillStyle = shine; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = 'rgba(70,90,80,.35)'; c.lineWidth = 1; c.beginPath(); c.arc(0, 0, r - .5, 0, Math.PI * 2); c.stroke();
     c.restore();
   }
   drawTrajectory(c, ball) {

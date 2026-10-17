@@ -4,6 +4,22 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-17 · Claude · Balón blanco con relieve, sin manchas negras
+**Commit:** rama `balon-relieve`
+**Archivos:** `src/game/Renderer.js`, `src/ui/MenuBackdrop.js`
+**Qué y por qué:** Ale pidió darle un poco de relieve al balón y quitarle las manchas negras.
+**Cómo:**
+- `Renderer.drawBall`:
+  - Se eliminan los 6 parches oscuros.
+  - El cuerpo es un gradiente radial blanco que pasa a gris, con la luz fija arriba a la izquierda (no gira con el balón).
+  - Lleva un brillo especular y un borde fino.
+  - Dos costuras gris claro muy sutiles sí giran con `ball.spin`, para que se siga viendo el giro.
+  - La sombra en el suelo y el estirado de `kickScale` se mantienen.
+- `MenuBackdrop.drawBall` (el balón del fondo de los menús): el mismo aspecto, sin manchas.
+**Para el otro asistente:** —
+
+---
+
 ## 2026-10-17 · Claude · Césped: tonos menos intensos
 **Commit:** fusionado en main (rama `cesped-suave`, merge ba58b39). Para deshacerlo: `git revert -m 1 ba58b39`
 **Archivos:** `src/game/Renderer.js`

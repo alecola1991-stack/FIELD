@@ -14,7 +14,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 - `public/privacidad.html`: página estática con la política de privacidad. Cubre el almacenamiento local, la cuenta en Supabase y el inicio de sesión con Google, las cookies de AdSense, el aviso de consentimiento, los derechos RGPD y la AEPD.
 - `index.html`: enlace «PRIVACIDAD» en el pie de la portada (`.footer-link`).
 **Para el otro asistente:**
-- Falta el correo de contacto: en `privacidad.html` aparece como `CONTACTO_PENDIENTE`. No fusionar a main sin él.
+- El correo de contacto de la política es el que dio Ale.
 - Fase 2, pendiente: los huecos `<ins class="adsbygoogle">` de la portada y de los laterales del partido. Necesitan los `data-ad-slot` que Ale creará en AdSense.
 
 ---

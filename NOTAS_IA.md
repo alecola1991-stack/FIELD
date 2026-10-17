@@ -4,6 +4,19 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-17 · Claude · Balón amarillo plano
+**Commit:** rama `balon-plano`
+**Archivos:** `src/game/Renderer.js`, `src/ui/MenuBackdrop.js`
+**Qué y por qué:** Ale pidió que el balón fuera de un amarillo fuerte y plano, sin brillo ni detalles.
+**Cómo:**
+- `drawBall` dibuja un círculo relleno con el color `BALL_COLOR` (`#ffd400`, constante exportada de `Renderer.js`).
+- Se quitan el gradiente, las costuras, el brillo, el borde y el halo.
+- Se mantienen la sombra en el césped y el estirado al chutar (`kickScale`).
+- El balón del fondo de los menús usa el mismo color.
+**Para el otro asistente:** con el balón liso ya no se ve el giro (`spin`), pero `spin` se sigue calculando.
+
+---
+
 ## 2026-10-17 · Claude · Balón amarillo y red que se deforma con el gol
 **Commit:** fusionado en main (rama `balon-amarillo-red`, merge 496d873). Para deshacerlo: `git revert -m 1 496d873`
 **Archivos:** `src/game/Renderer.js`, `src/game/Physics.js`, `src/game/Game.js`, `src/ui/MenuBackdrop.js`, `tests/CurveShot.test.js`

@@ -81,13 +81,8 @@ export class MenuBackdrop {
     const r = Math.max(8, Math.min(this.width, this.height) * .015);
     c.save(); c.translate(x, y); c.globalAlpha = .18;
     c.fillStyle = '#000'; c.beginPath(); c.ellipse(2, r * .55, r * 1.15, r * .7, 0, 0, Math.PI * 2); c.fill();
-    // Same look as the match ball: yellow with relief, no dark patches.
-    c.shadowColor = '#ffe27a'; c.shadowBlur = 12;
-    const body = c.createRadialGradient(-r * .38, -r * .42, r * .08, 0, 0, r * 1.05);
-    body.addColorStop(0, '#fff9cf'); body.addColorStop(.5, '#ffe34d'); body.addColorStop(1, '#c4930c');
-    c.fillStyle = body; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill(); c.shadowBlur = 0;
-    c.rotate(entity.spin); c.strokeStyle = 'rgba(150,105,10,.42)'; c.lineWidth = Math.max(.8, r * .07); c.beginPath();
-    c.arc(-r * 1.15, 0, r * .95, -.9, .9); c.arc(r * 1.15, 0, r * .95, Math.PI - .9, Math.PI + .9); c.stroke();
+    // Same look as the match ball: flat strong yellow.
+    c.fillStyle = '#ffd400'; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill();
     c.restore();
   }
 }

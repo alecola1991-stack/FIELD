@@ -4,6 +4,28 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-17 · Claude · Fondos animados en el inicio y en los submenús
+**Commit:** rama `fondos-animados`
+**Archivos:** `src/ui/MenuBackdrop.js` (reescrito), `src/ui/UI.js`, `src/styles.css`
+**Qué y por qué:** Ale pidió mejorar el fondo animado del menú principal y añadir animaciones de fondo en Jugar, Online, Ajustes, Champions y Liga.
+**Cómo:**
+- `MenuBackdrop` usa un solo canvas con escenas:
+  - `setScene(scene, host)` mueve el canvas a la pantalla visible (lo pone como primer hijo con `prepend`) y prepara la escena.
+  - `setActive()` funciona igual que antes: 30 fps y un frame quieto si el usuario tiene `prefers-reduced-motion`.
+- Escenas:
+  - `home`: jugadores que se pasan el balón amarillo en arco con estela; uno de cada cuatro pases es un tiro, y la portería tenue se ilumina con chispas. También líneas de campo y haces de luz.
+  - `play`: líneas de velocidad, jugadores con estela y tiros con trayectoria discontinua.
+  - `online`: red de nodos, conexiones por proximidad y paquetes de luz que viajan entre ellos.
+  - `settings`: engranajes girando y deslizadores en movimiento.
+  - `champions`: estrellas titilando, confeti dorado, focos y una copa grande y tenue. Se usa en la pantalla `tournament`, así que vale para todas las copas.
+  - `league`: barras de clasificación que cambian, líneas de campo, jugadores y balones.
+- `UI.show(view)`: el mapa `{ home, play, online, settings, tournament → champions, league }` decide la escena. En el resto de vistas el fondo se detiene.
+- CSS: en los submenús el canvas va con `z-index: -1` dentro de la pantalla (`isolation: isolate`), detrás del contenido, al 55 % de opacidad; en la portada, al 50 %.
+- Arreglo de paso en los anuncios: la etiqueta «PUBLICIDAD» solo se ve cuando el hueco tiene un anuncio servido (`data-ad-status="filled"`).
+**Para el otro asistente:** para añadir una escena, añade un `case` en `build`, `update` y `draw` y una entrada en el mapa de `UI.show`.
+
+---
+
 ## 2026-10-17 · Claude · AdSense (fase 2): banner en la portada y laterales en los partidos
 **Commit:** fusionado en main (rama `anuncios`, merge 42f420f). Para deshacerlo: `git revert -m 1 42f420f`
 **Archivos:** `src/ui/Ads.js` (nuevo), `src/ui/UI.js`, `src/styles.css`

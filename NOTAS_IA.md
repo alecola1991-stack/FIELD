@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · Fondos animados en el inicio y en los submenús
-**Commit:** rama `fondos-animados`
+**Commit:** fusionado en main (rama `fondos-animados`, merge 8bfd45d). Para deshacerlo: `git revert -m 1 8bfd45d`
 **Archivos:** `src/ui/MenuBackdrop.js` (reescrito), `src/ui/UI.js`, `src/styles.css`
 **Qué y por qué:** Ale pidió mejorar el fondo animado del menú principal y añadir animaciones de fondo en Jugar, Online, Ajustes, Champions y Liga.
 **Cómo:**

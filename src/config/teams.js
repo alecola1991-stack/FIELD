@@ -1,3 +1,4 @@
+import { MORE_NATIONAL_GROUPS, MORE_NATIONAL_ROWS } from './teams-nations.js';
 import { MORE_LEAGUES, MORE_COUNTRIES, MORE_TEAM_ROWS, MORE_FOUR_STAR } from './teams-more.js';
 
 // Current first-division club selector. Only names and color palettes are used;
@@ -40,6 +41,7 @@ export const FEDERATION_LEAGUE_IDS = new Set(TEAM_LEAGUES.filter(league => leagu
 export const NATIONAL_GROUPS = [
   { id: 'europe', label: 'Europa · Selecciones', type: 'national' },
   { id: 'america', label: 'América · Selecciones', type: 'national' },
+  ...MORE_NATIONAL_GROUPS,
 ];
 
 export const HONORARY_GROUPS = [
@@ -59,7 +61,7 @@ export const TEAM_COUNTRIES = [
   { id: 'portugal', label: 'Portugal', groups: ['liga-portugal'] },
   { id: 'belgium', label: 'Bélgica', groups: ['belgian-pro'] },
   { id: 'turkey', label: 'Turquía', groups: ['super-lig'] },
-  { id: 'national', label: 'Selecciones', groups: ['europe', 'america'] },
+  { id: 'national', label: 'Selecciones', groups: ['europe', 'america', 'africa', 'asia', 'oceania'] },
   { id: 'honorary', label: 'Honoríficos', groups: ['honorificos'] },
 ];
 // New divisions join their country; new countries go after the club countries (before national teams).
@@ -323,7 +325,10 @@ export const NATIONAL_TEAMS = [
     ['jamaica', 'Jamaica', '#16824E', '#F0C72E'], ['panama', 'Panamá', '#D83B45', '#1765A8'],
     ['honduras', 'Honduras', '#1765A8', '#F4F2E9'], ['guatemala', 'Guatemala', '#79BCE8', '#F4F2E9'],
   ]),
+  // The rest of FIFA's member associations (stars set below from each row).
+  ...Object.entries(MORE_NATIONAL_ROWS).flatMap(([group, rows]) => national(group, rows)),
 ];
+const EXTRA_NATIONAL_STARS = new Map(Object.entries(MORE_NATIONAL_ROWS).flatMap(([group, rows]) => rows.map(row => [`${group}-${row[0]}`, row[4]])));
 
 export const HONORARY_TEAMS = [
   { id: 'honor-cd-san-fernando-1940', name: 'CD San Fernando 1940', league: 'honorificos', type: 'honorary', primary: '#1769AA', secondary: '#FFFFFF', stars: 3 },
@@ -510,6 +515,7 @@ for (const team of [...TEAMS, ...NATIONAL_TEAMS]) {
   // New leagues: by division (3 / 2 / 1 stars), with the best-known clubs at 4.
   const extra = MORE_LEAGUES.find(league => league.id === team.league);
   if (extra) team.stars = MORE_FOUR_STAR.includes(team.id) ? 4 : extra.tier === 1 ? 3 : extra.tier === 2 ? 2 : 1;
+  if (EXTRA_NATIONAL_STARS.has(team.id)) team.stars = EXTRA_NATIONAL_STARS.get(team.id);
 }
 
 export const TEAM_GROUPS = [...TEAM_LEAGUES, ...NATIONAL_GROUPS, ...HONORARY_GROUPS];

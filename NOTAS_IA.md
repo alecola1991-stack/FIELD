@@ -4,6 +4,29 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-17 · Claude · Las 211 selecciones de la FIFA
+**Commit:** rama `todas-selecciones`
+**Archivos:** `src/config/teams-nations.js` (nuevo), `src/config/teams.js`, `src/game/Competitions.js`, `tests/MoreLeagues.test.js`
+**Qué y por qué:** Ale pidió añadir todas las selecciones. Antes había 42, de Europa y América.
+**Cómo:**
+- `teams-nations.js` añade 169 selecciones con nombre en español, colores y estrellas (de 1 a 4) en `MORE_NATIONAL_ROWS`. También define los grupos nuevos `africa`, `asia` y `oceania` (`MORE_NATIONAL_GROUPS`).
+- Reparto por grupo:
+  - `europe` = UEFA, 55.
+  - `america` = CONMEBOL + CONCACAF, 45.
+  - `africa` = CAF, 54.
+  - `asia` = AFC, 46.
+  - `oceania` = OFC, 11.
+  - Total: 211, todas las federaciones miembro de la FIFA.
+- `teams.js`: el país «Selecciones» tiene ahora 5 grupos. Las estrellas de las selecciones nuevas salen de su fila; las 42 antiguas no cambian.
+- `createInternationalDraw`:
+  - Usa `strongestPick`, que elige por estrellas más un factor aleatorio, para que las fuertes clasifiquen más a menudo sin dejar fuera las sorpresas.
+  - Eurocopa: 15 rivales europeos. Copa América: 15 rivales americanos.
+  - Mundial: 16 selecciones con cupos por continente (`WORLD_CUP_QUOTAS`: Europa 5, América 4, África 3, Asia 3, Oceanía 1), proporcionales al Mundial de 48. La selección del jugador ocupa una plaza del cupo de su grupo.
+- Nueva descripción del Mundial: «16 selecciones de los cinco continentes».
+**Para el otro asistente:** los ids de las selecciones nuevas son `<grupo>-<país>`, por ejemplo `africa-morocco` o `asia-japan`.
+
+---
+
 ## 2026-10-17 · Claude · Más ligas: segundas y terceras divisiones y 8 países nuevos
 **Commit:** fusionado en main (rama `mas-ligas`, merge 6a275b0). Para deshacerlo: `git revert -m 1 6a275b0`
 **Archivos:** `src/config/teams-more.js` (nuevo), `src/config/teams.js`, `src/game/Competitions.js`, `src/game/Renderer.js`, `src/ui/UI.js`, `src/styles.css`, `tests/MoreLeagues.test.js` (nuevo)

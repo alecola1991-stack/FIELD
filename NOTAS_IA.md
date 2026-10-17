@@ -4,6 +4,19 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-17 · Claude · Dificultad propia para la IA compañera
+**Commit:** rama `dificultad-companera` (pendiente de aprobación de Ale)
+**Archivos:** `index.html`, `src/styles.css`, `src/ui/UI.js`, `src/config/settings.js`, `src/game/Game.js`, `src/game/SquadAI.js`, `tests/Duo.test.js`
+**Qué y por qué:** Ale quiere elegir la dificultad de su IA compañera aparte de la del rival.
+**Cómo:**
+- Ajuste nuevo `settings.mateDifficulty` (por defecto 'normal'). Se elige con un selector «IA COMPAÑERA» (`[data-mate-difficulty]`) dentro del bloque de formato de Partido rápido, Liga y Copas, visible solo con 2v2 (clase `.is-duo`).
+- Se desbloquea con los mismos niveles que la dificultad del rival. `UI.mateDifficulty()` devuelve la elegida o, si está bloqueada, Avanzado.
+- Se pasa como `options.mateDifficulty` al empezar cada partido (también en ligas y copas, con el valor actual). `Game.setupDuo(..., mateLevel)` la entrega a `SquadAI({ mateLevel })`.
+- Con su nivel cambian la velocidad, la IA de regate y tiro, y la precisión de pases y tiros de la compañera (`MATE_ERROR`).
+- La etiqueta del partido muestra «2 CONTRA 2 · IA <nivel> ·».
+**Para el otro asistente:** sin SQL.
+
+
 ## 2026-10-17 · Claude · La compañera siempre tira si recibe del jugador en campo rival
 **Commit:** fusionado en main (rama `ia-tiro-tras-pase`, merge 7e498fa). Para deshacerlo: `git revert -m 1 7e498fa`
 **Archivos:** `src/game/SquadAI.js`, `tests/Duo.test.js`

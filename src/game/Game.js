@@ -59,7 +59,7 @@ export class Game {
     if (this.bot && mode === 'online') this.bot.faceX = this.localSide === 'left' ? -1 : 1;
     this.squad = null; this.others = [];
     if (mode === 'online' && options.squad) this.setupSquad(options.squad);
-    else if (options.duo && this.bot && !['training', 'legends', 'online'].includes(mode)) this.setupDuo(team, opponentTeam, difficulty, opponentName, opponentNumber);
+    else if (options.duo && this.bot && !['training', 'legends', 'online'].includes(mode)) this.setupDuo(team, opponentTeam, difficulty, opponentName, opponentNumber, options.mateDifficulty);
     this.ball.reset(WORLD.width / 2, WORLD.height / 2); this.goalResetTimer = 0; this.last = 0;
     this.applyModifiers();
     this.beginCountdown();
@@ -514,7 +514,7 @@ export class Game {
   // ---- 2v2 offline -----------------------------------------------------------
   // The human (seat 0) plays with an AI teammate (seat 1) against two AI rivals
   // (seats 2 and 3). Reuses the 2v2 seat layout and simulation of the online mode.
-  setupDuo(team, opponentTeam, difficulty, opponentName, opponentNumber) {
+  setupDuo(team, opponentTeam, difficulty, opponentName, opponentNumber, mateLevel) {
     const ownNumber = Number(this.settings.number) || 10, mateNumber = ownNumber === 7 ? 8 : 7;
     const rivalTeamId = opponentTeam?.id || null;
     this.setupSquad({ localSeat: 0, seats: [
@@ -531,7 +531,7 @@ export class Game {
     for (const body of [mate, rivalA, rivalB]) { body.isBot = true; body.maxSpeed = 280; }
     human.isBot = false;
     this.squad.offline = true;
-    this.squad.ai = new SquadAI({ difficulty: this.botAI.difficulty || difficulty, rivalStars: opponentTeam?.stars || 3, mateStars: team?.stars || 3 });
+    this.squad.ai = new SquadAI({ difficulty: this.botAI.difficulty || difficulty, rivalStars: opponentTeam?.stars || 3, mateStars: team?.stars || 3, ...(mateLevel ? { mateLevel } : {}) });
   }
   placeSquadBody(body, seat) {
     body.x = WORLD.width * (seat < 2 ? .3 : .7); body.y = WORLD.height * (seat % 2 === 0 ? .38 : .62);

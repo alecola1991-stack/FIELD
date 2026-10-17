@@ -153,3 +153,13 @@ test('the teammate always shoots when it receives the ball from the human in the
   ai2.update([human, mate, keeper, forward], ballAt(1020, 345), DT);
   assert.ok(!ai2.update([human, mate, keeper, forward], { ...ballAt(830, 400), vx: -100, vy: 0 }, DT)[1].shot);
 });
+
+test('the teammate difficulty is chosen apart from the rivals', () => {
+  const game = duo({ difficulty: 'easy' });
+  assert.equal(game.squad.ai.difficulty, 'easy');
+  game.setupDuo(getTeamById('laliga-real-madrid'), getTeamById('laliga-barcelona'), 'easy', 'BAR', 9, 'champions');
+  assert.equal(game.squad.ai.mateLevel, 'champions', 'teammate plays at its own level');
+  assert.equal(game.squad.ai.difficulty, 'easy', 'rivals keep theirs');
+  const mate = game.squad.bodies[1];
+  assert.ok(game.squad.ai.speedFor('champions', mate) > game.squad.ai.speedFor('easy', mate));
+});

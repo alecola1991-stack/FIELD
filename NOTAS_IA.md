@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · Modo 2v2 en solitario con IA compañera (rápido, ligas y copas)
-**Commit:** rama `modo-2v2-solitario` (pendiente de aprobación de Ale)
+**Commit:** fusionado en main (rama `modo-2v2-solitario`, merge f020a72). Para deshacerlo: `git revert -m 1 f020a72`
 **Archivos:** `src/game/SquadAI.js` (nuevo), `src/game/Game.js`, `src/ui/UI.js`, `src/config/settings.js`, `index.html`, `src/styles.css`, `tests/Duo.test.js` (nuevo)
 **Qué y por qué:** Ale pidió un 2v2 sin conexión: el jugador más una IA compañera que defiende y busca pasársela, contra dos IA rivales, disponible en ligas y competiciones (y también en partido rápido).
 **Cómo:**

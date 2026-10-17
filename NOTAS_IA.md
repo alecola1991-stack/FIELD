@@ -4,6 +4,41 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-17 · Claude · Más ligas: segundas y terceras divisiones y 8 países nuevos
+**Commit:** rama `mas-ligas`
+**Archivos:** `src/config/teams-more.js` (nuevo), `src/config/teams.js`, `src/game/Competitions.js`, `src/game/Renderer.js`, `src/ui/UI.js`, `src/styles.css`, `tests/MoreLeagues.test.js` (nuevo)
+**Qué y por qué:** Ale pidió más ligas: las segundas y terceras divisiones de los países que no las tenían, y países nuevos con su primera división.
+**Cómo:**
+- `teams-more.js` contiene `MORE_LEAGUES` (con `country` y `tier`), `MORE_COUNTRIES`, `MORE_TEAM_ROWS` y `MORE_FOUR_STAR`. Las plantillas se tomaron de Wikipedia y de las federaciones (composición 2026/27 o 2026).
+  - Divisiones nuevas en países que ya estaban:
+    - Inglaterra: League One (24).
+    - Italia: Serie C, grupos A, B y C (20 cada uno).
+    - Francia: Ligue 3 (18).
+    - Alemania: 3. Liga (20).
+    - Argentina: Primera Nacional, zonas A y B (18 cada una).
+    - Brasil: Série B (20) y Série C (20).
+    - Estados Unidos: USL Championship (25).
+    - Portugal: Liga Portugal 2 (18).
+    - Turquía: 1. Lig (20).
+  - Países nuevos con su primera división: Países Bajos (18), Escocia (12), Arabia Saudí (18), Colombia (20), Chile (16), Uruguay (16), Austria (12) y Suiza (12).
+  - En total hay 865 clubes.
+- `teams.js`:
+  - Importa el módulo nuevo y añade las ligas al final de `TEAM_LEAGUES`.
+  - Todas las ligas tienen ahora `tier`: segundas = 2, Primera RFEF = 3, Segunda RFEF = 4, el resto = 1.
+  - Los países nuevos se insertan antes de «Selecciones».
+  - Estrellas de las ligas nuevas: 3 en primera, 2 en segunda y 1 en tercera; 4 para los clubes de `MORE_FOUR_STAR`.
+- Champions (`createChampionsDraw`): los rivales salen solo de ligas con `tier` 1, visitadas en orden aleatorio, porque ya hay más primeras divisiones que plazas. Antes también entraban las segundas divisiones.
+- Césped: `pitchGreen` usa `TIER_GREEN` según el `tier` de la liga, en lugar de la lista fija de ids.
+- UI:
+  - `leagueTierLabel` usa el `tier` («Nª CATEGORÍA»).
+  - En PC, la cuadrícula de países de la Liga Nacional pasa a 5 columnas compactas, para que quepan los 20 países sin scroll.
+  - Banderas CSS para los 8 países nuevos.
+**Para el otro asistente:**
+- No se añadieron la Challenger Pro League belga (la composición 2026/27 no estaba publicada), la Liga de Expansión MX (las fuentes se contradecían) ni la Liga 3 portuguesa.
+- Para añadir más ligas basta con añadir filas a `teams-more.js`.
+
+---
+
 ## 2026-10-17 · Claude · Fondos animados en el inicio y en los submenús
 **Commit:** fusionado en main (rama `fondos-animados`, merge 8bfd45d). Para deshacerlo: `git revert -m 1 8bfd45d`
 **Archivos:** `src/ui/MenuBackdrop.js` (reescrito), `src/ui/UI.js`, `src/styles.css`

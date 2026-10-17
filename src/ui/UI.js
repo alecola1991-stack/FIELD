@@ -2196,10 +2196,7 @@ function readGuestProfile() {
 }
 
 function leagueTierLabel(id) {
-  if (id.startsWith('primera-rfef')) return '3ª CATEGORÍA';
-  if (id.startsWith('segunda-rfef')) return '4ª CATEGORÍA';
-  if (['laliga2', 'championship', 'serie-b', 'ligue-2', 'bundesliga-2'].includes(id)) return '2ª CATEGORÍA';
-  return '1ª CATEGORÍA';
+  return `${TEAM_LEAGUES.find(league => league.id === id)?.tier || 1}ª CATEGORÍA`;
 }
 
 function formatMatchDuration(seconds) {

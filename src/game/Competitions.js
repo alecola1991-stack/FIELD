@@ -39,9 +39,13 @@ export function createChampionsDraw(playerTeamId, random = Math.random) {
   const randomRivals = [];
   const slots = 15 - fixedRivals.length;
 
-  // Include at least one randomly drawn club from every available league.
-  // Federation (RFEF) groups are not drawn as Champions rivals.
-  for (const league of TEAM_LEAGUES.filter(item => !FEDERATION_LEAGUE_IDS.has(item.id))) {
+  // Rivals come from first divisions only. There are more top flights than free slots,
+  // so the leagues are visited in random order and each gives at most one club.
+  const topFlights = TEAM_LEAGUES.filter(item => (item.tier ?? 1) === 1 && !FEDERATION_LEAGUE_IDS.has(item.id));
+  const topIds = new Set(topFlights.map(item => item.id));
+  const leagueOrder = [...topFlights];
+  for (let i = leagueOrder.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [leagueOrder[i], leagueOrder[j]] = [leagueOrder[j], leagueOrder[i]]; }
+  for (const league of leagueOrder) {
     if (randomRivals.length >= slots) break;
     const pool = TEAMS.filter(team => team.league === league.id && !pickedIds.has(team.id));
     if (!pool.length) continue;
@@ -49,7 +53,7 @@ export function createChampionsDraw(playerTeamId, random = Math.random) {
     randomRivals.push(team); pickedIds.add(team.id);
   }
 
-  const remaining = TEAMS.filter(team => !pickedIds.has(team.id) && !FEDERATION_LEAGUE_IDS.has(team.league));
+  const remaining = TEAMS.filter(team => !pickedIds.has(team.id) && topIds.has(team.league));
   while (randomRivals.length < slots) {
     const team = pick(remaining, random);
     randomRivals.push(team); pickedIds.add(team.id);

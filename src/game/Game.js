@@ -33,10 +33,12 @@ export class Game {
     this.state.start(mode); if (mode !== 'legends') this.settings.difficulty = difficulty; this.botAI.setDifficulty(mode === 'legends' ? 'legend' : difficulty);
     this.modifiers = normalizeModifiers(mode === 'online' ? {} : options.modifiers || this.settings.modifiers);
     this.world = modifierWorld(this.modifiers);
-    const team = getTeamById(this.settings.teamId);
+    // Career matches use the career club or national team instead of the profile team.
+    this.playerTeamId = options.playerTeamId || null;
+    const team = getTeamById(this.playerTeamId || this.settings.teamId);
     this.fieldTheme = options.fieldTheme || (mode === 'training' ? 'training' : mode === 'tournament' ? 'champions' : 'arcade');
     this.competitionRound = options.competitionRound || 0;
-    this.goalTarget = this.modifiers.goalTarget || (mode === 'league' ? (Number(options.goalTarget) || 2) : mode === 'tournament' ? 3 : 5);
+    this.goalTarget = this.modifiers.goalTarget || (mode === 'league' ? (Number(options.goalTarget) || 2) : mode === 'career' ? (Number(options.goalTarget) || 3) : mode === 'tournament' ? 3 : 5);
     this.localSide = options.localSide === 'right' ? 'right' : 'left';
     if (mode === 'online' && options.squad) this.localSide = options.squad.localSeat < 2 ? 'left' : 'right';
     // 1v1: the left player hosts. 2v2: seat 0 (left captain) hosts.
@@ -80,7 +82,7 @@ export class Game {
   updateSettings(settings) {
     this.settings = settings;
     if (this.player) {
-      const team = getTeamById(settings.teamId);
+      const team = getTeamById(this.playerTeamId || settings.teamId);
       this.player.name = settings.name; this.player.number = settings.number;
       this.player.color = team?.primary || '#68746e'; this.player.secondaryColor = team?.secondary || null; this.player.numberColor = team?.numberColor || '#ffffff'; this.player.kitPattern = team?.kitPattern || 'half-vertical'; this.player.tertiaryColor = team?.tertiary || null; this.player.kitBands = team?.kitBands || null; this.player.numberOutline = team?.numberOutline !== false;
     }

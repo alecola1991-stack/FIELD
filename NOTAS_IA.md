@@ -4,6 +4,38 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-18 · Claude · Modo Carrera (10 temporadas)
+**Commit:** rama `modo-carrera` (pendiente de pasar a main)
+**Archivos:** `src/game/CareerMode.js` (nuevo), `src/ui/CareerScreen.js` (nuevo), `src/ui/TrophyArt.js` (nuevo), `src/ui/UI.js`, `src/game/Game.js`, `index.html`, `src/styles.css`, `tests/CareerMode.test.js` (nuevo)
+**Qué y por qué:** Ale pidió un modo carrera con estas reglas:
+- 10 temporadas. Eliges país y te ofrecen 5 clubes al azar, con más probabilidad cuanto más baja es la división.
+- Cada temporada se juegan 2 partidos por competición:
+  - Liga: 2 victorias, campeón. 1 victoria con diferencia de goles positiva, ascenso. Diferencia 0, promoción al 50 %. Sin descensos.
+  - Copas: semifinal y final.
+- Ganar la liga en primera clasifica para la Champions (Europa) o la Libertadores (Sudamérica). México, EE. UU. y Arabia van directos al Mundial de Clubes.
+- Ganar la copa continental mete al club en el Mundial de Clubes esa misma temporada.
+- Desde que llegas a primera, juegas con la selección de tu país:
+  - Temporadas 2, 6 y 10: Mundial.
+  - Temporadas 4 y 8: Eurocopa o Copa América.
+- Ofertas de fichaje cada temporada.
+- Puntos: liga 100, ascenso 50, Champions/Libertadores 250, Eurocopa/Copa América 250, Mundial de Clubes 300, Mundial 500, y +100 si acabas en tu primer club.
+- El modo sustituye a la casilla «Champions» del inicio, en dorado y con la etiqueta NUEVO. La casilla «Liga Nacional» pasa a ser «Copas y ligas» y abre la pantalla de competiciones, donde siguen la Champions, la Liga y las demás.
+**Cómo:**
+- `CareerMode.js` (sin DOM):
+  - Funciones: `createStartingOffers`, `createCareer`, `createSeasonPlan` (etapas `league`, `continental`, `club-world-cup`, `national` con 2 partidos cada una), `nextCareerMatch`, `recordCareerMatch`, `finishSeason` (resultado, tabla simulada, trofeos y ofertas), `startNextSeason` y `finishCareer`.
+  - Los clubes ascendidos se guardan en `state.leagueOverrides`; usa `careerLeagueOf`.
+  - Se guarda en localStorage `field-career-mode-v1` (con ámbito por usuario, como CompetitionSave) y el récord en `…:best`.
+- `CareerScreen.js` pinta las vistas `landing`, `country`, `club`, `hub`, `summary` y `final` dentro de `#career-root`. Espacio pulsa el botón marcado con `data-career-space`.
+- `UI.js`:
+  - `startCareerMatch()` lanza `start('career', { playerTeamId, playerTeam, … })`.
+  - `handleMatchEnd` registra el resultado (`result.mode === 'career'`) y pone el botón «Siguiente».
+  - `advanceCompetition`, `finishToMenu` y `saveAndQuit` vuelven a la carrera con `leaveCareerMatch`. Un partido abandonado a medias no cuenta.
+- `Game.start` acepta `options.playerTeamId` (equipación del club o de la selección de la carrera) y `goalTarget` para el modo `career` (a 3 goles).
+- La dificultad de cada partido sube con la división y la ronda, con un tope en lo que el nivel del jugador tiene desbloqueado (`careerDifficulty`).
+**Para el otro asistente:** las reglas de puntos y el baremo están en `CAREER_POINTS` y `leagueOutcome`. Los dibujos de trofeos ahora salen de `TrophyArt.js`, compartido con el selector de competiciones.
+
+---
+
 ## 2026-10-18 · Claude · Balón distinto según la competición
 **Commit:** fusionado en main (rama `balones-competicion`, merge 2c15bb6). Para deshacerlo: `git revert -m 1 2c15bb6`
 **Archivos:** `src/game/BallStyles.js` (nuevo), `src/game/Renderer.js`, `src/game/Game.js`, `tests/BallStyles.test.js`

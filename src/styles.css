@@ -1368,3 +1368,245 @@ body:not(.solo-duo) [data-duo-only]{display:none!important}
 .player-circle-preview.white-dorsal .circle-preview-name{-webkit-text-stroke:.65px var(--dorsal-outline,#000)}
 .player-circle-preview.white-dorsal .circle-preview-number{-webkit-text-stroke:1.5px var(--dorsal-outline,#000)}
 .player-circle-preview:not(.white-dorsal) :is(.circle-preview-name,.circle-preview-number){text-shadow:0 1px 2px #0006}
+
+/* ---- Modo Carrera ---------------------------------------------------------------------------- */
+/* Home tile: gold, with a slow shine so it stands out among the other tiles. */
+.hub-tile.hub-career{background:linear-gradient(135deg,#4a3608 0%,#21180a 55%,#120d06 100%);border-color:#f2cf5b88;color:#fff6dc;box-shadow:0 10px 34px #e7b53a26}
+.hub-tile.hub-career:before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(115deg,transparent 30%,#ffe9a833 45%,transparent 60%);transform:translateX(-120%);animation:careerShine 4.5s ease-in-out infinite}
+.hub-tile.hub-career :is(small,.tile-index){color:#f1dca2}.hub-tile.hub-career .tile-art{color:#f2cf5b}
+.hub-tile.hub-career:is(:hover,:focus-visible){background:linear-gradient(135deg,#ffe9a8,#f2cf5b);color:#2a1d02;border-color:#fff3c8;box-shadow:0 12px 36px #f2cf5b40}
+.hub-tile.hub-career:is(:hover,:focus-visible) :is(small,.tile-art,.tile-index){color:#4a3608}
+.career-tile-badge{position:absolute;top:16px;right:16px;font:700 10px var(--mono);letter-spacing:.12em;padding:4px 7px;border-radius:3px;background:#f2cf5b;color:#2a1d02}
+@keyframes careerShine{0%,55%{transform:translateX(-120%)}85%,100%{transform:translateX(120%)}}
+@media(prefers-reduced-motion:reduce){.hub-tile.hub-career:before{animation:none}}
+
+.career-screen{position:relative}
+.career-root{flex:1;align-self:stretch;width:100%;display:flex;flex-direction:column;gap:14px;padding:4px 0 26px;position:relative;z-index:1;--gold:#f2cf5b;--card:linear-gradient(135deg,#152746f0,#0c1932f0);--edge:#91b9ff30}
+.career-root h2{margin:0;font-size:clamp(34px,4.2vw,56px);line-height:1;letter-spacing:-.06em;font-weight:700}
+.career-root h2 em{font-style:normal;color:var(--gold)}
+.career-root h3{margin:0;font-size:20px;letter-spacing:-.03em}
+.career-root .eyebrow{margin:0 0 10px;color:var(--gold)}
+.career-root p{color:#b6c7e2;font-size:14px;line-height:1.5}
+.career-card{border:1px solid var(--edge);background:var(--card);border-radius:10px;padding:16px}
+.career-card .card-kicker{margin:0 0 10px;color:#9fb6d8}
+.career-empty{margin:4px 0 10px;font-size:13px!important}
+.career-kit{display:inline-block;flex:none;width:22px;height:22px;border-radius:50%;border:2px solid #ffffff30;box-shadow:0 2px 6px #0006}
+.career-kit.big{width:44px;height:44px;border-width:3px}
+.career-ghost{border:1px solid #91b9ff40;background:#0c1932aa;color:#d6e4fa;border-radius:8px;padding:11px 16px;font:600 13px Manrope,sans-serif;cursor:pointer;transition:background .15s,color .15s}
+.career-ghost:hover{background:#e7f1ff;color:#0b1d39}
+.career-footer{display:flex;justify-content:flex-start}
+.career-trophy-icon{display:inline-grid;place-items:center;flex:none;width:30px;height:30px;color:var(--trophy);filter:drop-shadow(0 2px 6px #0007)}
+.career-trophy-icon svg{width:100%;height:100%}
+.career-trophy-icon.mini{width:16px;height:16px}
+.career-trophy-icon.big{width:54px;height:54px}
+.career-trophy-icon.banner-icon{width:76px;height:76px;animation:careerBounce .8s cubic-bezier(.2,.9,.3,1.3) both}
+.career-tier-badge{font:700 10px var(--mono);letter-spacing:.1em;padding:4px 8px;border-radius:3px;background:#2a3d5c;color:#cfe0f8}
+.tier-1 .career-tier-badge,.career-tier-badge.tier-1{background:var(--gold);color:#2a1d02}
+.career-tier-badge.tier-2{background:#8dc3ff;color:#0b1d39}
+.career-tier-badge.tier-3{background:#65e6a5;color:#082014}
+.career-tier-badge.tier-4{background:#c7a2f0;color:#1d0b33}
+.career-stars{color:var(--gold);letter-spacing:2px;font-size:12px}
+@keyframes careerBounce{from{transform:scale(.3) rotate(-12deg);opacity:0}to{transform:none;opacity:1}}
+@keyframes careerRise{from{transform:translateY(14px);opacity:0}to{transform:none;opacity:1}}
+
+/* Landing */
+.career-landing{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:28px;align-items:center;flex:1}
+.career-lead{max-width:560px;margin:12px 0 0}
+.career-steps{list-style:none;margin:20px 0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.career-steps li{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--edge);background:var(--card);border-radius:8px;padding:12px;animation:careerRise .45s both}
+.career-steps li:nth-child(2){animation-delay:.07s}.career-steps li:nth-child(3){animation-delay:.14s}.career-steps li:nth-child(4){animation-delay:.21s}
+.career-steps b{display:grid;place-items:center;flex:none;width:26px;height:26px;border-radius:50%;background:var(--gold);color:#2a1d02;font:700 13px var(--mono)}
+.career-steps strong{display:block;font-size:13px;color:#eef4ff}.career-steps small{display:block;font-size:12px;color:#9fb3d3;margin-top:3px;line-height:1.35}
+.career-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.career-root .primary-button.career-start{width:auto;min-width:280px;background:var(--gold);color:#2a1d02;gap:24px;font-size:15px;padding:17px 20px}
+.career-root .primary-button.career-start:hover{background:#ffe08a}
+.career-continue{display:flex;align-items:center;gap:14px;text-align:left;border:1px solid #f2cf5b88;background:linear-gradient(135deg,#3a2c08,#14100a);color:#fff6dc;border-radius:10px;padding:12px 18px;cursor:pointer;min-width:340px;transition:transform .15s}
+.career-continue:hover{transform:translateY(-2px)}
+.career-continue small{display:block;font:11px var(--mono);letter-spacing:.1em;color:var(--gold)}
+.career-continue strong{display:block;font-size:20px;margin:2px 0}.career-continue em{font-style:normal;font-size:12px;color:#e5d6ae}
+.career-continue>b{margin-left:auto;font-size:18px;color:var(--gold)}
+.career-confirm{font-size:13px;color:#ffd2c6}.career-confirm button{margin-left:8px;border:0;border-radius:6px;padding:8px 10px;background:#e8594a;color:#fff;font:600 12px Manrope;cursor:pointer}
+.career-scoring{border:1px solid #f2cf5b55;background:linear-gradient(160deg,#20304ef0,#0c1932f0);border-radius:12px;padding:18px}
+.career-scoring ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.career-scoring li{display:flex;align-items:center;gap:10px;font-size:13px;color:#dbe6f7;padding:6px 8px;border-radius:6px;background:#ffffff08}
+.career-scoring li b{margin-left:auto;font:700 13px var(--mono);color:var(--gold)}
+.career-scoring .loyal-icon{--trophy:#65e6a5!important}
+.career-best{margin-top:14px;border-top:1px solid var(--edge);padding-top:12px;display:grid;grid-template-columns:auto 1fr;align-items:baseline;gap:2px 12px}
+.career-best small{grid-column:1/-1;font:11px var(--mono);letter-spacing:.1em;color:#9fb6d8}
+.career-best strong{font-size:32px;letter-spacing:-.04em;color:#fff}.career-best em{font-style:normal;color:var(--gold);font-size:13px}
+
+/* New career steps */
+.career-step-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px}
+.career-step-head p:not(.eyebrow){margin:8px 0 0;max-width:620px}
+.career-format .field-label{margin:0 0 6px}
+.career-format .solo-format-options{display:flex;gap:6px}
+.career-format .solo-format-options button{border:1px solid var(--edge);background:#0c1932;color:#cfe0f8;border-radius:6px;padding:9px 12px;font:600 12px Manrope;cursor:pointer}
+.career-format .solo-format-options button.active{background:#e7f1ff;color:#0b1d39;border-color:#fff}
+.career-country-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.career-country{position:relative;display:grid;grid-template-columns:auto 1fr;grid-template-areas:"flag name" "flag info" "tags tags" "cups cups";align-content:start;gap:1px 10px;align-items:center;text-align:left;border:1px solid var(--edge);background:var(--card);color:#e6efff;border-radius:8px;padding:10px;cursor:pointer;transition:transform .15s,border-color .15s,background .15s;animation:careerRise .35s both}
+.career-country:hover,.career-country:focus-visible{transform:translateY(-3px);border-color:var(--gold);background:linear-gradient(135deg,#243c63,#13284a)}
+.career-flag{grid-area:flag;width:42px;height:28px;border-radius:3px;box-shadow:0 0 0 1px #ffffff30,0 3px 8px #0006}
+.career-country strong{grid-area:name;font-size:14px}
+.career-country>small{grid-area:info;font-size:11px;color:#9fb3d3}
+.career-country-tags{grid-area:tags;display:flex;gap:3px;margin-top:5px}
+.career-country-tags em{font:700 10px var(--mono);font-style:normal;padding:2px 5px;border-radius:3px;background:#2a3d5c;color:#cfe0f8}
+.career-country-tags em.tier-1{background:var(--gold);color:#2a1d02}.career-country-tags em.tier-2{background:#8dc3ff;color:#0b1d39}.career-country-tags em.tier-3{background:#65e6a5;color:#082014}.career-country-tags em.tier-4{background:#c7a2f0;color:#1d0b33}
+.career-country-cups{grid-area:cups;display:flex;flex-wrap:wrap;gap:3px 8px;align-items:center;margin-top:5px}
+.career-country-cups>span{display:inline-flex;align-items:center;gap:3px;font-size:10px;color:#9fb3d3}
+.career-offer-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.career-offer{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;border:1px solid var(--edge);background:var(--card);color:#e6efff;border-radius:10px;padding:14px 12px 16px;cursor:pointer;transition:transform .16s,border-color .16s,box-shadow .16s;animation:careerRise .4s both;animation-delay:var(--delay,0ms)}
+.career-offer:hover,.career-offer:focus-visible{transform:translateY(-4px);border-color:var(--gold);box-shadow:0 12px 30px #f2cf5b26}
+.career-offer .career-offer-kit{width:92px!important;height:92px!important;margin:8px 0 4px}
+.career-offer strong{font-size:15px;line-height:1.2}
+.career-offer small{font-size:12px;color:#9fb3d3}
+.career-offer-goal{font-size:12px;color:#d8e6fb;background:#ffffff0b;border-radius:6px;padding:6px 8px;line-height:1.35;min-height:44px;display:grid;place-items:center}
+.career-pick{margin-top:auto;font:700 12px var(--mono);letter-spacing:.08em;color:var(--gold)}
+.career-offer.stay{border-color:#65e6a580}
+.career-offer.stay .career-pick{color:#65e6a5}
+
+/* Season track */
+.career-track{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:5px}
+.career-track li{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px 7px;border-radius:6px;background:#0c1932aa;border:1px solid #91b9ff1f;color:#7f95b8;min-height:62px}
+.career-track li small{font:10px var(--mono);letter-spacing:.08em}
+.career-track li b{font-size:16px;color:#b8c9e4}
+.career-track li.done{background:#152746}
+.career-track li.done.tier-1 b{color:var(--gold)}.career-track li.done.tier-2 b{color:#8dc3ff}.career-track li.done.tier-3 b{color:#65e6a5}.career-track li.done.tier-4 b{color:#c7a2f0}
+.career-track li.current{border-color:var(--gold);background:linear-gradient(180deg,#3a2c08,#152746);box-shadow:0 0 0 1px #f2cf5b55,0 6px 18px #f2cf5b22}
+.career-track li.current b{color:#fff}
+.career-track li em{position:absolute;top:-7px;font:700 8px var(--mono);font-style:normal;letter-spacing:.06em;padding:1px 4px;border-radius:3px;background:#e8594a;color:#fff}
+.track-trophies{display:flex;gap:1px;min-height:16px}
+
+/* Hub */
+.career-hub{display:grid;grid-template-columns:260px minmax(0,1fr);gap:12px}
+.career-club-card{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;border:1px solid var(--edge);background:var(--card);border-radius:10px;padding:16px}
+.career-club-card .career-club-kit{width:104px!important;height:104px!important;margin:6px 0}
+.career-club-card>strong{font-size:18px;line-height:1.15}.career-club-card>small{font-size:12px;color:#9fb3d3}
+.career-national{display:flex;align-items:center;gap:8px;width:100%;margin-top:6px;padding:8px;border-radius:8px;background:#ffffff08;text-align:left;opacity:.55}
+.career-national.on{opacity:1;background:#65e6a514;box-shadow:inset 0 0 0 1px #65e6a540}
+.career-national b{display:block;font-size:13px}.career-national small{display:block;font-size:11px;color:#9fb3d3}
+.career-score-box{width:100%;margin-top:auto;padding-top:10px;border-top:1px solid var(--edge)}
+.career-score-box small{font:11px var(--mono);letter-spacing:.1em;color:#9fb6d8}
+.career-score-box strong{display:block;font-size:34px;letter-spacing:-.04em;color:var(--gold);line-height:1.1}
+.career-score-box span{display:flex;flex-wrap:wrap;justify-content:center;gap:3px;min-height:18px}
+.career-score-box em{font-size:11px;color:#7f95b8;font-style:normal}
+.career-season{border:1px solid var(--edge);background:#0c1932aa;border-radius:10px;padding:14px;min-width:0}
+.career-season-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px}
+.career-season-head .card-kicker{margin:0 0 4px;color:var(--gold)}
+.career-season-head>span{font:11px var(--mono);color:#9fb6d8;letter-spacing:.08em}
+.career-stages{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.career-stage{border:1px solid var(--edge);background:var(--card);border-radius:8px;padding:12px;transition:border-color .2s}
+.career-stage.is-next{border-color:var(--gold);box-shadow:0 0 0 1px #f2cf5b40}
+.career-stage.is-done{opacity:.85}
+.career-stage header{display:flex;align-items:center;gap:10px}
+.career-stage header strong{display:block;font-size:15px}.career-stage header small{display:block;font-size:11px;color:#9fb3d3}
+.career-stage>p{margin:8px 0;font-size:12px!important;line-height:1.4}
+.stage-status{margin-left:auto;font:700 10px var(--mono);font-style:normal;letter-spacing:.08em;padding:3px 6px;border-radius:3px;background:#2a3d5c;color:#cfe0f8}
+.stage-status.live{background:var(--gold);color:#2a1d02;animation:careerPulse 1.6s ease-in-out infinite}
+.stage-status.win{background:#65e6a5;color:#082014}.stage-status.loss{background:#e8594a;color:#fff}
+@keyframes careerPulse{50%{box-shadow:0 0 0 5px #f2cf5b00,0 0 12px #f2cf5b88}}
+.career-stage ol{list-style:none;margin:0;padding:0;display:grid;gap:5px}
+.career-stage li{display:grid;grid-template-columns:86px 22px minmax(0,1fr) auto;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;background:#ffffff08;font-size:13px}
+.career-stage li>small{font:10px var(--mono);letter-spacing:.06em;color:#9fb3d3;text-transform:uppercase}
+.career-stage li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.career-stage li span i{font-style:normal;color:var(--gold);font-size:9px;margin-left:6px;letter-spacing:1px}
+.career-stage li>b{font:700 13px var(--mono);color:#b8c9e4}
+.career-stage li.won{background:#65e6a51a;box-shadow:inset 3px 0 #65e6a5}.career-stage li.won>b{color:#65e6a5}
+.career-stage li.lost{background:#e8594a1a;box-shadow:inset 3px 0 #e8594a}.career-stage li.lost>b{color:#ff8f82}
+.career-stage li.upcoming{box-shadow:inset 3px 0 var(--gold)}.career-stage li.upcoming>b{color:var(--gold);font-size:10px;letter-spacing:.08em}
+.career-stage li.skipped{opacity:.4}
+.career-next{display:flex;align-items:center;justify-content:space-between;gap:16px;border:1px solid #f2cf5b66;background:linear-gradient(120deg,#3a2c08e6,#152746e6);border-radius:12px;padding:12px 14px;animation:careerRise .4s both}
+.career-versus{display:flex;align-items:center;gap:12px;min-width:0}
+.career-versus small{display:block;font:11px var(--mono);letter-spacing:.1em;color:var(--gold)}
+.career-versus strong{display:block;font-size:18px;color:#fff6dc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.career-versus strong i{font-style:normal;color:var(--gold);font-size:13px;margin:0 6px}
+.career-root .primary-button.career-play{width:auto;min-width:250px;background:var(--gold);color:#2a1d02;gap:20px;font-size:15px}
+.career-root .primary-button.career-play:hover{background:#ffe08a}
+
+/* Season summary */
+.career-summary{display:flex;flex-direction:column;gap:12px}
+.career-banner{display:flex;align-items:center;gap:18px;border-radius:12px;padding:16px 20px;border:1px solid var(--edge);background:var(--card);animation:careerRise .4s both}
+.tone-gold .career-banner{border-color:#f2cf5b99;background:linear-gradient(120deg,#5a420c,#1d1608 60%,#152746)}
+.tone-green .career-banner{border-color:#65e6a588;background:linear-gradient(120deg,#0f4a32,#0c2a24 60%,#152746)}
+.tone-red .career-banner{border-color:#e8594a66;background:linear-gradient(120deg,#4a1a16,#1c1418 60%,#152746)}
+.career-banner h2{font-size:clamp(30px,3.6vw,46px)}
+.career-banner p:not(.eyebrow){margin:6px 0 0}.career-banner p b{color:#fff}
+.career-banner-points{margin-left:auto;text-align:right;flex:none}
+.career-banner-points small,.career-banner-points span{display:block;font:11px var(--mono);letter-spacing:.1em;color:#d8c592}
+.career-banner-points strong{display:block;font-size:40px;letter-spacing:-.04em;color:var(--gold);line-height:1.05}
+.career-summary-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.career-table{list-style:none;margin:0;padding:0;display:grid;gap:3px}
+.career-table li{display:grid;grid-template-columns:26px 22px minmax(0,1fr) auto;gap:8px;align-items:center;padding:5px 8px;border-radius:5px;background:#ffffff07;font-size:13px}
+.career-table li b{font:700 12px var(--mono);color:#9fb3d3}.career-table li em{font:700 12px var(--mono);font-style:normal;color:#cfe0f8}
+.career-table li span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.career-table li.first b{color:var(--gold)}
+.career-table li.me{background:#f2cf5b22;box-shadow:inset 3px 0 var(--gold);font-weight:700}
+.career-table li.gap{display:block;text-align:center;background:none;padding:0;color:#5e7392;font-size:12px}
+.career-cups,.career-won{list-style:none;margin:0 0 6px;padding:0;display:grid;gap:5px}
+.career-cups li,.career-won li{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:6px;background:#ffffff08;font-size:13px}
+.career-cups li b{display:block}.career-cups li small{display:block;font-size:11px;color:#9fb3d3}
+.career-cups li em{margin-left:auto;font:700 10px var(--mono);font-style:normal;letter-spacing:.08em;color:#9fb3d3}.career-cups li em.win{color:#65e6a5}
+.career-won li{background:#f2cf5b14;animation:careerRise .4s both}
+.career-won li b{margin-left:auto;font:700 13px var(--mono);color:var(--gold)}
+.trophies-kicker{margin-top:12px!important}
+.career-market{border:1px solid var(--edge);background:#0c1932aa;border-radius:10px;padding:14px}
+.career-market-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.career-market .career-offer-kit{width:72px!important;height:72px!important}
+
+/* Final cabinet */
+.career-final{display:flex;flex-direction:column;gap:14px}
+.career-final-hero{display:flex;justify-content:space-between;align-items:center;gap:24px}
+.career-final-hero p:not(.eyebrow){margin:8px 0 0}
+.career-final-score{text-align:center;padding:14px 26px;border-radius:14px;border:1px solid #f2cf5b88;background:radial-gradient(ellipse at 50% 0,#f2cf5b33,transparent 70%),linear-gradient(160deg,#3a2c08,#14100a);min-width:260px;animation:careerBounce .7s both}
+.career-final-score small{display:block;font:11px var(--mono);letter-spacing:.12em;color:#e5d6ae}
+.career-final-score strong{display:block;font-size:62px;line-height:1;letter-spacing:-.05em;color:var(--gold);text-shadow:0 4px 24px #f2cf5b55}
+.career-final-score em{display:block;margin-top:6px;font:700 11px var(--mono);font-style:normal;letter-spacing:.1em;color:#65e6a5}
+.career-title{display:inline-block;margin-top:6px;padding:5px 12px;border-radius:20px;font:800 14px Manrope;text-transform:uppercase;letter-spacing:.08em;background:#2a3d5c;color:#e6efff}
+.career-title.title-legend{background:linear-gradient(90deg,#f2cf5b,#fff2c2,#f2cf5b);color:#2a1d02}
+.career-title.title-star{background:#8dc3ff;color:#0b1d39}.career-title.title-pro{background:#65e6a5;color:#082014}
+.career-title-scale{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.career-title-scale li{text-align:center;font:700 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;padding:6px;border-radius:4px;background:#0c1932aa;color:#5e7392}
+.career-title-scale li.active{background:var(--gold);color:#2a1d02}
+.career-final-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:12px}
+.career-cabinet ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.career-cabinet li{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:12px 8px;border-radius:8px;background:radial-gradient(ellipse at 50% 20%,color-mix(in srgb,var(--trophy) 22%,transparent),transparent 70%),#ffffff08;border:1px solid color-mix(in srgb,var(--trophy) 35%,transparent);animation:careerRise .45s both}
+.career-cabinet li strong{font-size:14px}.career-cabinet li small{font:10px var(--mono);color:#9fb3d3}.career-cabinet li b{font:700 13px var(--mono);color:var(--gold)}
+.career-chart{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:6px;align-items:end;height:220px}
+.career-chart li{display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
+.career-chart .bar{width:100%;height:var(--h);min-height:12px;border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,#8dc3ff,#2a5a9a);display:flex;flex-direction:column;align-items:center;gap:1px;padding-top:4px;animation:careerGrow .8s cubic-bezier(.2,.8,.2,1) both;transform-origin:bottom}
+.career-chart li.tier-1 .bar{background:linear-gradient(180deg,#ffe08a,#b8901f)}
+.career-chart li.tier-3 .bar{background:linear-gradient(180deg,#65e6a5,#1d7a52)}
+.career-chart li.tier-4 .bar{background:linear-gradient(180deg,#c7a2f0,#6a3fa0)}
+.career-chart small{font:10px var(--mono);color:#9fb3d3}
+@keyframes careerGrow{from{transform:scaleY(0)}to{transform:none}}
+
+@media(max-width:1100px){.career-country-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.career-offer-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.career-landing{grid-template-columns:1fr}.career-steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:900px){.career-hub,.career-summary-grid,.career-final-grid{grid-template-columns:1fr}.career-market-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.career-country-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.career-step-head{flex-direction:column;align-items:flex-start}.career-final-hero{flex-direction:column;align-items:stretch}}
+@media(max-width:600px){.career-country-grid,.career-offer-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.career-track{grid-template-columns:repeat(5,minmax(0,1fr))}.career-next{flex-direction:column;align-items:stretch}.career-play,.career-start,.career-continue{min-width:0;width:100%}.career-banner{flex-wrap:wrap}.career-banner-points{margin-left:0;text-align:left}.career-stage li{grid-template-columns:22px minmax(0,1fr) auto}.career-stage li>small{display:none}.career-chart{height:160px}.career-steps{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.career-root *{animation:none!important}}
+
+.career-stage.is-locked{display:flex;align-items:center;gap:10px;opacity:.6;border-style:dashed;background:#0c193280;filter:grayscale(.5)}
+.career-stage.is-locked strong{display:block;font-size:14px}.career-stage.is-locked small{display:block;font-size:11px;color:#9fb3d3;line-height:1.35;margin-top:2px}
+/* Compact summary and cabinet so the transfer market and trophies fit on a laptop screen. */
+.view-summary .career-track li,.view-hub .career-track li{min-height:52px;padding:4px}
+.career-banner{padding:12px 18px}.career-banner .eyebrow{margin-bottom:4px}
+.career-summary-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)}
+.career-summary .career-card{padding:12px}
+.career-cups li,.career-won li{padding:4px 8px}
+.career-market{padding:12px}.career-market .career-season-head{margin-bottom:8px}
+.career-market .career-offer{padding:10px;gap:4px}.career-market .career-offer-kit{width:58px!important;height:58px!important;margin:4px 0 2px}
+.career-market .career-offer-goal{min-height:0}
+.career-cabinet ul{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px}
+.career-cabinet li{display:grid;grid-template-columns:44px 1fr auto;grid-template-areas:"icon name pts" "icon seasons pts";text-align:left;align-items:center;gap:0 10px;padding:8px 10px}
+.career-cabinet li .career-trophy-icon{grid-area:icon;width:42px;height:42px}.career-cabinet li strong{grid-area:name}.career-cabinet li small{grid-area:seasons}.career-cabinet li b{grid-area:pts}
+.career-chart{height:170px}
+.career-final-hero h2{font-size:clamp(34px,4vw,52px)}
+.career-final-score{padding:10px 22px}.career-final-score strong{font-size:52px}
+@media(max-width:1100px){.career-summary-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:900px){.career-summary-grid{grid-template-columns:1fr}}
+.career-market .career-offer{display:grid;grid-template-columns:58px minmax(0,1fr);grid-template-areas:"kit badge" "kit name" "kit league" "goal goal" "pick pick";justify-items:start;text-align:left;gap:2px 12px;align-items:center}
+.career-market .career-offer>.career-tier-badge{grid-area:badge}.career-market .career-offer>.career-offer-kit{grid-area:kit;margin:0}
+.career-market .career-offer>strong{grid-area:name;font-size:14px}.career-market .career-offer>small{grid-area:league}
+.career-market .career-offer>.career-offer-goal{grid-area:goal;justify-self:stretch;margin-top:6px;place-items:center start}
+.career-market .career-offer>.career-pick{grid-area:pick;justify-self:end;margin-top:4px}
+@media(max-width:600px){.career-next{position:sticky;bottom:8px;z-index:3;box-shadow:0 10px 30px #000a}.career-club-card .career-club-kit{width:72px!important;height:72px!important}.career-country-grid{gap:6px}.career-country{padding:8px}.career-flag{width:34px;height:23px}}
+.career-versus>span{min-width:0;flex:1}.career-hub>*{min-width:0}

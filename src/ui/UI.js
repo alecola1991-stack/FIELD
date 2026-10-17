@@ -17,17 +17,35 @@ import { Confetti } from './Confetti.js';
 import { clearCompetitionSave, loadCompetitionSave, setCompetitionSaveScope, storeCompetitionSave } from '../game/CompetitionSave.js';
 import { MISSION_TIERS } from '../game/Missions.js';
 import { Ads } from './Ads.js';
+import { TROPHY_ART } from './TrophyArt.js';
+import { CareerScreen } from './CareerScreen.js';
+import { setCareerScope, loadCareer, saveCareer, nextCareerMatch, recordCareerMatch, careerDifficulty, careerLeagueOf, CAREER_GOAL_TARGET, CAREER_SEASONS, COMPETITION_NAMES } from '../game/CareerMode.js';
 import { LEGEND_MATCHES, LEGENDS_UNLOCK_LEVEL, resolveLegendMatch } from '../config/legends.js';
 
 const ROUND_NAMES = ['OCTAVOS DE FINAL', 'CUARTOS DE FINAL', 'SEMIFINAL', 'FINAL'];
 const ROUND_NAMES_32 = ['DIECISÉISAVOS DE FINAL', ...ROUND_NAMES];
 const roundName = (size, round) => (size === 32 ? ROUND_NAMES_32 : ROUND_NAMES)[Math.max(0, Math.min(size === 32 ? 4 : 3, round - 1))];
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+// Result screen text once the two league key matches are played.
+function leagueResultText(state) {
+  const wins = state.plan.stages.find(stage => stage.id === 'league').matches.filter(item => item.result?.won).length;
+  const last = state.phase === 'summary' ? state.history.at(-1) : null;
+  if (last) return {
+    champion: { title: '¡Campeones de liga!', copy: `+100 puntos${last.promoted ? ' y ascenso (+50)' : ''}.` },
+    'runner-up': { title: last.promoted ? '¡Ascenso!' : 'Subcampeones', copy: last.promoted ? 'Segundo puesto: subes de división (+50).' : 'Segundo puesto en la liga.' },
+    'playoff-won': { title: last.promoted ? '¡Promoción ganada!' : 'Tercer puesto', copy: last.promoted ? 'Subes de división tras la promoción (+50).' : 'Buena temporada.' },
+    'playoff-lost': { title: 'Promoción perdida', copy: 'Te quedas a las puertas del ascenso.' },
+    mid: { title: 'Mitad de tabla', copy: 'Una victoria, pero la diferencia de goles no alcanza.' },
+    low: { title: 'Temporada difícil', copy: 'Sin victorias en los partidos clave. Sigues en la misma división.' },
+  }[last.outcome] || { title: 'Fin de la liga', copy: '' };
+  return wins === 2 ? { title: '¡Liga ganada!', copy: 'Campeón: el título se suma al final de la temporada.' } : { title: 'Liga terminada', copy: 'Ahora tocan las copas de la temporada.' };
+}
+
 export class UI {
   constructor(initialUser = null) {
     this.pendingGuestMigration = initialUser ? readGuestProfile() : null;
     this.user = initialUser; this.accountService = null; this.accountMode = 'login'; this.accountSyncTimer = 0; this.lastAccountSync = 0; this.accountSyncBusy = false;
-    const storageScope = initialUser?.id || 'guest'; setSettingsScope(storageScope); setCompetitionSaveScope(storageScope);
+    const storageScope = initialUser?.id || 'guest'; setSettingsScope(storageScope); setCompetitionSaveScope(storageScope); setCareerScope(storageScope);
     this.settings = loadSettings(); this.progression = new Progression(storageScope); this.career = new CareerProfile(storageScope); this.game = null; this.sound = null;
     if (this.career.stats.matches === 0 && this.career.stats.wins === 0 && this.progression.wins > 0) this.career.ensureProgressionWins(this.progression.wins);
     this.tournament = null; this.league = null; this.pendingMode = null; this.pendingCompetition = null; this.pendingTeamType = 'all'; this.pendingLeagueId = ''; this.selectedCompetition = 'champions'; this.competitionIndex = 0; this.selectedTeamId = ''; this.teamCursor = new Map();
@@ -40,10 +58,10 @@ export class UI {
       home: document.querySelector('#home-screen'), play: document.querySelector('#play-screen'), customize: document.querySelector('#customize-screen'),
       settings: document.querySelector('#settings-screen'), account: document.querySelector('#account-screen'), online: document.querySelector('#online-screen'), leaderboard: document.querySelector('#leaderboard-screen'), competitions: document.querySelector('#competition-screen'), tournament: document.querySelector('#tournament-screen'),
       league: document.querySelector('#league-screen'), game: document.querySelector('#game-screen'), profile: document.querySelector('#profile-screen'),
-      missions: document.querySelector('#missions-screen'),
+      missions: document.querySelector('#missions-screen'), career: document.querySelector('#career-screen'),
       modifiers: document.querySelector('#modifiers-screen'), quick: document.querySelector('#quick-screen'), legends: document.querySelector('#legends-screen'),
     };
-    this.cacheElements(); this.menuBackdrop = new MenuBackdrop(this.menu_backdrop); this.populateTeamPicker(); this.populateLeagueCompetitions(); this.fillInputs(); this.bind(); this.renderSoloFormat(); this.updateLeaguePreview(); this.renderProgress(); this.show('home'); this.refreshContinueButton();
+    this.cacheElements(); this.menuBackdrop = new MenuBackdrop(this.menu_backdrop); this.populateTeamPicker(); this.populateLeagueCompetitions(); this.fillInputs(); this.bind(); this.careerScreen = new CareerScreen(this); this.careerScreen.renderHomeStatus(); this.renderSoloFormat(); this.updateLeaguePreview(); this.renderProgress(); this.show('home'); this.refreshContinueButton();
   }
 
   cacheElements() {
@@ -456,7 +474,7 @@ export class UI {
     const guestProfile = priorScope === 'guest' ? this.currentCloudProfile() : this.pendingGuestMigration;
     this.pendingGuestMigration = null;
     if (priorScope !== user.id) {
-      setSettingsScope(user.id); setCompetitionSaveScope(user.id);
+      setSettingsScope(user.id); setCompetitionSaveScope(user.id); setCareerScope(user.id); this.careerScreen?.reload();
       this.progression.setScope(user.id); this.career.setScope(user.id); this.settings = loadSettings();
     }
     this.user = user;
@@ -507,7 +525,7 @@ export class UI {
     await this.onlineMatch?.leave(false); this.game?.stop(); this.currentMatchMode = null;
     try { await this.accountService?.signOut(); } catch { /* Local scope still switches even if the network is unavailable. */ }
     if (this.accountSyncTimer) clearTimeout(this.accountSyncTimer);
-    this.user = null; this.hub?.reset(); setSettingsScope('guest'); setCompetitionSaveScope('guest');
+    this.user = null; this.hub?.reset(); setSettingsScope('guest'); setCompetitionSaveScope('guest'); setCareerScope('guest'); this.careerScreen?.reload();
     this.progression.setScope('guest'); this.career.setScope('guest'); this.settings = loadSettings();
     this.game?.updateSettings(this.settings); this.fillInputs(); this.renderProgress(); this.renderAccount(); this.refreshContinueButton();
     this.setAccountMessage('Has cerrado sesión. Tu guardado local sigue disponible.', false, true);
@@ -674,6 +692,7 @@ export class UI {
 
   selectMode(mode) {
     if (mode === 'modifiers') { this.openModifiers(); return; }
+    if (mode === 'career') { this.careerScreen.open(); return; }
     if (mode === 'legends') { this.openLegends(); return; }
     if (mode === 'bot') {
       if (!this.profileComplete()) { this.pendingMode = 'quick'; this.pendingTeamType = 'all'; this.pendingLeagueId = ''; this.openProfile(); return; }
@@ -838,14 +857,7 @@ export class UI {
   }
 
   renderCompetitionPicker() {
-    const trophies = {
-      champions: '<svg viewBox="0 0 100 100"><path d="M31 17h38v13c0 18-8 29-19 33-11-4-19-15-19-33V17Zm-10 4h10v9c0 9 3 15 8 19-13-2-18-10-18-20v-8Zm58 0v8c0 10-5 18-18 20 5-4 8-10 8-19v-9h10ZM45 63h10v12h15v9H30v-9h15V63Z" fill="currentColor"/><path d="M39 24h22v6H39z" fill="#eaf8ee" opacity=".45"/></svg>',
-      league: '<svg viewBox="0 0 100 100"><path d="M32 17h36l-3 18c-2 12-7 19-15 23-8-4-13-11-15-23l-3-18ZM23 22h11l2 13c1 7 4 12 9 16-14-1-22-8-22-19V22Zm54 0v10c0 11-8 18-22 19 5-4 8-9 9-16l2-13h11ZM45 57h10v14h14v9H31v-9h14V57Z" fill="currentColor"/><path d="m50 26 2.4 5 5.6.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.6-.8 2.4-5Z" fill="#10191b"/></svg>',
-      'world-cup': '<svg viewBox="0 0 100 100"><path d="M50 13 61 19 64 31 58 39 66 48 61 58 56 64H44L39 58 34 48 42 39 36 31 39 19 50 13Z" fill="currentColor"/><path d="M43 19 50 25 57 19M38 31l12 7 12-7M40 45h20M43 57h14M46 64l-3 17h14l-3-17M39 82h22v6H39z" fill="none" stroke="#effaf1" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".8"/><circle cx="50" cy="36" r="17" fill="none" stroke="#effaf1" stroke-width="1.7" opacity=".55"/></svg>',
-      euro: '<svg viewBox="0 0 100 100"><path d="M23 23c0-6 5-10 11-10h32c6 0 11 4 11 10v8c0 8-5 13-13 15l-9 2 8 18-13 12-13-12 8-18-9-2c-8-2-13-7-13-15v-8Z" fill="currentColor"/><path d="M34 24h32M39 32h22M44 41h12M46 68l4 11 4-11" stroke="#effaf1" stroke-width="2.5" stroke-linecap="round" opacity=".75"/></svg>',
-      'copa-america': '<svg viewBox="0 0 100 100"><path d="M35 19h30l-2 10c-1 7-4 12-9 15v9c0 7 4 12 10 16l7 4v8H29v-8l7-4c6-4 10-9 10-16v-9c-5-3-8-8-9-15l-2-10Z" fill="currentColor"/><path d="M32 22h-9v9c0 12 6 18 18 20M68 22h9v9c0 12-6 18-18 20M40 29h20M43 38h14M43 54h14M41 69h18" fill="none" stroke="#effaf1" stroke-width="2.3" stroke-linecap="round" opacity=".8"/><path d="M29 81h42v6H29z" fill="#effaf1" opacity=".45"/></svg>',
-      'copa-libertadores': '<svg viewBox="0 0 100 100"><path d="M30 16h40l-4 20c-2 11-7 18-16 23-9-5-14-12-16-23l-4-20Zm-8 4h10l2 15c1 5 3 10 7 14-12-1-19-8-19-19V20Zm46 0h10v10c0 11-7 18-19 19 4-4 6-9 7-14l2-15ZM45 58h10v17h15v9H30v-9h15V58Z" fill="currentColor"/><path d="m50 23 3.2 6.5 7.1 1-5.1 5 1.2 7-6.4-3.4-6.4 3.4 1.2-7-5.1-5 7.1-1L50 23Z" fill="#122017"/></svg>',
-    };
+    const trophies = TROPHY_ART;
     const item = CUP_COMPETITIONS[this.competitionIndex] || CUP_COMPETITIONS[0];
     this.competition_trophy.innerHTML = trophies[item.id] || (item.id === 'club-world-cup' ? trophies['world-cup'] : trophies.champions);
     this.competition_picker_card.style.setProperty('--competition-accent', ({ champions: '#78ddb0', league: '#73a9ed', 'world-cup': '#e7c56c', euro: '#7ab6ef', 'copa-america': '#69d2a0', 'copa-libertadores': '#e4a66d', 'club-world-cup': '#e7c56c' })[item.id] || '#78ddb0');
@@ -1121,7 +1133,7 @@ export class UI {
     });
     for (const [key, screen] of Object.entries(this.screens)) screen.classList.toggle('hidden', key !== view);
     // Animated background: one canvas moves into the visible menu and draws its scene.
-    const backdropScene = { home: 'home', play: 'play', online: 'online', settings: 'settings', tournament: 'champions', league: 'league' }[view];
+    const backdropScene = { home: 'home', play: 'play', online: 'online', settings: 'settings', tournament: 'champions', league: 'league', career: 'champions' }[view];
     if (backdropScene && this.screens[view]) this.menuBackdrop?.setScene(backdropScene, this.screens[view]);
     this.menuBackdrop?.setActive(!!backdropScene);
     if (view === 'profile') { this.renderProfile(); this.social?.setTab(this.social.tab); } else this.social?.closePlayer();
@@ -1422,7 +1434,7 @@ export class UI {
       try { const duel = resolveLegendMatch(options.legendId, this.settings.teamId, this.progression.level); options = { ...options, difficulty: duel.difficulty, opponentTeam: duel.opponentTeam, opponentName: duel.opponentTeam.name }; }
       catch { this.openLegends(); return; }
     }
-    if (!this.profileComplete()) { this.pendingMode = mode; this.openProfile(); return; }
+    if (mode !== 'career' && !this.profileComplete()) { this.pendingMode = mode; this.openProfile(); return; }
     if (!preserveCompetition) { this.tournament = null; this.league = null; }
     options = { ...options, modifiers: mode === 'online' ? DEFAULT_MODIFIERS : normalizeModifiers(snapshot?.modifiers || options.modifiers || this.settings.modifiers) };
     this.currentMatchMode = mode; this.currentMatchOptions = options; this.result_finish.disabled = false; this.hideRankProgress();
@@ -1434,13 +1446,13 @@ export class UI {
     if (snapshot) this.game.restoreSnapshot(snapshot);
     this.trajectory_toggle.checked = this.game.trajectory; this.trajectory_enabled.checked = this.game.trajectory;
     this.hud_player_name.classList.remove('ranked-stack'); this.hud_opponent_name.classList.remove('ranked-stack');
-    this.hud_player_name.textContent = this.settings.name.toUpperCase(); this.player_dot.style.background = getTeamById(this.settings.teamId)?.primary || '#68746e';
+    this.hud_player_name.textContent = this.settings.name.toUpperCase(); this.player_dot.style.background = (options.playerTeam || getTeamById(this.settings.teamId))?.primary || '#68746e';
     this.opponent_dot.style.background = options.opponentTeam?.primary || '#f19676';
     this.hud_opponent_name.textContent = mode === 'training' ? 'PRÁCTICA' : (options.opponentName || 'BOT');
     const baseLabel = options.label || (mode === 'training' ? 'MODO ENTRENAMIENTO' : `PARTIDO · ${difficultyLabel(this.settings.difficulty).toUpperCase()}`);
     const target = `A ${this.game.goalTarget} ${this.game.goalTarget === 1 ? 'GOL' : 'GOLES'}`;
     const label = mode === 'training' ? baseLabel : /\bA \d+(?: GOLES)?\b/.test(baseLabel) ? baseLabel.replace(/\bA \d+(?: GOLES)?\b/g, target) : `${baseLabel} · ${target}`;
-    const duo = !!options.duo && ['bot', 'tournament', 'league'].includes(mode);
+    const duo = !!options.duo && ['bot', 'tournament', 'league', 'career'].includes(mode);
     this.mode_label.textContent = (duo ? `2 CONTRA 2 · IA ${difficultyLabel(options.mateDifficulty || 'normal').toUpperCase()} · ` : '') + (modifiersAreDefault(options.modifiers) ? '' : 'REGLAS PERSONALIZADAS · ') + label;
     if (duo) this.hud_player_name.textContent = `${this.settings.name.toUpperCase()} + IA`;
     this.training_tools.classList.toggle('hidden', mode !== 'training');
@@ -1893,6 +1905,8 @@ export class UI {
   }
 
   saveAndQuit() {
+    // A career match left half-way is not recorded: it is played again from the start.
+    if (this.currentMatchMode === 'career') { this.leaveCareerMatch(); return; }
     if (this.currentMatchMode === 'online' && this.hub?.lobby) { this.hub.action('leave'); return; }
     if (this.currentMatchMode === 'online') this.onlineMatch?.leave();
     this.game?.setPaused(true); this.saveCurrentCompetition(); this.game?.stop();
@@ -1980,15 +1994,37 @@ export class UI {
       }
       this.renderLeagueStandings(season, previousRanks);
     }
+    let careerChampion = false, careerCompetition = '';
+    if (result.mode === 'career') {
+      const state = loadCareer(), current = nextCareerMatch(state);
+      const event = current ? recordCareerMatch(state, result.playerScore, result.botScore) : null;
+      if (event) {
+        saveCareer(state); this.careerScreen.reload();
+        const stage = event.stage, label = current.match.label;
+        careerChampion = !!event.trophy; careerCompetition = stage.kind === 'league' ? 'league' : stage.competitionId;
+        this.result_eyebrow.textContent = `MODO CARRERA · T${state.season} · ${stage.name.toUpperCase()} · ${label.toUpperCase()}`;
+        if (event.trophy) { this.result_title.textContent = `¡Campeón de ${COMPETITION_NAMES[stage.competitionId] || stage.name}!`; this.result_copy.textContent = `+${event.trophy.points} puntos para tu vitrina.${event.clubWorldCup ? ' Te has clasificado para el Mundial de Clubes.' : ''} ${rewardText}${levelText}`; }
+        else if (event.eliminated) { this.result_title.textContent = label === 'Final' ? 'Final perdida' : 'Eliminados'; this.result_copy.textContent = `${stage.name}: ${label === 'Final' ? 'subcampeones' : 'fuera en semifinales'}. ${rewardText}${levelText}`; }
+        else if (stage.kind === 'league' && event.stageDone) {
+          const outcome = leagueResultText(state);
+          this.result_title.textContent = outcome.title; this.result_copy.textContent = `${outcome.copy} ${rewardText}${levelText}`;
+          careerChampion = state.history.at(-1)?.outcome === 'champion' && state.plan?.season === state.season;
+        }
+        else if (stage.kind === 'league') this.result_copy.textContent = `${won ? 'Primer paso hacia el título.' : 'Queda un partido clave para salvar la temporada.'} ${rewardText}${levelText}`;
+        const more = state.phase === 'season' && nextCareerMatch(state);
+        this.result_next.innerHTML = more ? `<span>Siguiente: ${nextCareerMatch(state).stage.name} · ${nextCareerMatch(state).match.label} →</span><kbd class="next-key">ESPACIO</kbd>` : `<span>${state.phase === 'summary' ? 'Ver resumen de la temporada' : 'Volver a la carrera'} →</span><kbd class="next-key">ESPACIO</kbd>`;
+        this.result_next.classList.remove('hidden'); this.result_finish.textContent = 'Menú de carrera';
+      }
+    }
     this.tournament_bracket_panel.classList.add('hidden');
     if (result.mode === 'tournament' && this.tournament?.bracket) this.renderBracketPanel(this.tournament);
     const team = getTeamById(this.settings.teamId);
     const newMissions = result.mode === 'training' ? Object.assign([], { added: [] }) : this.career.processMissionEvent({
       mode: result.mode, won, goalsFor: result.playerScore, goalsAgainst: result.botScore,
       difficulty: result.mode === 'online' ? '' : this.game?.botAI?.difficulty, duo: !!(this.currentMatchOptions?.duo || this.currentMatchOptions?.squad),
-      competitionMode: result.mode === 'tournament' || result.mode === 'league',
-      competitionId: result.mode === 'tournament' ? this.tournament?.competitionId : (result.mode === 'league' ? this.league?.competitionId : ''),
-      isFinal: cupFinal, isChampion: cupChampion, isLeagueChampion: leagueChampion,
+      competitionMode: result.mode === 'tournament' || result.mode === 'league' || result.mode === 'career',
+      competitionId: result.mode === 'tournament' ? this.tournament?.competitionId : (result.mode === 'league' ? this.league?.competitionId : result.mode === 'career' ? careerCompetition : ''),
+      isFinal: cupFinal, isChampion: cupChampion || (careerChampion && careerCompetition !== 'league'), isLeagueChampion: leagueChampion || (careerChampion && careerCompetition === 'league'),
     }, this.progression.level);
     const missionXp = newMissions.reduce((sum, mission) => sum + mission.xp, 0);
     if (missionXp) {
@@ -2156,8 +2192,24 @@ export class UI {
     });
   }
 
+  // Career mode: plays the next key match of the saved career with the club or national team.
+  startCareerMatch() {
+    const state = loadCareer(), next = nextCareerMatch(state); if (!next) { this.careerScreen.returnFromMatch(); return; }
+    const playerTeam = getTeamById(next.stage.teamId), opponentTeam = getTeamById(next.match.opponentId);
+    const fieldTheme = next.stage.kind === 'league' ? `league-${next.stage.competitionId}` : next.stage.competitionId;
+    const difficulty = careerDifficulty(next.match.difficulty, this.progression.level);
+    this.start('career', { playerTeamId: playerTeam.id, playerTeam, opponentTeam, opponentName: opponentTeam.name, difficulty, fieldTheme,
+      goalTarget: CAREER_GOAL_TARGET, competitionRound: next.match.label === 'Final' ? 4 : 3, duo: state.format === '2v2', mateDifficulty: this.mateDifficulty(),
+      label: `MODO CARRERA · T${state.season}/${CAREER_SEASONS} · ${next.stage.name.toUpperCase()} · ${next.match.label.toUpperCase()} · A ${CAREER_GOAL_TARGET}` });
+  }
+
   advanceCompetition() {
     this.sound?.play('click');
+    if (this.currentMatchMode === 'career') {
+      const state = loadCareer();
+      if (state?.phase === 'season' && nextCareerMatch(state)) { this.startCareerMatch(); return; }
+      this.leaveCareerMatch(); return;
+    }
     if (this.tournament?.status === 'next') { this.tournament.status = 'playing'; this.launchTournamentRound(); return; }
     if (this.league?.status === 'next') { this.league.status = 'playing'; this.league.jornada++; this.launchLeagueRound(); }
   }
@@ -2169,7 +2221,14 @@ export class UI {
     document.getElementById('pause-button').textContent = paused ? '▶' : 'Ⅱ';
   }
 
+  leaveCareerMatch() {
+    this.game?.stop(); this.currentMatchMode = null; this.currentMatchOptions = null;
+    this.goal_banner.classList.add('hidden'); this.countdown_banner.classList.add('hidden'); this.pause_overlay.classList.add('hidden'); this.result_overlay.classList.add('hidden');
+    this.careerScreen.returnFromMatch();
+  }
+
   finishToMenu() {
+    if (this.currentMatchMode === 'career') { this.leaveCareerMatch(); return; }
     if (this.currentMatchMode === 'online' && this.hub?.lobby) { this.hub.returnToLobby(); return; }
     if (this.league?.status === 'next' || this.tournament?.status === 'next') this.saveAndQuit(); else this.quit();
   }

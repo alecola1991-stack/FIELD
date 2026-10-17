@@ -8,7 +8,7 @@ import { SquadAI } from './SquadAI.js';
 import { Renderer } from './Renderer.js';
 import { GameState } from './GameState.js';
 import { getTeamById } from '../config/teams.js';
-import { kickBall, resolveBallWalls, resolvePlayerBall, resolvePlayerPlayers, resolvePlayerWalls, isGoal } from './Physics.js';
+import { kickBall, curveSide, resolveBallWalls, resolvePlayerBall, resolvePlayerPlayers, resolvePlayerWalls, isGoal } from './Physics.js';
 
 const POWER_SHOT_COOLDOWN_SECONDS = 20;
 const ONLINE_PACKET_INTERVAL = 1 / 30;
@@ -126,7 +126,7 @@ export class Game {
     if (this.renderEnabled !== false) {
       const view = this.replayView();
       this.renderer.render(view ? { ...view, trajectory: false, shotPreview: false, goalTimer: 0, goalSide: 0, world: this.world || WORLD, fieldTheme: this.fieldTheme, competitionRound: this.competitionRound, shotRangeTimer: 0, replay: true }
-        : { player: this.player, bot: this.bot, others: this.others, ball: this.ball, trajectory: this.trajectory, shotPreview: !!this.settings.shotPreview && this.countdown === 0 && this.state.goalTimer <= 0 && !this.state.matchOver && !this.replay, curveAim: this.input.curveHeld?.() || false, goalTimer: this.state.goalTimer, goalSide: this.state.goalSide, world: this.world || WORLD, fieldTheme: this.fieldTheme, competitionRound: this.competitionRound, shotRangeTimer: this.shotRangeTimer }, this.state.paused ? 0 : dt);
+        : { player: this.player, bot: this.bot, others: this.others, ball: this.ball, trajectory: this.trajectory, shotPreview: !!this.settings.shotPreview && this.countdown === 0 && this.state.goalTimer <= 0 && !this.state.matchOver && !this.replay, curveAim: curveSide(this.input.curveHeld?.(), this.input.axes().y), goalTimer: this.state.goalTimer, goalSide: this.state.goalSide, world: this.world || WORLD, fieldTheme: this.fieldTheme, competitionRound: this.competitionRound, shotRangeTimer: this.shotRangeTimer }, this.state.paused ? 0 : dt);
     }
     this.input.endFrame();
   }
@@ -163,7 +163,7 @@ export class Game {
         this.sound.play('kick');
         if (powered) { this.renderer.fireBurst(this.ball.x, this.ball.y); this.player.powerFlash = .48; }
         else this.renderer.burst(this.ball.x, this.ball.y, '#c5f4d8', 7, 100);
-      }, null, powered ? 1.45 : 1, shotInput.curve);
+      }, null, powered ? 1.45 : 1, curveSide(shotInput.curve, move.y));
       if (kicked) this.matchStats.shotsPlayer++;
       if (kicked && powered) { this.player.powerCooldown = (this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS); this.hooks.onPowerCooldown?.(this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS); }
     }
@@ -181,7 +181,7 @@ export class Game {
             this.sound.play('kick');
             if (powered) { this.renderer.fireBurst(this.ball.x, this.ball.y); this.bot.powerFlash = .48; }
             else this.renderer.burst(this.ball.x, this.ball.y, '#c5f4d8', 7, 100);
-          }, null, powered ? 1.45 : 1, command.curve === true);
+          }, null, powered ? 1.45 : 1, curveSide(command.curve === true, command.y));
           if (kicked) this.matchStats.shotsOpponent++;
           if (kicked && powered) this.bot.powerCooldown = (this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS);
         }
@@ -338,7 +338,7 @@ export class Game {
         this.sound.play('kick');
         if (powered) { this.renderer.fireBurst(this.ball.x, this.ball.y); this.player.powerFlash = .48; }
         else this.renderer.burst(this.ball.x, this.ball.y, '#c5f4d8', 7, 100);
-      }, null, powered ? 1.45 : 1, shotInput.curve);
+      }, null, powered ? 1.45 : 1, curveSide(shotInput.curve, axes.y));
       if (kicked) this.matchStats.shotsPlayer++;
       if (kicked && powered) this.player.powerCooldown = (this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS);
     }
@@ -574,7 +574,7 @@ export class Game {
         this.sound.play('kick');
         if (powered) { this.renderer.fireBurst(this.ball.x, this.ball.y); body.powerFlash = .48; }
         else this.renderer.burst(this.ball.x, this.ball.y, '#c5f4d8', 7, 100);
-      }, null, powered ? 1.45 : 1, command.curve === true);
+      }, null, powered ? 1.45 : 1, curveSide(command.curve === true, command.y));
       if (kicked) { if ((seat < 2) === leftLocal) this.matchStats.shotsPlayer++; else this.matchStats.shotsOpponent++; }
       if (kicked && powered) { body.powerCooldown = (this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS); if (seat === localSeat) this.hooks.onPowerCooldown?.(body.powerCooldown); }
     });

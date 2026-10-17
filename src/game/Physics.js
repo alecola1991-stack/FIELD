@@ -132,18 +132,20 @@ export function predictShot(player, ball, aim = null, powerMultiplier = 1) {
   return { vx, vy };
 }
 
-// Curved shots bend up or down the screen following the player's vertical run
-// (no vertical run: towards the middle of the pitch).
-export function curveFor(player, ball, velocity) {
-  const world = ball.world || WORLD;
-  const run = Math.abs(player.vy || 0) > 25 ? Math.sign(player.vy) : Math.abs(player.faceY || 0) > .35 ? Math.sign(player.faceY) : (ball.y < world.height / 2 ? 1 : -1);
-  return run * (velocity.vx < 0 ? -1 : 1) * Ball.CURL_RATE;
+// Curved shots: which way the ball bends, from the shooter's vertical input when the curve key is held.
+// Holding down bends it up and holding up bends it down; without an up/down direction the shot is straight.
+// Returns +1 (bends down the screen), -1 (bends up) or 0.
+export function curveSide(curveHeld, axisY) {
+  return curveHeld && Math.abs(Number(axisY) || 0) > .3 ? -Math.sign(axisY) : 0;
+}
+export function curveFor(side, velocity) {
+  return side ? Math.sign(side) * (velocity.vx < 0 ? -1 : 1) * Ball.CURL_RATE : 0;
 }
 
-export function kickBall(player, ball, onKick = () => {}, aim = null, powerMultiplier = 1, curve = false) {
+export function kickBall(player, ball, onKick = () => {}, aim = null, powerMultiplier = 1, curve = 0) {
   const shot = predictShot(player, ball, aim, powerMultiplier);
   if (!shot) return false;
-  ball.vx = shot.vx; ball.vy = shot.vy; ball.curl = curve ? curveFor(player, ball, shot) : 0;
+  ball.vx = shot.vx; ball.vy = shot.vy; ball.curl = curveFor(curve, shot);
   player.shotCooldown = .36; player.kickScale = .22; ball.kickScale = .18;
   onKick(); return true;
 }

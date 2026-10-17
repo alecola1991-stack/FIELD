@@ -29,6 +29,27 @@ const FIELD_THEMES = {
 const RFEF_THEME = { grass: '#2b3324', stripe: '#f2d6a00a', line: 'rgba(244,228,198,.39)', net: '#1f2419', accent: '#d8b46a' };
 for (const id of FEDERATION_LEAGUE_IDS) FIELD_THEMES[`league-${id}`] = RFEF_THEME;
 
+// Vivid pitch: each theme keeps its hue but the grass is lighter and more saturated,
+// with a mown-stripe pattern and a grass-blade texture; lines and goals are white.
+function hexToHsl(hex) {
+  const n = parseInt(hex.slice(1, 7), 16), r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, d = max - min;
+  if (!d) return [0, 0, l];
+  const s = d / (1 - Math.abs(2 * l - 1));
+  const h = max === r ? ((g - b) / d + 6) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [h * 60, s, l];
+}
+const hsl = (h, s, l, a = 1) => `hsla(${h.toFixed(1)},${(Math.max(0, Math.min(1, s)) * 100).toFixed(1)}%,${(Math.max(0, Math.min(1, l)) * 100).toFixed(1)}%,${a})`;
+function vividGrass(hex) {
+  const [hue, s, l] = hexToHsl(hex);
+  // Green and teal pitches drift towards a natural grass green; other theme colours keep their hue.
+  const h = hue > 85 && hue < 185 ? hue + (132 - hue) * .55 : hue;
+  return { h, s: Math.min(.72, Math.max(.42, s * 1.45 + .12)), l: Math.min(.42, Math.max(.33, l * 2.1)) };
+}
+// Small deterministic random so the texture is identical every time it is drawn.
+function seeded(seed) { let value = seed >>> 0 || 1; return () => (value = (value * 1664525 + 1013904223) >>> 0) / 4294967296; }
+const PITCH_LINE = 'rgba(255,255,255,.88)';
+
 const VIEW_TOP = 25, VIEW_BOTTOM = WORLD.height - 25; // reachable band of the world
 const TOUCH_CONTROLS_HEIGHT = 176; // css px kept clear for the portrait D-pad and kick button
 
@@ -118,12 +139,42 @@ export class Renderer {
     c.fillStyle = theme.net; c.fillRect(0, 0, world.width, world.height);
     // Low contrast net texture outside the playing area.
     c.fillStyle = theme.net; c.fillRect(goalBack, goalTop, left - goalBack, goalBottom - goalTop); c.fillRect(right, goalTop, world.width - goalBack - right, goalBottom - goalTop);
-    c.save(); c.beginPath(); c.rect(left, top, right - left, bottom - top); c.clip();
-    c.fillStyle = theme.grass; c.fillRect(left, top, right - left, bottom - top);
-    const stripe = (right - left) / 10;
-    for (let i = 0; i < 10; i += 2) { c.fillStyle = theme.stripe; c.fillRect(left + i * stripe, top, stripe, bottom - top); }
+    // Goal nets: white mesh behind each goal line.
+    c.save(); c.strokeStyle = 'rgba(255,255,255,.16)'; c.lineWidth = 1;
+    for (const [x0, x1] of [[goalBack, left], [right, world.width - goalBack]]) {
+      c.beginPath();
+      for (let x = x0; x <= x1; x += 7) { c.moveTo(x, goalTop); c.lineTo(x, goalBottom); }
+      for (let y = goalTop; y <= goalBottom; y += 7) { c.moveTo(x0, y); c.lineTo(x1, y); }
+      c.stroke();
+    }
     c.restore();
-    c.strokeStyle = theme.line; c.lineWidth = 2;
+    c.save(); c.beginPath(); c.rect(left, top, right - left, bottom - top); c.clip();
+    const grass = vividGrass(theme.grass);
+    c.fillStyle = hsl(grass.h, grass.s, grass.l); c.fillRect(left, top, right - left, bottom - top);
+    // Mown stripes: alternate lighter and darker bands.
+    const stripe = (right - left) / 12;
+    for (let i = 0; i < 12; i++) { c.fillStyle = i % 2 ? hsl(grass.h, grass.s, grass.l + .035) : hsl(grass.h, grass.s + .03, grass.l - .025); c.fillRect(left + i * stripe, top, stripe + .5, bottom - top); }
+    // Grass texture: soft patches plus thousands of short blades in slightly different tones.
+    const random = seeded(7919);
+    for (let i = 0; i < 70; i++) {
+      const x = left + random() * (right - left), y = top + random() * (bottom - top), r = 30 + random() * 70;
+      const patch = c.createRadialGradient(x, y, 0, x, y, r); const tone = random() < .5 ? .05 : -.05;
+      patch.addColorStop(0, hsl(grass.h, grass.s, grass.l + tone, .22)); patch.addColorStop(1, hsl(grass.h, grass.s, grass.l + tone, 0));
+      c.fillStyle = patch; c.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    c.lineWidth = 1; c.lineCap = 'round';
+    const blades = [hsl(grass.h + 6, grass.s, grass.l + .12, .5), hsl(grass.h - 4, grass.s + .05, grass.l - .1, .5), hsl(grass.h, grass.s - .08, grass.l + .19, .38), hsl(grass.h + 10, grass.s, grass.l - .14, .42)];
+    for (const color of blades) {
+      c.strokeStyle = color; c.beginPath();
+      for (let i = 0; i < 4200; i++) {
+        const x = left + random() * (right - left), y = top + random() * (bottom - top), length = 2 + random() * 3.5, lean = (random() - .5) * 2.4;
+        c.moveTo(x, y); c.lineTo(x + lean, y - length);
+      }
+      c.stroke();
+    }
+    c.lineCap = 'butt';
+    c.restore();
+    c.strokeStyle = PITCH_LINE; c.lineWidth = 2.5;
     c.strokeRect(left, top, right - left, bottom - top);
     c.beginPath(); c.moveTo(world.width / 2, top); c.lineTo(world.width / 2, bottom); c.stroke();
     c.beginPath(); c.arc(world.width / 2, world.height / 2, world.centerCircleRadius, 0, Math.PI * 2); c.stroke();
@@ -137,14 +188,16 @@ export class Renderer {
       else { c.beginPath(); c.moveTo(cx - 8, cy - 6); c.lineTo(cx + 8, cy - 6); c.moveTo(cx - 6, cy); c.lineTo(cx + 6, cy); c.moveTo(cx - 4, cy + 6); c.lineTo(cx + 4, cy + 6); c.stroke(); }
       c.restore();
     }
-    c.beginPath(); c.arc(world.width / 2, world.height / 2, 3, 0, Math.PI * 2); c.fillStyle = theme.accent; c.fill();
+    c.beginPath(); c.arc(world.width / 2, world.height / 2, 3.5, 0, Math.PI * 2); c.fillStyle = PITCH_LINE; c.fill();
     // Simple penalty areas and goal boxes.
+    c.strokeStyle = PITCH_LINE; c.lineWidth = 2.5;
     c.strokeRect(left, world.height / 2 - 128, 115, 256); c.strokeRect(left, world.height / 2 - 72, 44, 144);
     c.strokeRect(right - 115, world.height / 2 - 128, 115, 256); c.strokeRect(right - 44, world.height / 2 - 72, 44, 144);
-    c.fillStyle = theme.accent + '66'; c.beginPath(); c.arc(left + 76, world.height / 2, 2.5, 0, Math.PI * 2); c.fill(); c.beginPath(); c.arc(right - 76, world.height / 2, 2.5, 0, Math.PI * 2); c.fill();
-    c.strokeStyle = theme.accent + '88'; c.lineWidth = 3; c.strokeRect(goalBack, goalTop, left - goalBack, goalBottom - goalTop); c.strokeRect(right, goalTop, world.width - goalBack - right, goalBottom - goalTop);
-    c.strokeStyle = theme.accent; c.lineWidth = 6; c.lineCap = 'round'; c.beginPath(); c.moveTo(left, goalTop); c.lineTo(left, goalBottom); c.moveTo(right, goalTop); c.lineTo(right, goalBottom); c.stroke(); c.lineCap = 'butt';
-    c.fillStyle = theme.accent; for (const x of [left, right]) for (const y of [goalTop, goalBottom]) { c.beginPath(); c.arc(x, y, world.goalPostRadius, 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = PITCH_LINE; c.beginPath(); c.arc(left + 76, world.height / 2, 3, 0, Math.PI * 2); c.fill(); c.beginPath(); c.arc(right - 76, world.height / 2, 3, 0, Math.PI * 2); c.fill();
+    // White goals: frame, goal line and round posts.
+    c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = 3; c.strokeRect(goalBack, goalTop, left - goalBack, goalBottom - goalTop); c.strokeRect(right, goalTop, world.width - goalBack - right, goalBottom - goalTop);
+    c.strokeStyle = '#ffffff'; c.lineWidth = 6; c.lineCap = 'round'; c.beginPath(); c.moveTo(left, goalTop); c.lineTo(left, goalBottom); c.moveTo(right, goalTop); c.lineTo(right, goalBottom); c.stroke(); c.lineCap = 'butt';
+    c.fillStyle = '#ffffff'; for (const x of [left, right]) for (const y of [goalTop, goalBottom]) { c.beginPath(); c.arc(x, y, world.goalPostRadius, 0, Math.PI * 2); c.fill(); }
     c.fillStyle = theme.accent + 'a0'; c.font = '9px "DM Mono",monospace'; c.textAlign = 'center'; for (const [label, x] of [['HOME', (goalBack + left) / 2], ['AWAY', (right + world.width - goalBack) / 2]]) {
       if (this.rotated) { c.save(); c.translate(x + (x < world.width / 2 ? -16 : 16), world.height / 2); c.rotate(Math.PI / 2); c.fillText(label, 0, 0); c.restore(); }
       else c.fillText(label, x, goalTop - 8);

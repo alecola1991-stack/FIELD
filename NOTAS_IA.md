@@ -4,6 +4,28 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-17 · Claude · Campo con textura de césped, colores más vivos y líneas y porterías blancas
+**Commit:** rama `cesped-vivo`
+**Archivos:** `src/game/Renderer.js`
+**Qué y por qué:** Ale pidió una textura de césped para el campo, tonos más claros y vivos, y las líneas y las porterías en blanco. Pidió además que el cambio fuera reversible.
+**Cómo:**
+- Todo el cambio está en `Renderer.drawField`, que se dibuja una sola vez en la caché `fieldCache`, así que no cuesta nada por fotograma.
+- `FIELD_THEMES` no se ha tocado. El color del césped se deriva de `theme.grass` con `vividGrass()`:
+  - En HSL, la luminosidad pasa a 0.33–0.42 y la saturación a 0.42–0.72.
+  - Los tonos verdes y verdeazulados (85°–185°) se acercan al verde natural de 132°.
+  - Las demás competiciones conservan su tono: Champions azul, LaLiga marrón, etc.
+- Textura:
+  - 12 franjas de corte alternas, más claras y más oscuras.
+  - 70 manchas suaves con gradiente radial.
+  - Unas 16.800 briznas cortas en cuatro tonos.
+  - Usa un aleatorio con semilla (`seeded`) para que el resultado sea siempre idéntico.
+- Líneas: `PITCH_LINE`, blanco al 88 %, con grosor 2.5. El punto central y los de penalti también son blancos.
+- Porterías: postes y línea de gol en blanco, marco de la red en blanco al 75 % y malla blanca detrás de cada portería.
+- Los adornos de copa (`theme.accent`) y las etiquetas HOME/AWAY se mantienen.
+**Para el otro asistente:** para volver al aspecto anterior, revierte el merge, que solo toca `Renderer.js`. `theme.line` y `theme.stripe` ya no se usan, pero siguen en los temas.
+
+---
+
 ## 2026-10-17 · Claude · Curva: sin dirección no curva y sentido invertido
 **Commit:** fusionado en main (rama `curva-invertida`, merge a6899c6). Para deshacerlo: `git revert -m 1 a6899c6`
 **Archivos:** `src/game/Physics.js`, `src/game/Game.js`, `src/game/Renderer.js`, `index.html`, `tests/CurveShot.test.js`

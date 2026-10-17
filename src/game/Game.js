@@ -8,7 +8,7 @@ import { SquadAI } from './SquadAI.js';
 import { Renderer } from './Renderer.js';
 import { GameState } from './GameState.js';
 import { getTeamById } from '../config/teams.js';
-import { kickBall, curveSide, resolveBallWalls, resolvePlayerBall, resolvePlayerPlayers, resolvePlayerWalls, isGoal } from './Physics.js';
+import { kickBall, curveSide, resolveBallNet, resolveBallWalls, resolvePlayerBall, resolvePlayerPlayers, resolvePlayerWalls, isGoal } from './Physics.js';
 
 const POWER_SHOT_COOLDOWN_SECONDS = 20;
 const ONLINE_PACKET_INTERVAL = 1 / 30;
@@ -150,6 +150,8 @@ export class Game {
     this.state.elapsed += dt; this.hooks.onTime?.(this.state.formatTime());
     if (this.state.goalTimer > 0) {
       this.state.goalTimer = Math.max(0, this.state.goalTimer - dt);
+      // The ball keeps rolling into the goal and sinks into the soft net while the goal is celebrated.
+      for (let step = 0; step < 3; step++) { this.ball.update(dt / 3); resolveBallNet(this.ball, dt / 3); }
       if (this.state.goalTimer <= 0 && !this.startReplay()) this.finishGoalSequence();
       return;
     }
@@ -353,7 +355,7 @@ export class Game {
     if (playerScored) this.state.scorePlayer++;
     else this.state.scoreBot++;
     this.matchStats.goals.push({ side: playerScored ? 'player' : 'opponent', elapsedSeconds: this.state.elapsed, minute: Math.max(1, Math.floor(this.state.elapsed / 60) + 1) });
-    this.state.goalTimer = 1.65; this.ball.vx *= .25; this.ball.vy *= .25;
+    this.state.goalTimer = 1.65; this.ball.vx *= .8; this.ball.vy *= .8;
     this.markGoalForReplay();
     const target = this.goalTarget;
     if (this.state.mode !== 'training' && Math.max(this.state.scorePlayer, this.state.scoreBot) >= target) this.state.matchOver = true;

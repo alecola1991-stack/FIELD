@@ -1,7 +1,7 @@
 import { WORLD } from '../config/settings.js';
 import { FEDERATION_LEAGUE_IDS } from '../config/teams.js';
 import { Ball } from './Ball.js';
-import { predictShot, shotRangeRadius, resolveBallWalls, isGoal, curveFor } from './Physics.js';
+import { predictShot, shotRangeRadius, resolveBallWalls, isGoal, curveFor, netPressDepth } from './Physics.js';
 
 const FIELD_THEMES = {
   training: { grass: '#18352d', stripe: '#ffffff05', line: 'rgba(197,235,215,.31)', net: '#172428', accent: '#8ec8aa' },
@@ -113,6 +113,7 @@ export class Renderer {
       if (key !== this.fieldCacheKey) { this.drawField(this.fieldCacheContext, game.fieldTheme, game.competitionRound); this.fieldCacheKey = key; }
       c.drawImage(this.fieldCache, 0, 0);
     } else this.drawField(c, game.fieldTheme, game.competitionRound);
+    this.drawNets(c, game.ball, dt);
     if (game.trajectory) this.drawTrajectory(c, game.ball);
     if (game.shotRangeTimer > 0) this.drawShotRange(c, game.player, game.ball, game.shotRangeTimer);
     const ballPosition = this.smooth(game.ball);
@@ -142,15 +143,6 @@ export class Renderer {
     c.fillStyle = theme.net; c.fillRect(0, 0, world.width, world.height);
     // Low contrast net texture outside the playing area.
     c.fillStyle = theme.net; c.fillRect(goalBack, goalTop, left - goalBack, goalBottom - goalTop); c.fillRect(right, goalTop, world.width - goalBack - right, goalBottom - goalTop);
-    // Goal nets: white mesh behind each goal line.
-    c.save(); c.strokeStyle = 'rgba(255,255,255,.16)'; c.lineWidth = 1;
-    for (const [x0, x1] of [[goalBack, left], [right, world.width - goalBack]]) {
-      c.beginPath();
-      for (let x = x0; x <= x1; x += 7) { c.moveTo(x, goalTop); c.lineTo(x, goalBottom); }
-      for (let y = goalTop; y <= goalBottom; y += 7) { c.moveTo(x0, y); c.lineTo(x1, y); }
-      c.stroke();
-    }
-    c.restore();
     c.save(); c.beginPath(); c.rect(left, top, right - left, bottom - top); c.clip();
     const grass = pitchGreen(themeName);
     c.fillStyle = hsl(grass.h, grass.s, grass.l); c.fillRect(left, top, right - left, bottom - top);
@@ -198,12 +190,51 @@ export class Renderer {
     c.strokeRect(right - 115, world.height / 2 - 128, 115, 256); c.strokeRect(right - 44, world.height / 2 - 72, 44, 144);
     c.fillStyle = PITCH_LINE; c.beginPath(); c.arc(left + 76, world.height / 2, 3, 0, Math.PI * 2); c.fill(); c.beginPath(); c.arc(right - 76, world.height / 2, 3, 0, Math.PI * 2); c.fill();
     // White goals: frame, goal line and round posts.
-    c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = 3; c.strokeRect(goalBack, goalTop, left - goalBack, goalBottom - goalTop); c.strokeRect(right, goalTop, world.width - goalBack - right, goalBottom - goalTop);
     c.strokeStyle = '#ffffff'; c.lineWidth = 6; c.lineCap = 'round'; c.beginPath(); c.moveTo(left, goalTop); c.lineTo(left, goalBottom); c.moveTo(right, goalTop); c.lineTo(right, goalBottom); c.stroke(); c.lineCap = 'butt';
     c.fillStyle = '#ffffff'; for (const x of [left, right]) for (const y of [goalTop, goalBottom]) { c.beginPath(); c.arc(x, y, world.goalPostRadius, 0, Math.PI * 2); c.fill(); }
     c.fillStyle = theme.accent + 'a0'; c.font = '9px "DM Mono",monospace'; c.textAlign = 'center'; for (const [label, x] of [['HOME', (goalBack + left) / 2], ['AWAY', (right + world.width - goalBack) / 2]]) {
       if (this.rotated) { c.save(); c.translate(x + (x < world.width / 2 ? -16 : 16), world.height / 2); c.rotate(Math.PI / 2); c.fillText(label, 0, 0); c.restore(); }
       else c.fillText(label, x, goalTop - 8);
+    }
+  }
+  // Goal nets, drawn every frame: a ball pressing the back net makes it bulge outwards around the
+  // impact point; when it leaves, the net springs back with a little wobble.
+  drawNets(c, ball, dt) {
+    const world = this.world || WORLD, { left, right, goalTop, goalBottom, goalBack, width } = world;
+    const press = ball ? netPressDepth(ball, world) : { side: 0, depth: 0 };
+    this.nets ||= { [-1]: { depth: 0, vel: 0, y: world.height / 2 }, [1]: { depth: 0, vel: 0, y: world.height / 2 } };
+    const step = Math.min(.05, Math.max(0, dt || 0));
+    for (const side of [-1, 1]) {
+      const net = this.nets[side];
+      if (press.side === side && press.depth > 0) { net.depth = Math.min(30, press.depth * 1.15); net.vel = 0; net.y = ball.y; }
+      else if (step) { net.vel += (-420 * net.depth - 9 * net.vel) * step; net.depth += net.vel * step; if (Math.abs(net.depth) < .05 && Math.abs(net.vel) < .5) { net.depth = 0; net.vel = 0; } }
+    }
+    for (const side of [-1, 1]) {
+      const net = this.nets[side], line = side > 0 ? right : left, back = side > 0 ? width - goalBack : goalBack;
+      // Outward displacement: none at the goal line, most at the back, centred on the impact height.
+      const bulge = (x, y) => { const t = (x - line) / (back - line); return net.depth * Math.pow(Math.max(0, t), 1.5) * Math.exp(-((y - net.y) ** 2) / (2 * 42 * 42)); };
+      const point = (x, y) => [x + side * bulge(x, y), y];
+      c.save(); c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = 1; c.beginPath();
+      const depthPx = Math.abs(back - line);
+      for (let d = 7; d <= depthPx + .1; d += 7) {
+        const x = line + side * d;
+        for (let y = goalTop; y <= goalBottom + .1; y += 5) { const [px, py] = point(x, y); if (y === goalTop) c.moveTo(px, py); else c.lineTo(px, py); }
+      }
+      for (let y = goalTop; y <= goalBottom + .1; y += 7) {
+        for (let d = 0; d <= depthPx + .1; d += 3) { const [px, py] = point(line + side * d, y); if (d === 0) c.moveTo(px, py); else c.lineTo(px, py); }
+      }
+      c.stroke();
+      // Net frame: the side nets and the (bulging) back of the goal.
+      c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = 3; c.lineJoin = 'round'; c.beginPath();
+      c.moveTo(line, goalTop);
+      for (let d = 0; d <= depthPx + .1; d += 3) { const [px, py] = point(line + side * d, goalTop); c.lineTo(px, py); }
+      for (let y = goalTop; y <= goalBottom + .1; y += 4) { const [px, py] = point(back, y); c.lineTo(px, py); }
+      for (let d = depthPx; d >= -.1; d -= 3) { const [px, py] = point(line + side * d, goalBottom); c.lineTo(px, py); }
+      c.stroke();
+      // Posts and goal line on top of the mesh.
+      c.strokeStyle = '#ffffff'; c.lineWidth = 6; c.lineCap = 'round'; c.beginPath(); c.moveTo(line, goalTop); c.lineTo(line, goalBottom); c.stroke();
+      c.fillStyle = '#ffffff'; for (const y of [goalTop, goalBottom]) { c.beginPath(); c.arc(line, y, world.goalPostRadius, 0, Math.PI * 2); c.fill(); }
+      c.restore();
     }
   }
   smooth(entity) {
@@ -272,21 +303,21 @@ export class Renderer {
     const [x, y] = position || this.smooth(ball), r = ball.radius;
     c.save(); c.translate(x, y); if (this.rotated) c.rotate(Math.PI / 2); c.fillStyle = '#0007'; c.beginPath(); c.ellipse(2, 5, r * 1.08, r * .76, 0, 0, Math.PI * 2); c.fill();
     c.scale(1 + ball.kickScale * .16, 1 - ball.kickScale * .12);
-    // Plain white ball with relief: fixed light from the top-left, soft shade at the bottom-right.
-    c.shadowColor = '#e9f4ee70'; c.shadowBlur = 9;
+    // Yellow ball with relief: fixed light from the top-left, soft shade at the bottom-right.
+    c.shadowColor = '#ffe27a70'; c.shadowBlur = 9;
     const body = c.createRadialGradient(-r * .38, -r * .42, r * .08, 0, 0, r * 1.05);
-    body.addColorStop(0, '#ffffff'); body.addColorStop(.45, '#f1f5f2'); body.addColorStop(.82, '#cdd6d1'); body.addColorStop(1, '#a9b5af');
+    body.addColorStop(0, '#fff9cf'); body.addColorStop(.45, '#ffe34d'); body.addColorStop(.82, '#f0bf19'); body.addColorStop(1, '#c4930c');
     c.fillStyle = body; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill(); c.shadowBlur = 0;
     // Faint seams turn with the ball so its spin stays visible.
     c.save(); c.beginPath(); c.arc(0, 0, r - .5, 0, Math.PI * 2); c.clip(); c.rotate(ball.spin);
-    c.strokeStyle = 'rgba(120,138,130,.32)'; c.lineWidth = Math.max(.8, r * .07); c.beginPath();
+    c.strokeStyle = 'rgba(150,105,10,.42)'; c.lineWidth = Math.max(.8, r * .07); c.beginPath();
     c.arc(-r * 1.15, 0, r * .95, -.9, .9); c.arc(r * 1.15, 0, r * .95, Math.PI - .9, Math.PI + .9);
     c.stroke(); c.restore();
     // Specular highlight and a thin rim.
     const shine = c.createRadialGradient(-r * .42, -r * .46, 0, -r * .42, -r * .46, r * .55);
-    shine.addColorStop(0, 'rgba(255,255,255,.95)'); shine.addColorStop(1, 'rgba(255,255,255,0)');
+    shine.addColorStop(0, 'rgba(255,255,240,.9)'); shine.addColorStop(1, 'rgba(255,255,255,0)');
     c.fillStyle = shine; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill();
-    c.strokeStyle = 'rgba(70,90,80,.35)'; c.lineWidth = 1; c.beginPath(); c.arc(0, 0, r - .5, 0, Math.PI * 2); c.stroke();
+    c.strokeStyle = 'rgba(120,85,5,.45)'; c.lineWidth = 1; c.beginPath(); c.arc(0, 0, r - .5, 0, Math.PI * 2); c.stroke();
     c.restore();
   }
   drawTrajectory(c, ball) {

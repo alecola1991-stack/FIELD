@@ -4,6 +4,31 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-17 · Claude · Balón amarillo y red que se deforma con el gol
+**Commit:** rama `balon-amarillo-red`
+**Archivos:** `src/game/Renderer.js`, `src/game/Physics.js`, `src/game/Game.js`, `src/ui/MenuBackdrop.js`, `tests/CurveShot.test.js`
+**Qué y por qué:** Ale pidió un balón amarillo y que, cuando el balón entre en la portería, la red se deforme como una real. Pidió que el cambio fuera reversible.
+**Cómo:**
+- Balón amarillo, con el mismo relieve de antes en tonos amarillos:
+  - En `Renderer.drawBall`, gradiente `#fff9cf` → `#ffe34d` → `#f0bf19` → `#c4930c`, con costuras y borde ocres.
+  - En `MenuBackdrop.drawBall`, el mismo color.
+- Física, solo durante la celebración del gol (`goalTimer`):
+  - Antes el balón se quedaba congelado en la línea. Ahora `Game.update` lo sigue moviendo (3 subpasos) con `resolveBallNet`.
+  - `recordGoal` ya no frena el balón a ×0.25, sino a ×0.8.
+- `Physics.js`:
+  - `netPressDepth(ball, world)` devuelve `{ side, depth }`: cuánto se hunde el balón en la red del fondo.
+  - `resolveBallNet(ball, dt, world)` aplica a la red del fondo un muelle con amortiguación fuerte al volver, para que la red se trague el balón; el tope es `NET_MAX_DEPTH = 26`. Además mantiene el balón entre las redes laterales y le aplica rozamiento dentro de la portería.
+  - Un tiro fuerte se hunde unos 20 px y uno flojo unos 10 px. El balón se queda dentro de la portería.
+  - Esto no afecta al juego normal: el gol se marca en cuanto el balón cruza la línea, antes de llegar a la red.
+- Render:
+  - La malla y el marco de la red salen de la caché del campo. `drawNets(c, ball, dt)` las dibuja en cada fotograma, con un abombamiento hacia fuera calculado a partir de la posición del balón (`netPressDepth`). Así funciona también en los invitados online y en las repeticiones.
+  - El abombamiento es gaussiano en vertical (σ 42 px) y crece hacia el fondo de la portería.
+  - Cuando el balón se separa, la red vuelve con un muelle amortiguado (un pequeño rebote).
+  - Los postes y la línea de gol se dibujan encima de la malla.
+**Para el otro asistente:** para deshacerlo, revierte el merge. El color del balón está solo en `drawBall`, en los dos archivos.
+
+---
+
 ## 2026-10-17 · Claude · Balón blanco con relieve, sin manchas negras
 **Commit:** fusionado en main (rama `balon-relieve`, merge 578b7e8). Para deshacerlo: `git revert -m 1 578b7e8`
 **Archivos:** `src/game/Renderer.js`, `src/ui/MenuBackdrop.js`

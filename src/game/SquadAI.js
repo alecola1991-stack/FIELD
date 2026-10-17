@@ -52,6 +52,7 @@ export class SquadAI {
     this.rivalPassCooldown = Math.max(0, this.rivalPassCooldown - dt);
     this.rivalWallCooldown = Math.max(0, this.rivalWallCooldown - dt);
     const world = ball.world || WORLD;
+    this.trackTouches(bodies, ball, dt);
     // How long the ball has been loose: slow and nobody on it.
     const free = Math.hypot(ball.vx, ball.vy) < 90 && bodies.every(body => dist(body, ball) > body.radius + ball.radius + 22);
     this.looseTime = free ? this.looseTime + dt : 0;
@@ -65,6 +66,30 @@ export class SquadAI {
       if (ball.y > world.bottom - edge && aim.y > 0) aim.y = -Math.abs(aim.x) * .35;
     }
     return commands;
+  }
+
+  // Who touched the ball last (seat index) and who before them, to know when a ball comes from the human.
+  trackTouches(bodies, ball, dt) {
+    this.touchTime = (this.touchTime || 0) + dt;
+    let toucher = -1, best = Infinity;
+    bodies.forEach((body, seat) => { const d = dist(body, ball); if (d < body.radius + ball.radius + 6 && d < best) { best = d; toucher = seat; } });
+    if (toucher >= 0 && toucher !== this.lastToucher) { this.prevToucher = this.lastToucher ?? -1; this.lastToucher = toucher; this.touchTime = 0; }
+  }
+
+  // Best direct shot at the right goal: the aim point (near post, centre, far post) whose lane is clearest.
+  shotLine(ball, rivals, world) {
+    let best = null;
+    for (const y of [world.goalTop + 20, world.height / 2, world.goalBottom - 20]) {
+      const aim = { x: world.right + 4, y };
+      if (!this.laneOpen(ball, aim, rivals, 14)) continue;
+      const lx = aim.x - ball.x, ly = aim.y - ball.y, length2 = lx * lx + ly * ly || 1;
+      const clearance = Math.min(...rivals.map(rival => {
+        const t = clamp(((rival.x - ball.x) * lx + (rival.y - ball.y) * ly) / length2, 0, 1);
+        return Math.hypot(ball.x + lx * t - rival.x, ball.y + ly * t - rival.y);
+      }));
+      if (!best || clearance > best.clearance) best = { aim: { x: lx, y: ly }, clearance };
+    }
+    return best;
   }
 
   // Four bodies can trap the ball against a wall or in a corner. When it has barely
@@ -144,6 +169,13 @@ export class SquadAI {
     const fetch = this.looseTime > .5 && !humanGoing && mateBall < humanBall + 220;
     this.mateChasing = !humanHasBall && (fetch || (this.mateChasing ? mateBall < humanBall + 30 : mateBall < humanBall - 30));
     const nearestRival = rivals.reduce((best, rival) => dist(rival, ball) < dist(best, ball) ? rival : best, rivals[0]);
+
+    // A ball from the human in the rival half with a shot on: always shoot, first time or after the first touch.
+    const fromHuman = (this.lastToucher === 0 && humanBall > human.radius + ball.radius + 20) || (this.lastToucher === 1 && this.prevToucher === 0 && this.touchTime < 1.2);
+    if (fromHuman && ball.x > W / 2 && canKickBall(mate, ball) && mate.shotCooldown <= 0) {
+      const shot = this.shotLine(ball, rivals, world);
+      if (shot) { this.lastShot = { fromHuman: true }; return { x: 0, y: 0, speed, kick: true, aim: shot.aim, power: 1.25, shot: true }; }
+    }
 
     // A rival controls the ball: stay goal side and contain instead of diving in (it is often the last defender).
     const rivalControl = !humanHasBall && rivals.some(rival => dist(rival, ball) < rival.radius + ball.radius + 20);

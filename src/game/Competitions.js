@@ -68,7 +68,7 @@ export const CUP_COMPETITIONS = [
   { id: 'copa-libertadores', name: 'Copa Libertadores', eyebrow: 'TORNEO DE CLUBES · CONMEBOL', description: '32 clubes clasificados en la edición 2026; competición en modo arcade.', type: 'club', fieldTheme: 'copa-libertadores', teamPool: 'libertadores' },
   { id: 'club-world-cup', name: 'Mundial de Clubes', eyebrow: 'TORNEO MUNDIAL · FIFA', description: 'Los 32 clubes de la edición FIFA 2025, en formato arcade.', type: 'club', fieldTheme: 'club-world-cup', teamPool: 'club-world-cup' },
   { id: 'league', name: 'Liga Nacional', eyebrow: 'TEMPORADA', description: 'Una temporada completa en cualquiera de las divisiones disponibles.', type: 'club', fieldTheme: 'league' },
-  { id: 'world-cup', name: 'Mundial', eyebrow: 'TORNEO DE SELECCIONES', description: 'Las selecciones de Europa y América se cruzan por el título.', type: 'world', fieldTheme: 'world-cup' },
+  { id: 'world-cup', name: 'Mundial', eyebrow: 'TORNEO DE SELECCIONES', description: '16 selecciones de los cinco continentes se cruzan por el título.', type: 'world', fieldTheme: 'world-cup' },
   { id: 'euro', name: 'Eurocopa', eyebrow: 'TORNEO DE SELECCIONES', description: '16 selecciones europeas. Eliminatorias hasta la final.', type: 'europe', fieldTheme: 'euro' },
   { id: 'copa-america', name: 'Copa América', eyebrow: 'TORNEO DE SELECCIONES', description: '16 selecciones americanas en busca de la copa.', type: 'america', fieldTheme: 'copa-america' },
 ];
@@ -125,22 +125,28 @@ export function isClubWorldCupEligibleTeam(teamId) {
   return CLUB_WORLD_CUP_TEAMS.some(team => team.id === teamId);
 }
 
+// Strength-weighted pick: stronger national teams are more likely to qualify, with some surprises.
+function strongestPick(pool, count, random) {
+  return shuffle(pool, random).map(team => ({ team, score: (team.stars || 3) + random() * 1.8 }))
+    .sort((a, b) => b.score - a.score).slice(0, count).map(item => item.team);
+}
+// World Cup places per confederation group for a 16-team draw (proportional to the 48-team World Cup).
+const WORLD_CUP_QUOTAS = { europe: 5, america: 4, africa: 3, asia: 3, oceania: 1 };
+
 export function createInternationalDraw(competitionId, playerTeamId, random = Math.random) {
   const playerTeam = getTeamById(playerTeamId);
   if (!playerTeam || playerTeam.type !== 'national') throw new Error('Elige una selección para jugar este torneo.');
-  const pool = NATIONAL_TEAMS.filter(team => team.league === 'europe' || team.league === 'america');
+  const others = group => NATIONAL_TEAMS.filter(team => team.league === group && team.id !== playerTeam.id);
   let selected;
   if (competitionId === 'euro') {
     if (playerTeam.league !== 'europe') throw new Error('La Eurocopa requiere una selección europea.');
-    selected = [playerTeam, ...shuffle(pool.filter(team => team.league === 'europe' && team.id !== playerTeam.id), random).slice(0, 15)];
+    selected = [playerTeam, ...strongestPick(others('europe'), 15, random)];
   } else if (competitionId === 'copa-america') {
     if (playerTeam.league !== 'america') throw new Error('La Copa América requiere una selección americana.');
-    selected = [playerTeam, ...shuffle(pool.filter(team => team.league === 'america' && team.id !== playerTeam.id), random).slice(0, 15)];
+    selected = [playerTeam, ...strongestPick(others('america'), 15, random)];
   } else if (competitionId === 'world-cup') {
-    const otherRegion = playerTeam.league === 'europe' ? 'america' : 'europe';
-    const sameRegion = shuffle(pool.filter(team => team.league === playerTeam.league && team.id !== playerTeam.id), random).slice(0, 7);
-    const crossRegion = shuffle(pool.filter(team => team.league === otherRegion), random).slice(0, 8);
-    selected = [playerTeam, ...sameRegion, ...crossRegion];
+    selected = [playerTeam];
+    for (const [group, quota] of Object.entries(WORLD_CUP_QUOTAS)) selected.push(...strongestPick(others(group), quota - (group === playerTeam.league ? 1 : 0), random));
   } else throw new Error('Competición internacional no reconocida.');
   return seedProgressively(selected[0], selected.slice(1), random);
 }

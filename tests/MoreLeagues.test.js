@@ -29,3 +29,16 @@ test('the Champions draw only takes clubs from first divisions', () => {
     for (const team of draw.filter(team => team.id !== 'league-one-leicester')) assert.equal(TEAM_LEAGUES.find(league => league.id === team.league).tier, 1, team.id);
   }
 });
+
+test('all 211 FIFA national teams; the World Cup draws from every confederation group', async () => {
+  const { NATIONAL_TEAMS, TEAM_COUNTRIES } = await import('../src/config/teams.js');
+  const { createInternationalDraw } = await import('../src/game/Competitions.js');
+  assert.equal(NATIONAL_TEAMS.length, 211);
+  assert.deepEqual(TEAM_COUNTRIES.find(country => country.id === 'national').groups, ['europe', 'america', 'africa', 'asia', 'oceania']);
+  let seed = 9; const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const draw = createInternationalDraw('world-cup', 'oceania-new-zealand', random);
+  const groups = draw.reduce((count, team) => ({ ...count, [team.league]: (count[team.league] || 0) + 1 }), {});
+  assert.equal(draw.length, 16); assert.deepEqual(groups, { europe: 5, america: 4, africa: 3, asia: 3, oceania: 1 });
+  const euro = createInternationalDraw('euro', 'europe-spain', random);
+  assert.ok(euro.every(team => team.league === 'europe') && euro.length === 16);
+});

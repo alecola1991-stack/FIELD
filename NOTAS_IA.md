@@ -4,16 +4,24 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
-## 2026-10-17 · Claude · Campo con textura de césped, colores más vivos y líneas y porterías blancas
+## 2026-10-17 · Claude · Campo con textura de césped, verde según la competición y líneas y porterías blancas
 **Commit:** rama `cesped-vivo`
 **Archivos:** `src/game/Renderer.js`
-**Qué y por qué:** Ale pidió una textura de césped para el campo, tonos más claros y vivos, y las líneas y las porterías en blanco. Pidió además que el cambio fuera reversible.
+**Qué y por qué:** Ale pidió una textura de césped para el campo, tonos más claros y vivos, y las líneas y las porterías en blanco. Pidió además que el cambio fuera reversible. Después pidió que todos los campos fueran verdes, más claros cuanto más importante fuera la competición (Primera RFEF más clara que Segunda RFEF).
 **Cómo:**
 - Todo el cambio está en `Renderer.drawField`, que se dibuja una sola vez en la caché `fieldCache`, así que no cuesta nada por fotograma.
-- `FIELD_THEMES` no se ha tocado. El color del césped se deriva de `theme.grass` con `vividGrass()`:
-  - En HSL, la luminosidad pasa a 0.33–0.42 y la saturación a 0.42–0.72.
-  - Los tonos verdes y verdeazulados (85°–185°) se acercan al verde natural de 132°.
-  - Las demás competiciones conservan su tono: Champions azul, LaLiga marrón, etc.
+- Todos los campos son verdes (tono 132°). La luminosidad depende del nivel de la competición, en la tabla `PITCH_GREEN` de `pitchGreen(themeName)`, de más clara a más oscura:
+  - Champions, Mundial y Mundial de Clubes: 0.45.
+  - Eurocopa, Copa América y Libertadores: 0.425.
+  - Las cinco grandes ligas (LaLiga, Premier, Serie A, Ligue 1 y Bundesliga): 0.40.
+  - Partido rápido y online (`arcade`): 0.385.
+  - Otras primeras divisiones: 0.37.
+  - Entrenamiento: 0.35.
+  - Segundas divisiones: 0.33.
+  - Primera RFEF: 0.295.
+  - Segunda RFEF: 0.26.
+  - La saturación baja un poco en los campos más oscuros.
+- `FIELD_THEMES.grass` ya no se usa para el césped. El fondo exterior (`net`) y los adornos de copa (`accent`) sí se usan.
 - Textura:
   - 12 franjas de corte alternas, más claras y más oscuras.
   - 70 manchas suaves con gradiente radial.

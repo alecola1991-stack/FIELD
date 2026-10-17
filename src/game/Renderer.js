@@ -29,22 +29,25 @@ const FIELD_THEMES = {
 const RFEF_THEME = { grass: '#2b3324', stripe: '#f2d6a00a', line: 'rgba(244,228,198,.39)', net: '#1f2419', accent: '#d8b46a' };
 for (const id of FEDERATION_LEAGUE_IDS) FIELD_THEMES[`league-${id}`] = RFEF_THEME;
 
-// Vivid pitch: each theme keeps its hue but the grass is lighter and more saturated,
-// with a mown-stripe pattern and a grass-blade texture; lines and goals are white.
-function hexToHsl(hex) {
-  const n = parseInt(hex.slice(1, 7), 16), r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
-  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, d = max - min;
-  if (!d) return [0, 0, l];
-  const s = d / (1 - Math.abs(2 * l - 1));
-  const h = max === r ? ((g - b) / d + 6) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
-  return [h * 60, s, l];
-}
+// Vivid pitch: green grass with a mown-stripe pattern and a grass-blade texture; lines and goals are white.
 const hsl = (h, s, l, a = 1) => `hsla(${h.toFixed(1)},${(Math.max(0, Math.min(1, s)) * 100).toFixed(1)}%,${(Math.max(0, Math.min(1, l)) * 100).toFixed(1)}%,${a})`;
-function vividGrass(hex) {
-  const [hue, s, l] = hexToHsl(hex);
-  // Green and teal pitches drift towards a natural grass green; other theme colours keep their hue.
-  const h = hue > 85 && hue < 185 ? hue + (132 - hue) * .55 : hue;
-  return { h, s: Math.min(.72, Math.max(.42, s * 1.45 + .12)), l: Math.min(.42, Math.max(.33, l * 2.1)) };
+// Every pitch is grass green; the more important the competition, the lighter the green
+// (a first division is lighter than Primera RFEF, which is lighter than Segunda RFEF).
+const PITCH_GREEN = [
+  [/^(champions|world-cup|club-world-cup)$/, .45],
+  [/^(euro|copa-america|copa-libertadores)$/, .425],
+  [/^league-(laliga|premier|serie-a|ligue-1|bundesliga)$/, .40],
+  [/^(arcade)$/, .385],
+  [/^league-(argentina|liga-mx|brasileirao|mls|liga-portugal|belgian-pro|super-lig)$/, .37],
+  [/^(training)$/, .35],
+  [/^league-(laliga2|championship|serie-b|ligue-2|bundesliga-2)$/, .33],
+  [/^league-primera-rfef/, .295],
+  [/^league-segunda-rfef/, .26],
+];
+function pitchGreen(themeName = 'arcade') {
+  const l = PITCH_GREEN.find(([pattern]) => pattern.test(themeName))?.[1] ?? .385;
+  // Darker pitches keep a bit less saturation so they read as deep grass, not neon.
+  return { h: 132, s: Math.min(.58, .44 + (l - .26) * 1.1), l };
 }
 // Small deterministic random so the texture is identical every time it is drawn.
 function seeded(seed) { let value = seed >>> 0 || 1; return () => (value = (value * 1664525 + 1013904223) >>> 0) / 4294967296; }
@@ -149,7 +152,7 @@ export class Renderer {
     }
     c.restore();
     c.save(); c.beginPath(); c.rect(left, top, right - left, bottom - top); c.clip();
-    const grass = vividGrass(theme.grass);
+    const grass = pitchGreen(themeName);
     c.fillStyle = hsl(grass.h, grass.s, grass.l); c.fillRect(left, top, right - left, bottom - top);
     // Mown stripes: alternate lighter and darker bands.
     const stripe = (right - left) / 12;

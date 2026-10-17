@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · Las 211 selecciones de la FIFA
-**Commit:** rama `todas-selecciones`
+**Commit:** fusionado en main (rama `todas-selecciones`, merge 09bcfbe). Para deshacerlo: `git revert -m 1 09bcfbe`
 **Archivos:** `src/config/teams-nations.js` (nuevo), `src/config/teams.js`, `src/game/Competitions.js`, `tests/MoreLeagues.test.js`
 **Qué y por qué:** Ale pidió añadir todas las selecciones. Antes había 42, de Europa y América.
 **Cómo:**

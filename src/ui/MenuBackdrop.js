@@ -81,8 +81,9 @@ export class MenuBackdrop {
     const r = Math.max(8, Math.min(this.width, this.height) * .015);
     c.save(); c.translate(x, y); c.globalAlpha = .18;
     c.fillStyle = '#000'; c.beginPath(); c.ellipse(2, r * .55, r * 1.15, r * .7, 0, 0, Math.PI * 2); c.fill();
-    // Same look as the match ball: flat strong yellow.
+    // Same look as the match ball: flat strong yellow with a thin black outline.
     c.fillStyle = '#ffd400'; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = '#000000'; c.lineWidth = 1.2; c.stroke();
     c.restore();
   }
 }

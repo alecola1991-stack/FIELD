@@ -304,8 +304,9 @@ export class Renderer {
     const [x, y] = position || this.smooth(ball), r = ball.radius;
     c.save(); c.translate(x, y); if (this.rotated) c.rotate(Math.PI / 2); c.fillStyle = '#0007'; c.beginPath(); c.ellipse(2, 5, r * 1.08, r * .76, 0, 0, Math.PI * 2); c.fill();
     c.scale(1 + ball.kickScale * .16, 1 - ball.kickScale * .12);
-    // Flat, strong yellow ball: no shine, no seams, no outline.
+    // Flat, strong yellow ball with a thin black outline.
     c.fillStyle = BALL_COLOR; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = '#000000'; c.lineWidth = 1.2; c.stroke();
     c.restore();
   }
   drawTrajectory(c, ball) {

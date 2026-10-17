@@ -4,6 +4,17 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-17 · Claude · Contorno negro fino en el balón
+**Commit:** rama `balon-contorno`
+**Archivos:** `src/game/Renderer.js`, `src/ui/MenuBackdrop.js`
+**Qué y por qué:** Ale pidió un contorno negro fino en el balón amarillo.
+**Cómo:**
+- En `drawBall`, después del relleno `BALL_COLOR` se dibuja un trazo `#000000` de 1.2 px sobre el mismo círculo. El radio sigue siendo `ball.radius`, que es lo que comprueba el test de `GameStats`.
+- El balón del fondo de los menús lleva el mismo contorno.
+**Para el otro asistente:** —
+
+---
+
 ## 2026-10-17 · Claude · Balón amarillo plano
 **Commit:** fusionado en main (rama `balon-plano`, merge b62fa7c). Para deshacerlo: `git revert -m 1 b62fa7c`
 **Archivos:** `src/game/Renderer.js`, `src/ui/MenuBackdrop.js`

@@ -28,3 +28,5 @@ const game = new Game(document.querySelector('#game-canvas'), ui.settings, sound
 ui.attach(game, sound, accountService, onlineMatch);
 // Development only (stripped from production builds): lets end-to-end tests drive the game.
 if (import.meta.env.DEV) window.__field = { ui, game, onlineMatch, accountService };
+// Hide the loading screen once the game is ready (and the fonts, briefly).
+Promise.race([document.fonts?.ready, new Promise(resolve => setTimeout(resolve, 1500))]).finally(() => window.__bootHide?.());

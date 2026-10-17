@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-18 · Claude · Tercer color de equipación y 3 patrones nuevos
-**Commit:** rama `tercer-color`
+**Commit:** fusionado en main (rama `tercer-color`, merge b2228f1). Para deshacerlo: `git revert -m 1 b2228f1`
 **Archivos:** `src/config/teams.js`, `src/game/Renderer.js`, `src/game/Player.js`, `src/game/Game.js`, `tests/TeamKits.test.js`
 **Qué y por qué:** Ale pidió un tercer color para los equipos grandes que lo necesitan (como Alemania o España) y tres patrones de equipación nuevos.
 **Cómo:**

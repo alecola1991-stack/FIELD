@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · Balón blanco con relieve, sin manchas negras
-**Commit:** rama `balon-relieve`
+**Commit:** fusionado en main (rama `balon-relieve`, merge 578b7e8). Para deshacerlo: `git revert -m 1 578b7e8`
 **Archivos:** `src/game/Renderer.js`, `src/ui/MenuBackdrop.js`
 **Qué y por qué:** Ale pidió darle un poco de relieve al balón y quitarle las manchas negras.
 **Cómo:**

@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-18 · Claude · Balón distinto según la competición
-**Commit:** rama `balones-competicion`
+**Commit:** fusionado en main (rama `balones-competicion`, merge 2c15bb6). Para deshacerlo: `git revert -m 1 2c15bb6`
 **Archivos:** `src/game/BallStyles.js` (nuevo), `src/game/Renderer.js`, `src/game/Game.js`, `tests/BallStyles.test.js`
 **Qué y por qué:** Ale pidió un balón distinto por competición:
 - Liga: el amarillo actual con 2 franjas de la bandera del país.

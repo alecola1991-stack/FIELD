@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · Misiones por dificultad que se renuevan al completarlas
-**Commit:** rama `misiones-dificultad`
+**Commit:** fusionado en main (rama `misiones-dificultad`, merge 9e0b2b1). Para deshacerlo: `git revert -m 1 9e0b2b1`
 **Archivos:** `src/game/Missions.js`, `src/game/CareerProfile.js`, `src/ui/UI.js`, `index.html`, `src/styles.css`, `tests/CareerProfile.test.js`
 **Qué y por qué:** Ale pidió que, al completar una misión, se añada una nueva, que las misiones se clasifiquen por dificultad y que las difíciles den más recompensa.
 **Cómo:**

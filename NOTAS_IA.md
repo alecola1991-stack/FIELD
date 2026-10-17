@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · Césped: tonos menos intensos
-**Commit:** rama `cesped-suave`
+**Commit:** fusionado en main (rama `cesped-suave`, merge ba58b39). Para deshacerlo: `git revert -m 1 ba58b39`
 **Archivos:** `src/game/Renderer.js`
 **Qué y por qué:** Ale pidió bajar un poco la intensidad de los verdes del campo.
 **Cómo:**

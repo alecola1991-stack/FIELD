@@ -107,19 +107,22 @@ test('the long pass goes off the wall when a rival blocks the direct line', () =
   assert.equal(commands[1].bank, true, 'bank pass off a wall');
 });
 
-test('rivals keep one keeper and one forward: they never both defend the goal', () => {
+test('rival roles: the defender cuts the passing line in its half, the striker waits in ours', () => {
+  const segmentDistance = (p, a, b) => { const lx = b.x - a.x, ly = b.y - a.y, t = Math.max(0, Math.min(1, ((p.x - a.x) * lx + (p.y - a.y) * ly) / (lx * lx + ly * ly))); return Math.hypot(a.x + lx * t - p.x, a.y + ly * t - p.y); };
   for (const difficulty of ['easy', 'normal', 'hard', 'pro', 'champions']) {
     const ai = new SquadAI({ difficulty });
-    // We attack: the human dribbles deep in the rival half.
-    const human = body(900, 330), mate = body(500, 380), rivalA = body(1040, 340), rivalB = body(1000, 380);
-    const ball = ballAt(925, 330);
-    let bodies = [human, mate, rivalA, rivalB];
-    for (let i = 0; i < 90; i++) {
+    // The human carries the ball in the rival half; the teammate is free in the middle.
+    const human = body(700, 200), mate = body(860, 520), rivalA = body(1040, 340), rivalB = body(960, 380);
+    const ball = ballAt(722, 205);
+    const bodies = [human, mate, rivalA, rivalB];
+    for (let i = 0; i < 150; i++) {
       const commands = ai.update(bodies, ball, DT);
-      for (const seat of [2, 3]) { const c = commands[seat]; bodies[seat].x += (c.x || 0) * 240 * DT; bodies[seat].y += (c.y || 0) * 240 * DT; }
+      for (const seat of [2, 3]) { const c = commands[seat]; bodies[seat].x += (c.x || 0) * 260 * DT; bodies[seat].y += (c.y || 0) * 260 * DT; }
     }
-    const back = [rivalA, rivalB].filter(rival => rival.x > 1140 * .78).length;
-    assert.equal(back, 1, `${difficulty}: exactly one rival stays in goal`);
+    const defender = bodies[2 + ai.rivalKeeper], striker = bodies[3 - ai.rivalKeeper];
+    assert.ok(segmentDistance(defender, human, mate) < 40, `${difficulty}: the defender stands on the passing line (${segmentDistance(defender, human, mate).toFixed(0)} px)`);
+    assert.ok(defender.x > 1140 * .5, `${difficulty}: the defender stays in its half`);
+    assert.ok(striker.x < 1140 * .45, `${difficulty}: the striker waits in our half (x=${striker.x.toFixed(0)})`);
   }
 });
 

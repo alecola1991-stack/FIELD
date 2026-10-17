@@ -370,6 +370,13 @@ export class UI {
       this.settings.trajectory = this.trajectory_toggle.checked; this.trajectory_enabled.checked = this.settings.trajectory;
       this.game.trajectory = this.settings.trajectory; this.persist();
     });
+    // Between competition matches, Space plays the next one (ignoring the shot key still pressed when the match ended).
+    window.addEventListener('keydown', e => {
+      if (e.code !== 'Space' || e.repeat || this.currentView !== 'game' || this.result_overlay.classList.contains('hidden')) return;
+      if (this.result_next.classList.contains('hidden') || this.result_next.disabled || performance.now() - (this.resultShownAt || 0) < 800) return;
+      if (e.target?.closest?.('input,textarea,select')) return;
+      e.preventDefault(); this.result_next.click();
+    });
     window.addEventListener('keydown', e => { if (e.code !== 'Escape') return; if (this.currentView === 'modifiers') { e.preventDefault(); this.closeModifiers(); } else if (this.currentView === 'game' && this.game?.state.running) { e.preventDefault(); this.pause(!this.game.state.paused); } });
     window.addEventListener('pagehide', () => { this.saveCurrentCompetition(); this.syncAccount(true); });
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { this.saveCurrentCompetition(); this.syncAccount(true); } });
@@ -1293,7 +1300,8 @@ export class UI {
     this.tournament_bracket_title.textContent = `${(competition?.name || 'TORNEO').toUpperCase()} · CUADRO${championTeam ? ' · CAMPEÓN: ' + championTeam.name.toUpperCase() : ''}`;
     // Between rounds, show the round just played and what is left.
     const current = Math.max(0, Math.min(cup.round, cup.totalRounds) - 1);
-    this.renderBracket(this.tournament_bracket, cup, current, current);
+    // Wide screens: the two halves meet at the final, so the whole bracket fits without scrolling.
+    this.renderBracket(this.tournament_bracket, cup, current, current, { mirror: Boolean(window.matchMedia?.('(min-width: 1024px)').matches) });
     this.tournament_bracket_panel.classList.remove('hidden');
   }
 
@@ -1928,7 +1936,7 @@ export class UI {
         this.unlockTrophy(cup.competitionId, competition.name);
         this.result_eyebrow.textContent = 'CAMPEONES'; this.result_title.textContent = '¡Ganaste la copa!'; this.result_copy.textContent = `Victorias: ${cup.totalRounds}. ${rewardText}${levelText}`;
       }
-      else { cup.status = 'next'; this.result_eyebrow.textContent = `RONDA ${cup.round}/${cup.totalRounds} SUPERADA`; this.result_next.textContent = `Jugar ${roundName(cup.size, cup.round + 1).toLowerCase()} →`; this.result_next.classList.remove('hidden'); this.result_finish.textContent = 'Abandonar torneo'; }
+      else { cup.status = 'next'; this.result_eyebrow.textContent = `RONDA ${cup.round}/${cup.totalRounds} SUPERADA`; this.result_next.innerHTML = `<span>Jugar ${roundName(cup.size, cup.round + 1).toLowerCase()} →</span><kbd class="next-key">ESPACIO</kbd>`; this.result_next.classList.remove('hidden'); this.result_finish.textContent = 'Abandonar torneo'; }
     }
 
     if (result.mode === 'league' && this.league) {
@@ -1960,7 +1968,7 @@ export class UI {
         }
         this.result_copy.textContent = `${totalRounds} jornadas · ${season.points} puntos · ${season.wins}V ${season.losses}D. ${rewardText}${levelText}`;
       } else {
-        season.status = 'next'; this.result_eyebrow.textContent = `JORNADA ${season.jornada}/${totalRounds}`; this.result_next.textContent = `Jugar jornada ${season.jornada + 1} →`; this.result_next.classList.remove('hidden'); this.result_finish.textContent = 'Abandonar liga';
+        season.status = 'next'; this.result_eyebrow.textContent = `JORNADA ${season.jornada}/${totalRounds}`; this.result_next.innerHTML = `<span>Jugar jornada ${season.jornada + 1} →</span><kbd class="next-key">ESPACIO</kbd>`; this.result_next.classList.remove('hidden'); this.result_finish.textContent = 'Abandonar liga';
         this.result_copy.textContent = `${season.points} puntos · ${season.wins} victorias · ${season.losses} derrotas. ${rewardText}${levelText}`;
       }
       this.renderLeagueStandings(season, previousRanks);
@@ -2009,7 +2017,7 @@ export class UI {
         }).catch(error => { this.result_online_status.textContent = error?.message || 'No se pudo guardar el resultado.'; });
       }
     }
-    this.sound?.setScene?.('menu'); this.pause_overlay.classList.add('hidden'); this.result_overlay.classList.remove('hidden');
+    this.sound?.setScene?.('menu'); this.pause_overlay.classList.add('hidden'); this.result_overlay.classList.remove('hidden'); this.resultShownAt = performance.now();
     this.renderAccount();
     if ((this.league?.status === 'next') || (this.tournament?.status === 'next')) this.saveCurrentCompetition();
     else if (result.mode === 'league' || result.mode === 'tournament') { clearCompetitionSave(); this.refreshContinueButton(null); }

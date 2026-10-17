@@ -4,6 +4,27 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-17 · Claude · IA del 2v2: pases largos de la compañera y rivales con roles, pases y paredes
+**Commit:** rama `ia-2v2-mejorada` (pendiente de aprobación de Ale)
+**Archivos:** `src/game/SquadAI.js`, `tests/Duo.test.js`
+**Qué y por qué:** Ale pidió dos cosas. La compañera, desde su campo y con el jugador en el campo rival, debe hacer lo posible por darle el balón con un pase fuerte, por la mejor trayectoria y dejándoselo bien para disparar. Los rivales no deben defender los dos la portería: uno defiende y el otro sube a esperar el balón, se dan pases y regatean usando las paredes, sea cual sea la dificultad.
+**Cómo:**
+- Pases (`SquadAI`):
+  - `bestPassLine()` elige la trayectoria: directa, o rebotando en la banda superior o inferior. Calcula el punto de rebote reflejando el objetivo en la banda y lo estira por la restitución vertical de 0,78. Comprueba que ningún rival corte ninguno de los dos tramos.
+  - `passPower()` calcula la potencia para que el balón llegue con velocidad (el frenado del balón es lineal con la distancia, 0,72 por píxel).
+  - `receivePoint()` apunta justo delante del jugador, en la línea hacia la portería, más hacia donde corre.
+- Compañera:
+  - Pase largo prioritario cuando ella está en su campo y el humano en el rival (`lastPass.long`). Si no tiene línea, conduce buscando una.
+  - Si un rival controla el balón, se queda entre el balón y la portería conteniendo, en vez de lanzarse a por él.
+- Rivales:
+  - Roles fijos de portero y delantero (`rivalKeeper`). Solo se intercambian si el portero queda claramente por delante.
+  - El delantero presiona hasta 0,7 del campo y nunca baja a la portería. Si atacamos en profundidad, espera arriba la contra; si su portero tiene el balón, se desmarca para recibir.
+  - `rivalCarry()`: tira si está a tiro y con línea libre; si no, pasa (el portero siempre busca al delantero; el delantero devuelve el balón si le presionan); si no, regatea con la pared cuando un defensor tapa el camino; y si nada de eso, conduce.
+  - La precisión del pase, la probabilidad de usar la pared y el alcance de tiro dependen de la dificultad (`RIVAL_PLAY`).
+- Tests: 4 casos nuevos en `tests/Duo.test.js` (pase largo y fuerte, pase con rebote si hay un rival en medio, un solo rival en portería en las 5 dificultades, el portero pasa al delantero y el delantero usa la pared).
+**Para el otro asistente:** sin SQL. `SquadAI` ya no usa `BotAI` para los rivales (sí para la compañera cuando regatea o tira). En la orden de pase, `pass: true` y `bank: true` indican el tipo de jugada.
+
+
 ## 2026-10-17 · Claude · Real Madrid totalmente blanco y dorsal sin borde
 **Commit:** fusionado en main (rama `real-madrid-blanco`, merge 9c431d2). Para deshacerlo: `git revert -m 1 9c431d2`
 **Archivos:** `src/config/teams.js`, `src/game/Player.js`, `src/game/Renderer.js`, `src/game/Game.js`, `src/ui/UI.js`, `src/styles.css`

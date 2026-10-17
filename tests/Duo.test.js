@@ -49,10 +49,17 @@ test('AI bodies move, the teammate passes to the human and goals are scored', ()
   game.squad.ai.update = (...args) => { const commands = origUpdate(...args); if (commands[1]?.pass && commands[1] !== last) { passes++; last = commands[1]; } return commands; };
   for (let i = 0; i < 60 * 3; i++) game.update(DT);
   game.squad.bodies.slice(1).forEach((body, index) => assert.ok(Math.hypot(body.x - start[index + 1][0], body.y - start[index + 1][1]) > 20, `seat ${index + 1} moved`));
-  // Human keeps running towards the rival goal along the wing, so the teammate has someone to pass to.
-  for (let i = 0; i < 60 * 240 && !game.state.matchOver; i++) {
-    const [human] = game.squad.bodies;
-    game.steer(human.x < 900 ? 1 : -1, human.y < 220 ? .4 : human.y > 300 ? -.4 : 0);
+  // Human waits in the rival half while the ball is in ours (so the teammate has someone to pass to),
+  // otherwise goes for the ball from behind and shoots.
+  for (let i = 0; i < 60 * 300 && !game.state.matchOver; i++) {
+    const [human] = game.squad.bodies, ball = game.ball;
+    if (ball.x < 570 && Math.hypot(ball.x - human.x, ball.y - human.y) > 160) game.steer(760 - human.x, (ball.y < 350 ? 450 : 250) - human.y);
+    else {
+      const gx = 1080 - ball.x, gy = 350 - ball.y, gl = Math.hypot(gx, gy) || 1;
+      const tx = ball.x - gx / gl * 34, ty = ball.y - gy / gl * 34, d = Math.hypot(tx - human.x, ty - human.y);
+      if (d > 14) game.steer((tx - human.x) / d, (ty - human.y) / d); else game.steer(gx / gl, gy / gl);
+      if (Math.hypot(ball.x - human.x, ball.y - human.y) < 62 && ball.x > human.x - 10) game.press();
+    }
     game.update(DT);
   }
   assert.ok(passes > 0, 'the teammate made at least one pass');
@@ -75,4 +82,57 @@ test('offline 2v2 snapshot keeps the extra bodies', () => {
   const restored = duo();
   assert.equal(restored.restoreSnapshot(snapshot, false), true);
   restored.others.forEach((body, index) => { assert.equal(body.x, snapshot.others[index].x); assert.equal(body.y, snapshot.others[index].y); });
+});
+
+// ---- Behaviour of the squad AI on hand-made situations ----------------------------
+const body = (x, y, extra = {}) => ({ x, y, vx: 0, vy: 0, radius: 22, maxSpeed: 280, shotCooldown: 0, speedScale: 1, ...extra });
+const ballAt = (x, y) => ({ x, y, vx: 0, vy: 0, radius: 12 });
+
+test('teammate in its half plays a strong pass to a well placed human in the rival half', () => {
+  const ai = new SquadAI({ difficulty: 'hard' });
+  const human = body(800, 330), mate = body(300, 360), rivalA = body(1000, 350), rivalB = body(520, 160);
+  const commands = ai.update([human, mate, rivalA, rivalB], ballAt(330, 360), DT);
+  const pass = commands[1];
+  assert.ok(pass.kick && pass.pass, 'the teammate passes');
+  assert.ok(pass.power >= .9, `strong pass (power ${pass.power.toFixed(2)})`);
+  assert.ok(ai.lastPass.long, 'long pass to the rival half');
+  assert.ok(ai.lastPass.x > human.x, 'aimed in front of the human, towards goal');
+});
+
+test('the long pass goes off the wall when a rival blocks the direct line', () => {
+  const ai = new SquadAI({ difficulty: 'hard' });
+  const human = body(800, 350), mate = body(300, 350), blocker = body(560, 352), keeper = body(1040, 350);
+  const commands = ai.update([human, mate, blocker, keeper], ballAt(330, 350), DT);
+  assert.ok(commands[1].kick && commands[1].pass, 'still passes');
+  assert.equal(commands[1].bank, true, 'bank pass off a wall');
+});
+
+test('rivals keep one keeper and one forward: they never both defend the goal', () => {
+  for (const difficulty of ['easy', 'normal', 'hard', 'pro', 'champions']) {
+    const ai = new SquadAI({ difficulty });
+    // We attack: the human dribbles deep in the rival half.
+    const human = body(900, 330), mate = body(500, 380), rivalA = body(1040, 340), rivalB = body(1000, 380);
+    const ball = ballAt(925, 330);
+    let bodies = [human, mate, rivalA, rivalB];
+    for (let i = 0; i < 90; i++) {
+      const commands = ai.update(bodies, ball, DT);
+      for (const seat of [2, 3]) { const c = commands[seat]; bodies[seat].x += (c.x || 0) * 240 * DT; bodies[seat].y += (c.y || 0) * 240 * DT; }
+    }
+    const back = [rivalA, rivalB].filter(rival => rival.x > 1140 * .78).length;
+    assert.equal(back, 1, `${difficulty}: exactly one rival stays in goal`);
+  }
+});
+
+test('the rival keeper feeds the forward and the forward uses the walls when blocked', () => {
+  const ai = new SquadAI({ difficulty: 'easy' }); ai.random = () => 0;
+  // Keeper on the ball, forward open up the pitch.
+  const human = body(500, 150), mate = body(300, 560), keeper = body(980, 350), forward = body(560, 380);
+  const pass = ai.update([human, mate, keeper, forward], ballAt(950, 350), DT)[2];
+  assert.ok(pass.kick && pass.pass, 'keeper passes to the forward');
+  assert.ok(pass.aim.x < 0, 'pass goes up the pitch');
+  // Forward on the ball with a defender right in front: plays it off the wall.
+  const ai2 = new SquadAI({ difficulty: 'easy' }); ai2.random = () => 0; ai2.rivalKeeper = 1;
+  const defender = body(470, 340), striker = body(580, 340), keeper2 = body(1040, 350);
+  const commands = ai2.update([defender, body(200, 350), striker, keeper2], ballAt(555, 340), DT);
+  assert.ok(commands[2].kick && commands[2].bank, 'wall dribble around the defender');
 });

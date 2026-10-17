@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-17 · Claude · Pantalla de carga con logo, carga giratoria y protips
-**Commit:** rama `pantalla-carga` (pendiente de aprobación de Ale)
+**Commit:** fusionado en main (rama `pantalla-carga`, merge 6a1d879). Para deshacerlo: `git revert -m 1 6a1d879`
 **Archivos:** `index.html`, `src/main.js`
 **Qué y por qué:** Ale pidió una pantalla de carga al entrar con el logo en blanco, un símbolo de carga girando y protips («usa las paredes», «haz disparos con rebote»…).
 **Cómo:** el marcado, los estilos y el script van en línea en `index.html` (`#boot-screen`, clases `boot-*`), para que se vea antes de que cargue el JS y el CSS de la app. El logo es el SVG de `src/assets/logo.svg` en línea con `fill="currentColor"`, en blanco. Hay 12 consejos que rotan cada 3,2 s empezando por uno al azar. `main.js` llama a `window.__bootHide()` cuando la UI está montada y las fuentes listas (como mucho 1,5 s). La pantalla se muestra al menos 1,6 s, se desvanece y se elimina del DOM. Si algo falla, se oculta sola a los 15 s. Respeta `prefers-reduced-motion`.

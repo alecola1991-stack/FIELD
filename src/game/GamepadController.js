@@ -7,6 +7,12 @@ export function padAxes(pad, deadzone = .2) {
   const amount = Math.min(1,(length-deadzone)/(1-deadzone));
   return { x: Math.round(x/length*amount*100)/100, y: Math.round(y/length*amount*100)/100 };
 }
+// Clásico: the right stick moves (the d-pad and the left stick also work).
+export function classicPadAxes(pad, deadzone = .2) {
+  const right = padAxes({ axes: [pad?.axes?.[2], pad?.axes?.[3]], buttons: pad?.buttons }, deadzone);
+  if (right.x || right.y) return right;
+  return padAxes(pad, deadzone);
+}
 export class GamepadController {
   constructor(ui) {
     this.ui=ui; this.index=null; this.previous=[]; this.nextMove=0; this.direction=''; this.lastView=''; this.mappingStep=-1;
@@ -34,10 +40,20 @@ export class GamepadController {
       this.ui.game.input.padAxes={x:0,y:0}; this.previous=pressed; return;
     }
     const game=this.ui.currentView==='game', running=game&&!this.ui.game.state.paused&&!this.ui.game.state.matchOver;
+    const classic=this.ui.settings.controlScheme==='classic';
+    if(classic) {
+      // Clásico: right stick (or d-pad / left stick) moves; ○ / B shoots at goal; ✕ / A passes; L2 / LT + ○ curved shot.
+      this.ui.game.input.padAxes=running?classicPadAxes(pad):{x:0,y:0};
+      this.ui.game.input.padCurve=running&&pressed[6];
+      if(!changedView && running && edge(1)) { this.ui.game.input.pressed.add('KeyK'); this.rumble(.25,70); this.ui.sound.unlock?.(); }
+      if(!changedView && running && edge(0)) { this.ui.game.input.pressed.add('KeyL'); this.rumble(.15,50); this.ui.sound.unlock?.(); }
+      if(!changedView && game && this.ui.game.replay && (edge(0)||edge(1))) this.ui.game.input.pressed.add('Space');
+    } else {
     this.ui.game.input.padAxes=running?padAxes(pad):{x:0,y:0};
     // LB/L1 or LT/L2 held: the next shot is curved (and the shot help shows the curve).
     this.ui.game.input.padCurve=running&&(pressed[4]||pressed[6]);
     if(!changedView && (running || (game && this.ui.game.replay)) && (edge(map.shoot)||edge(5)||edge(7))) { this.ui.game.input.pressed.add('Space'); this.rumble(.25,70); this.ui.sound.unlock?.(); }
+    }
     if(edge(map.pause) && game && !this.ui.game.state.matchOver) this.ui.pause(!this.ui.game.state.paused);
     else if(!changedView && !running) {
       const axes=padAxes(pad,.35); const direction=Math.abs(axes.x)>Math.abs(axes.y)? axes.x>0?'right':axes.x<0?'left':'':axes.y>0?'down':axes.y<0?'up':'';

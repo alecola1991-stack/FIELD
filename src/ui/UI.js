@@ -63,7 +63,8 @@ export class UI {
       missions: document.querySelector('#missions-screen'), career: document.querySelector('#career-screen'), progress: document.querySelector('#progress-screen'),
       modifiers: document.querySelector('#modifiers-screen'), quick: document.querySelector('#quick-screen'), legends: document.querySelector('#legends-screen'),
     };
-    this.cacheElements(); this.menuBackdrop = new MenuBackdrop(this.menu_backdrop); this.populateTeamPicker(); this.populateLeagueCompetitions(); this.fillInputs(); this.bind(); this.careerScreen = new CareerScreen(this); this.careerScreen.renderHomeStatus(); this.progressScreen = new ProgressScreen(this); this.backfillProgress(); this.progressScreen.renderHome(); this.renderDifficultyMode(); this.renderSoloFormat(); this.updateLeaguePreview(); this.renderProgress(); this.show('home'); this.refreshContinueButton();
+    this.cacheElements(); this.menuBackdrop = new MenuBackdrop(this.menu_backdrop); this.populateTeamPicker(); this.populateLeagueCompetitions(); this.fillInputs(); this.bind(); this.careerScreen = new CareerScreen(this); this.careerScreen.renderHomeStatus(); this.progressScreen = new ProgressScreen(this); this.backfillProgress(); this.progressScreen.renderHome(); this.renderDifficultyMode(); this.renderControlScheme();
+    document.querySelectorAll('[data-control-scheme]').forEach(button => button.addEventListener('click', () => { this.sound?.play('click'); this.setControlScheme(button.dataset.controlScheme); })); this.renderSoloFormat(); this.updateLeaguePreview(); this.renderProgress(); this.show('home'); this.refreshContinueButton();
   }
 
   cacheElements() {
@@ -91,7 +92,7 @@ export class UI {
 
   attach(game, sound, accountService = null, onlineMatch = null) {
     this.game = game; this.game.input.enabled = this.currentView === 'game' && !game.state.paused; this.sound = sound; this.accountService = accountService;
-    this.onlineMatch = onlineMatch;
+    this.onlineMatch = onlineMatch; this.renderControlScheme();
     this.hub = new OnlineHub(this);
     this.social = new ProfileSocial(this);
     this.controller = new GamepadController(this);
@@ -2219,6 +2220,14 @@ export class UI {
   rivalDifficulty(team, chosen) {
     if (this.settings.customDifficulty) return chosen || this.settings.difficulty;
     return difficultyForStars(team?.stars);
+  }
+  // Control scheme: "arcade" (Space, Shift/C curve) or "classic" (K shot at goal, L pass, J + K curve).
+  setControlScheme(scheme) { this.settings.controlScheme = scheme === 'classic' ? 'classic' : 'arcade'; this.persist(); this.renderControlScheme(); }
+  renderControlScheme() {
+    const scheme = this.settings.controlScheme === 'classic' ? 'classic' : 'arcade';
+    this.game?.input?.setScheme?.(scheme);
+    document.body.classList.toggle('scheme-classic', scheme === 'classic');
+    document.querySelectorAll('[data-control-scheme]').forEach(button => { const on = button.dataset.controlScheme === scheme; button.classList.toggle('active', on); button.setAttribute('aria-checked', String(on)); });
   }
   setCustomDifficulty(on) { this.settings.customDifficulty = !!on; this.persist(); this.renderDifficultyMode(); }
   // Toggle + note next to every difficulty selector (home, Jugar, quick match and settings).

@@ -139,7 +139,7 @@ export class OnlineHub {
     this.identity = data?.identity || null; this.friends = data?.friends || []; this.invites = data?.invites || []; this.lobby = data?.lobby || null;
     if (data) { this.supportsTeams = Number(data.version) >= 2; this.supportsSwap = Number(data.version) >= 3; this.supportsProfiles = Number(data.version) >= 4; }
     if (this.ui.currentView === 'profile') { this.ui.social?.render(); this.ui.renderProfileOnline?.(); }
-    this.render();
+    this.render(); this.ui.trackOnlineRank?.(this.identity); this.ui.applyGoldName?.();
     if (this.lobby?.state === 'cancelled') {
       this.message('La sala se ha cancelado o el resultado no coincide. No se aplica ELO por un resultado discrepante.', true);
       if (this.ui.currentMatchMode === 'online') { this.ui.game.stop(); await this.ui.onlineMatch.leave(false); this.ui.currentMatchMode = null; this.ui.show('online'); }
@@ -438,7 +438,7 @@ export class OnlineHub {
     const card = element('div', '', 'room-seat'); card.classList.toggle('you', mine); card.classList.toggle('left', player.active === false);
     const crest = element('span', team ? teamAbbreviation(team.name) : '?', 'room-crest'); crest.style.background = team ? getKitBackground(team) : '#1b2b48';
     const info = element('div', '', 'room-seat-info');
-    const name = element('b', `@${player.username}`); name.prepend(rankBadge(player.elo)); if (mine) name.append(element('i', 'TÚ', 'room-you'));
+    const name = element('b', `@${player.username}`); name.prepend(rankBadge(player.elo)); if (player.profile?.gold) name.classList.add('gold-name'); if (mine) name.append(element('i', 'TÚ', 'room-you'));
     info.append(name, element('small', `${player.elo} ELO · NIVEL ${profile.level || 1}`), element('small', player.active === false ? 'Ha salido de la sala' : team?.name || 'Equipo sin elegir'));
     card.append(crest, info); return card;
   }

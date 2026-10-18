@@ -1,5 +1,7 @@
+// Base player radius (world units). 20.9 = the original 22 reduced by 5 %.
+export const PLAYER_RADIUS = 20.9;
 export class Player {
-  constructor({ x, y, name, number = 0, color = '#65e6a5', secondaryColor = null, numberColor = '#ffffff', kitPattern = 'half-vertical', tertiaryColor = null, kitBands = null, numberOutline = true, radius = 22, speed = 305, isBot = false }) {
+  constructor({ x, y, name, number = 0, color = '#65e6a5', secondaryColor = null, numberColor = '#ffffff', kitPattern = 'half-vertical', tertiaryColor = null, kitBands = null, numberOutline = true, radius = PLAYER_RADIUS, speed = 305, isBot = false }) {
     this.x = x; this.y = y; this.vx = 0; this.vy = 0; this.name = name; this.number = number; this.color = color; this.secondaryColor = secondaryColor; this.numberColor = numberColor; this.kitPattern = kitPattern; this.tertiaryColor = tertiaryColor; this.kitBands = kitBands; this.numberOutline = numberOutline !== false;
     this.radius = radius; this.maxSpeed = speed; this.isBot = isBot; this.faceX = isBot ? -1 : 1; this.faceY = 0;
     this.shotCooldown = 0; this.powerCooldown = 0; this.powerFlash = 0; this.kickScale = 0; this.boost = 0;

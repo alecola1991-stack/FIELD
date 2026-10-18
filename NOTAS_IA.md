@@ -4,6 +4,19 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-18 · Claude · Jugadores un 5 % más pequeños y balón un 10 % más pequeño
+**Commit:** rama `tamanos` (pendiente de pasar a main)
+**Archivos:** `src/game/Player.js`, `src/game/Ball.js`, `src/game/Game.js`, `tests/Modifiers.test.js`, `tests/GameStats.test.js`
+**Qué y por qué:** Ale pidió un cambio general en todo el juego: los jugadores, un 5 % más pequeños, y el balón, un 10 % más pequeño.
+**Cómo:**
+- Hay dos constantes nuevas: `PLAYER_RADIUS = 20.9` (antes 22) en `Player.js` y `BALL_RADIUS = 10.8` (antes 12) en `Ball.js`.
+- `Game.applyModifiers` las multiplica por los modificadores de tamaño, así que el cambio se aplica a todos los modos: IA, liga, copas, carrera, leyendas, online y 2v2.
+- La física, la IA, el dibujo de nombre y dorsal y el alcance de tiro leen `radius`, así que se ajustan solos.
+- Los tests usan las constantes en vez de 12 y 22.
+**Para el otro asistente:** si hay que tocar los tamaños base, cambia solo esas dos constantes.
+
+---
+
 ## 2026-10-18 · Claude · Progreso: % del juego completado y recompensa dorada
 **Commit:** fusionado en main (rama `progreso`, merge 498bdd6). Para deshacerlo: `git revert -m 1 498bdd6`
 **Archivos:** `src/game/GameProgress.js` (nuevo), `src/ui/ProgressScreen.js` (nuevo), `src/ui/UI.js`, `src/ui/OnlineHub.js`, `src/ui/ProfileSocial.js`, `src/ui/CareerScreen.js`, `src/game/Game.js`, `src/game/Renderer.js`, `src/config/settings.js`, `index.html`, `src/styles.css`, `tests/GameProgress.test.js` (nuevo)

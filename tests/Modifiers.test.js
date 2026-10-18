@@ -5,7 +5,9 @@ import { WORLD } from '../src/config/settings.js';
 import { Game } from '../src/game/Game.js';
 import { GameState } from '../src/game/GameState.js';
 import { BotAI } from '../src/game/BotAI.js';
-import { Ball } from '../src/game/Ball.js';
+import { Ball, BALL_RADIUS } from '../src/game/Ball.js';
+import { PLAYER_RADIUS } from '../src/game/Player.js';
+const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-9, `${a} ≈ ${b}`);
 import { Player } from '../src/game/Player.js';
 import { isGoal, resolveBallWalls, resolvePlayerBall } from '../src/game/Physics.js';
 import { UI } from '../src/ui/UI.js';
@@ -36,7 +38,7 @@ test('every game mode applies size, shared geometry, player speed and goals at m
   const rules = { ballSize: 1.8, playerSize: 1.2, goalSize: 1.3, playerSpeed: 1.4, shotPower: 1.5, goalTarget: 6 };
   for (const mode of ['bot', 'training', 'league', 'tournament', 'legends']) {
     const game = fixture(mode, rules);
-    assert.equal(game.ball.radius, 21.6); assert.equal(game.player.radius, 26.4);
+    near(game.ball.radius, BALL_RADIUS * 1.8); near(game.player.radius, PLAYER_RADIUS * 1.2);
     assert.equal(game.player.maxSpeed, 427); assert.equal(game.goalTarget, 6);
     assert.equal(game.ball.world, game.world); assert.equal(game.player.world, game.world);
     assert.equal(game.world.goalBottom - game.world.goalTop, 247);
@@ -52,9 +54,9 @@ test('saving a modified match preserves its rules even after preferences change'
   const snapshot = game.captureSnapshot();
   game.settings.modifiers = {};
   game.start('league', 'easy');
-  assert.equal(game.ball.radius, 12);
+  assert.equal(game.ball.radius, BALL_RADIUS);
   assert.ok(game.restoreSnapshot(snapshot));
-  assert.equal(game.ball.radius, 18); assert.equal(game.modifiers.goalSize, 1.4);
+  near(game.ball.radius, BALL_RADIUS * 1.5); assert.equal(game.modifiers.goalSize, 1.4);
   assert.equal(game.player.maxSpeed, 366);
   assert.equal(game.goalTarget, snapshot.goalTarget);
 });
@@ -183,7 +185,7 @@ test('continue accepts complete checkpoints and ignores incomplete or incompatib
 test('online ignores modifiers in preferences, start options and restored snapshots', () => {
   const game = fixture('online', { ballSize: 2, shotPower: 1.8, powerCooldown: 3, goalTarget: 1 });
   assert.deepEqual(game.modifiers, DEFAULT_MODIFIERS);
-  assert.equal(game.goalTarget, 5); assert.equal(game.player.radius, 22); assert.equal(game.ball.radius, 12);
+  assert.equal(game.goalTarget, 5); assert.equal(game.player.radius, PLAYER_RADIUS); assert.equal(game.ball.radius, BALL_RADIUS);
   const saved = game.captureSnapshot(); saved.modifiers = { ballSize: 2, goalTarget: 1 }; saved.goalTarget = 1;
   game.restoreSnapshot(saved); assert.equal(game.goalTarget, 5); assert.deepEqual(game.modifiers, DEFAULT_MODIFIERS);
 });

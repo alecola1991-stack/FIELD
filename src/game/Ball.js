@@ -1,8 +1,10 @@
+// Base ball radius (world units). 10.8 = the original 12 reduced by 10 %.
+export const BALL_RADIUS = 10.8;
 export class Ball {
   static MAX_SPEED = 861.9;
   static CURL_RATE = 1.9; // initial turn rate of a curved shot (rad/s)
   static CURL_DECAY = 1.3;
-  constructor(x, y) { this.x = x; this.y = y; this.vx = 0; this.vy = 0; this.radius = 12; this.spin = 0; this.kickScale = 0; this.curl = 0; }
+  constructor(x, y) { this.x = x; this.y = y; this.vx = 0; this.vy = 0; this.radius = BALL_RADIUS; this.spin = 0; this.kickScale = 0; this.curl = 0; }
   reset(x, y) { this.x = x; this.y = y; this.vx = 0; this.vy = 0; this.spin = 0; this.kickScale = 0; this.curl = 0; }
   update(dt) {
     // Curved shot: the spin (curl, rad/s) turns the velocity and fades out.

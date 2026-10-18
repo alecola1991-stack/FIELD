@@ -1,7 +1,7 @@
 import { normalizeModifiers, modifierWorld } from '../config/modifiers.js';
 import { WORLD } from '../config/settings.js';
-import { Player } from './Player.js';
-import { Ball } from './Ball.js';
+import { Player, PLAYER_RADIUS } from './Player.js';
+import { Ball, BALL_RADIUS } from './Ball.js';
 import { Input } from './Input.js';
 import { BotAI } from './BotAI.js';
 import { SquadAI } from './SquadAI.js';
@@ -71,12 +71,12 @@ export class Game {
   applyModifiers() {
     this.modifiers = normalizeModifiers(this.modifiers); this.world = modifierWorld(this.modifiers);
     for (const body of [this.player, this.bot, ...(this.others || [])]) if (body) {
-      body.radius = 22 * this.modifiers.playerSize;
+      body.radius = PLAYER_RADIUS * this.modifiers.playerSize;
       body.speedScale = this.modifiers.playerSpeed;
       body.maxSpeed = (body.isBot ? 280 : 305) * body.speedScale;
       body.shotPower = this.modifiers.shotPower; body.world = this.world;
     }
-    this.ball.radius = 12 * this.modifiers.ballSize; this.ball.world = this.world;
+    this.ball.radius = BALL_RADIUS * this.modifiers.ballSize; this.ball.world = this.world;
     this.ball.maxSpeed = Ball.MAX_SPEED * Math.max(1, this.modifiers.shotPower);
   }
   updateSettings(settings) {

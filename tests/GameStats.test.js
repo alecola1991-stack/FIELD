@@ -108,5 +108,6 @@ test('default match renders players and ball without a cosmetic inventory', asyn
   Object.assign(renderer, { ctx, canvas: { width: 1140, height: 700 }, scale: 1, ox: 0, oy: 0, particles: [] });
   renderer.render({ player: new Player({ x: 300, y: 350, color: '#123456' }),
     bot: new Player({ x: 700, y: 350, color: '#abcdef' }), ball: new Ball(570, 350), fieldTheme: 'arcade', goalTimer: 1 }, 1 / 60);
-  assert.ok(circles.includes(12)); assert.ok(circles.includes(22));
+  const { BALL_RADIUS } = await import('../src/game/Ball.js'), { PLAYER_RADIUS } = await import('../src/game/Player.js');
+  assert.ok(circles.includes(BALL_RADIUS)); assert.ok(circles.includes(PLAYER_RADIUS));
 });

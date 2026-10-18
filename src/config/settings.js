@@ -26,7 +26,7 @@ export function difficultyForStars(stars = 3) { return STAR_DIFFICULTIES[Math.ma
 // XP multiplier for a win against a rival with these stars (+10 % per star).
 export function starXpMultiplier(stars = 0) { return 1 + Math.max(0, Math.min(5, Math.round(Number(stars) || 0))) * .1; }
 export function difficultyLabel(id) { return id === 'legend' ? 'Leyenda' : DIFFICULTIES.find(item => item.id === id)?.label || 'Principiante'; }
-const defaults = { name: 'JUGADOR', number: 10, teamId: '', profileReady: false, leagueCompetition: 'laliga', leagueGoalTarget: 2, difficulty: 'easy', sound: true, volume: 45, musicEnabled: true, musicVolume: 35, ambienceEnabled: true, ambienceVolume: 50, effectsVolume: 100, controllerVibration: true, controllerMap: {}, trajectory: false, shotPreview: false, goalReplays: true, verticalField: true, modifiers: {}, soloFormat: '1v1', mateDifficulty: 'normal', goldKit: false, customDifficulty: false, controlScheme: 'arcade' };
+const defaults = { name: 'JUGADOR', number: 10, teamId: '', profileReady: false, leagueCompetition: 'laliga', leagueGoalTarget: 2, difficulty: 'easy', sound: true, volume: 45, musicEnabled: true, musicVolume: 35, ambienceEnabled: true, ambienceVolume: 50, effectsVolume: 100, controllerVibration: true, controllerMap: {}, trajectory: false, shotPreview: false, goalReplays: true, verticalField: true, modifiers: {}, soloFormat: '1v1', mateDifficulty: 'normal', goldKit: false, customDifficulty: false };
 let storageScope = 'guest';
 function storageKey() { return storageScope === 'guest' ? 'field-settings' : `field-settings:${storageScope}`; }
 export function setSettingsScope(scope) {

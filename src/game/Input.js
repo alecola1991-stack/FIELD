@@ -1,13 +1,9 @@
 // Curved shot keys: they never shoot by themselves; held while pressing Space they curve the shot (and show its path).
 export const CURVE_KEYS = ['ShiftLeft', 'ShiftRight', 'KeyC'];
 const MOVE = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
-// Control schemes. "arcade": Space shoots where you push, Shift/C + Space curves.
-// "classic": K shoots at goal, L passes to the teammate, J + K curved shot at goal (the game aims).
-export const CONTROL_SCHEMES = Object.freeze(['arcade', 'classic']);
-export const CLASSIC_KEYS = Object.freeze({ shoot: 'KeyK', pass: 'KeyL', curve: 'KeyJ' });
 export class Input {
   constructor() {
-    this.enabled = true; this.scheme = 'arcade'; this.padAxes = { x: 0, y: 0 }; this.padCurve = false; this.down = new Set(); this.pressed = new Set();
+    this.enabled = true; this.padAxes = { x: 0, y: 0 }; this.padCurve = false; this.down = new Set(); this.pressed = new Set();
     this.onKeyDown = e => {
       if (!this.enabled) return;
       // Keep gameplay shortcuts out of form fields and native controls. In
@@ -49,22 +45,9 @@ export class Input {
     // moves toward the attacked goal (+x) and screen right moves toward +y.
     return this.rotated ? { x: -screen.y || 0, y: screen.x || 0 } : screen;
   }
-  setScheme(scheme) { this.scheme = scheme === 'classic' ? 'classic' : 'arcade'; }
-  curveHeld() {
-    if (!this.enabled) return false;
-    if (this.scheme === 'classic') return this.padCurve || this.down.has(CLASSIC_KEYS.curve);
-    return this.padCurve || CURVE_KEYS.some(code => this.down.has(code));
-  }
-  // One kick per frame. Arcade: Space (curved with Shift / C held).
-  // Classic: K = shot at goal (curved with J held), L = pass; `shot` tells the game to aim it.
+  curveHeld() { return this.enabled && (this.padCurve || CURVE_KEYS.some(code => this.down.has(code))); }
+  // One shot per frame with Space; it is curved when Shift / C is held at that moment.
   consumeKick() {
-    if (this.scheme === 'classic') {
-      const shoot = this.consume(CLASSIC_KEYS.shoot), pass = !shoot && this.consume(CLASSIC_KEYS.pass);
-      this.consume('Space');
-      if (shoot) return { kick: true, curve: this.curveHeld(), shot: 'goal' };
-      if (pass) return { kick: true, curve: false, shot: 'pass' };
-      return { kick: false, curve: false };
-    }
     const space = this.consume('Space');
     return { kick: space, curve: space && this.curveHeld() };
   }

@@ -8,8 +8,7 @@ import { SquadAI } from './SquadAI.js';
 import { Renderer } from './Renderer.js';
 import { GameState } from './GameState.js';
 import { getTeamById } from '../config/teams.js';
-import { goalShotAim, curvedShotAim, passAim } from './ClassicAim.js';
-import { kickBall, curveSide, canKickBall, resolveBallNet, resolveBallWalls, resolvePlayerBall, resolvePlayerPlayers, resolvePlayerWalls, isGoal } from './Physics.js';
+import { kickBall, curveSide, resolveBallNet, resolveBallWalls, resolvePlayerBall, resolvePlayerPlayers, resolvePlayerWalls, isGoal } from './Physics.js';
 
 const POWER_SHOT_COOLDOWN_SECONDS = 20;
 const ONLINE_PACKET_INTERVAL = 1 / 30;
@@ -110,8 +109,8 @@ export class Game {
         const discrete = [axes.x, axes.y].every(value => [-1, 0, 1].includes(value));
         if (!this.lastOnlineAxes || (changed && (discrete || this.onlineInputClock >= ONLINE_PACKET_INTERVAL)) || this.onlinePendingKick || this.onlineInputClock >= .2) {
           this.onlineInputClock = 0; this.lastOnlineAxes = axes;
-          this.hooks.onOnlineInput?.({ x: axes.x, y: axes.y, kick: this.onlinePendingKick, curve: this.onlinePendingKick && this.onlinePendingCurve, shot: this.onlinePendingKick ? this.onlinePendingShot || '' : '' });
-          this.onlinePendingKick = false; this.onlinePendingCurve = false; this.onlinePendingShot = '';
+          this.hooks.onOnlineInput?.({ x: axes.x, y: axes.y, kick: this.onlinePendingKick, curve: this.onlinePendingKick && this.onlinePendingCurve });
+          this.onlinePendingKick = false; this.onlinePendingCurve = false;
         }
       } else this.update(dt);
       this.captureReplayFrame(dt);
@@ -130,7 +129,7 @@ export class Game {
     if (this.renderEnabled !== false) {
       const view = this.replayView();
       this.renderer.render(view ? { ...view, trajectory: false, shotPreview: false, goalTimer: 0, goalSide: 0, world: this.world || WORLD, fieldTheme: this.fieldTheme, mode: this.state.mode, competitionRound: this.competitionRound, shotRangeTimer: 0, replay: true }
-        : { player: this.player, bot: this.bot, others: this.others, ball: this.ball, trajectory: this.trajectory, shotPreview: !!this.settings.shotPreview && this.countdown === 0 && this.state.goalTimer <= 0 && !this.state.matchOver && !this.replay, curveAim: curveSide(this.input.curveHeld?.(), this.input.axes().y), classicAim: this.settings.shotPreview ? this.classicPreview() : null, goalTimer: this.state.goalTimer, goalSide: this.state.goalSide, world: this.world || WORLD, fieldTheme: this.fieldTheme, mode: this.state.mode, competitionRound: this.competitionRound, shotRangeTimer: this.shotRangeTimer }, this.state.paused ? 0 : dt);
+        : { player: this.player, bot: this.bot, others: this.others, ball: this.ball, trajectory: this.trajectory, shotPreview: !!this.settings.shotPreview && this.countdown === 0 && this.state.goalTimer <= 0 && !this.state.matchOver && !this.replay, curveAim: curveSide(this.input.curveHeld?.(), this.input.axes().y), goalTimer: this.state.goalTimer, goalSide: this.state.goalSide, world: this.world || WORLD, fieldTheme: this.fieldTheme, mode: this.state.mode, competitionRound: this.competitionRound, shotRangeTimer: this.shotRangeTimer }, this.state.paused ? 0 : dt);
     }
     this.input.endFrame();
   }
@@ -164,13 +163,13 @@ export class Game {
     const shotInput = this.readKick();
     if (shotInput.kick) {
       this.shotRangeTimer = .62;
-      const kick = this.kickParams(this.player, shotInput, move.y), powered = kick.powered;
+      const powered = this.player.powerCooldown <= 0;
       const kicked = kickBall(this.player, this.ball, () => {
         this.sound.play('kick');
         if (powered) { this.renderer.fireBurst(this.ball.x, this.ball.y); this.player.powerFlash = .48; }
         else this.renderer.burst(this.ball.x, this.ball.y, '#c5f4d8', 7, 100);
-      }, kick.aim, kick.power, kick.curve);
-      if (kicked && !kick.pass) this.matchStats.shotsPlayer++;
+      }, null, powered ? 1.45 : 1, curveSide(shotInput.curve, move.y));
+      if (kicked) this.matchStats.shotsPlayer++;
       if (kicked && powered) { this.player.powerCooldown = (this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS); this.hooks.onPowerCooldown?.(this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS); }
     }
     if (this.bot) {
@@ -182,13 +181,13 @@ export class Game {
         this.bot.move(command.x || 0, command.y || 0, dt);
         resolvePlayerWalls(this.bot);
         if (command.kick) {
-          const kick = this.kickParams(this.bot, command, command.y), powered = kick.powered;
+          const powered = this.bot.powerCooldown <= 0;
           const kicked = kickBall(this.bot, this.ball, () => {
             this.sound.play('kick');
             if (powered) { this.renderer.fireBurst(this.ball.x, this.ball.y); this.bot.powerFlash = .48; }
             else this.renderer.burst(this.ball.x, this.ball.y, '#c5f4d8', 7, 100);
-          }, kick.aim, kick.power, kick.curve);
-          if (kicked && !kick.pass) this.matchStats.shotsOpponent++;
+          }, null, powered ? 1.45 : 1, curveSide(command.curve === true, command.y));
+          if (kicked) this.matchStats.shotsOpponent++;
           if (kicked && powered) this.bot.powerCooldown = (this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS);
         }
       } else {
@@ -321,7 +320,7 @@ export class Game {
     const axes = this.input.axes();
     const shotInput = this.readKick(), kickPressed = shotInput.kick;
     if (this.countdown > 0 || this.state.goalTimer > 0 || this.state.matchOver) { this.onlinePendingKick = false; return; }
-    if (kickPressed) { this.onlinePendingKick = true; this.onlinePendingCurve = shotInput.curve; this.onlinePendingShot = shotInput.shot || ''; }
+    if (kickPressed) { this.onlinePendingKick = true; this.onlinePendingCurve = shotInput.curve; }
     this.player.powerCooldown = Math.max(0, this.player.powerCooldown - dt);
     this.player.powerFlash = Math.max(0, this.player.powerFlash - dt);
     this.shotRangeTimer = Math.max(0, this.shotRangeTimer - dt);
@@ -339,53 +338,18 @@ export class Game {
     resolvePlayerWalls(this.player);
     if (kickPressed) {
       this.shotRangeTimer = .62;
-      const kick = this.kickParams(this.player, shotInput, axes.y), powered = kick.powered;
+      const powered = this.player.powerCooldown <= 0;
       const kicked = kickBall(this.player, this.ball, () => {
         this.sound.play('kick');
         if (powered) { this.renderer.fireBurst(this.ball.x, this.ball.y); this.player.powerFlash = .48; }
         else this.renderer.burst(this.ball.x, this.ball.y, '#c5f4d8', 7, 100);
-      }, kick.aim, kick.power, kick.curve);
-      if (kicked && !kick.pass) this.matchStats.shotsPlayer++;
+      }, null, powered ? 1.45 : 1, curveSide(shotInput.curve, axes.y));
+      if (kicked) this.matchStats.shotsPlayer++;
       if (kicked && powered) this.player.powerCooldown = (this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS);
     }
   }
   // Shot input this frame: { kick, curve }. Simple inputs without curve support shoot straight.
   readKick() { return this.input.consumeKick ? this.input.consumeKick() : { kick: this.input.consume('Space'), curve: false }; }
-  // ---- Clásico controls: the game aims shots at goal and passes -------------------------------
-  // Which goal a body attacks, its teammate and its rivals (1v1, online and 2v2).
-  attacksRight(body) {
-    if (this.squad) { const seat = this.squad.bodies.indexOf(body); return seat < 2; }
-    return body === this.player ? this.localSide !== 'right' : this.localSide === 'right';
-  }
-  mateOf(body) {
-    if (!this.squad) return null;
-    const seat = this.squad.bodies.indexOf(body); return seat < 0 ? null : this.squad.bodies[seat ^ 1];
-  }
-  opponentsOf(body) {
-    if (this.squad) { const seat = this.squad.bodies.indexOf(body), left = seat < 2; return this.squad.bodies.filter((_, index) => (index < 2) !== left); }
-    return [body === this.player ? this.bot : this.player].filter(Boolean);
-  }
-  // Direction, strength and curve of a kick. `command.shot`: 'goal' / 'pass' (classic) or empty (arcade).
-  kickParams(body, command = {}, axisY = 0) {
-    const shot = command.shot, pass = shot === 'pass';
-    const powered = !pass && body.powerCooldown <= 0, power = powered ? 1.45 : 1;
-    const options = { world: this.world || WORLD, attackRight: this.attacksRight(body), opponents: this.opponentsOf(body), power };
-    if (pass) { const result = passAim(body, this.ball, this.mateOf(body), options); return { aim: result.aim, power: result.power, curve: 0, powered: false, pass: true, target: result.target }; }
-    if (shot === 'goal') {
-      if (command.curve === true) { const result = curvedShotAim(body, this.ball, options); return { aim: result.aim, power, curve: result.side, powered }; }
-      return { aim: goalShotAim(body, this.ball, options).aim, power, curve: 0, powered };
-    }
-    return { aim: null, power, curve: curveSide(command.curve === true, axisY), powered };
-  }
-  // Shot help in classic: the path of the aimed shot (recomputed a few times per second).
-  classicPreview() {
-    if (this.input.scheme !== 'classic' || !this.player || !canKickBall(this.player, this.ball)) { this.classicPreviewCache = null; return null; }
-    const now = performance.now(), curve = !!this.input.curveHeld?.();
-    if (this.classicPreviewCache && now - this.classicPreviewCache.at < 120 && this.classicPreviewCache.curve === curve) return this.classicPreviewCache.value;
-    const kick = this.kickParams(this.player, { shot: 'goal', curve }, 0);
-    this.classicPreviewCache = { at: now, curve, value: { aim: kick.aim, curve: kick.curve } };
-    return this.classicPreviewCache.value;
-  }
   recordGoal(side) {
     this.state.goalSide = side;
     const playerScored = this.state.mode === 'training' || (this.state.mode === 'online'
@@ -610,15 +574,13 @@ export class Game {
       resolvePlayerWalls(body);
       if (!command.kick) return;
       if (seat === localSeat) this.shotRangeTimer = .62;
-      const kick = this.kickParams(body, command, command.y), powered = kick.powered;
+      const powered = body.powerCooldown <= 0;
       const kicked = kickBall(body, this.ball, () => {
         this.sound.play('kick');
         if (powered) { this.renderer.fireBurst(this.ball.x, this.ball.y); body.powerFlash = .48; }
         else this.renderer.burst(this.ball.x, this.ball.y, '#c5f4d8', 7, 100);
-      }, kick.aim, kick.power, kick.curve);
-      // A classic pass from the human: the AI teammate runs onto it.
-      if (kicked && kick.pass && this.squad.ai && seat === localSeat) this.squad.ai.expectPass?.(kick.target);
-      if (kicked && !kick.pass) { if ((seat < 2) === leftLocal) this.matchStats.shotsPlayer++; else this.matchStats.shotsOpponent++; }
+      }, null, powered ? 1.45 : 1, curveSide(command.curve === true, command.y));
+      if (kicked) { if ((seat < 2) === leftLocal) this.matchStats.shotsPlayer++; else this.matchStats.shotsOpponent++; }
       if (kicked && powered) { body.powerCooldown = (this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS); if (seat === localSeat) this.hooks.onPowerCooldown?.(body.powerCooldown); }
     });
     // Two passes: with four bodies one push can create a new overlap.

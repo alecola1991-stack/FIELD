@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-18 · Claude · Controles «Clásico» (tiro a puerta, pase y curva con apuntado automático)
-**Commit:** rama `controles-clasico` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `controles-clasico`, merge 43e9f6f). Para deshacerlo: `git revert -m 1 43e9f6f`
 **Archivos:** `src/game/ClassicAim.js` (nuevo), `src/game/Input.js`, `src/game/GamepadController.js`, `src/game/Game.js`, `src/game/Renderer.js`, `src/game/OnlineMatch.js`, `src/game/SquadAI.js`, `src/config/settings.js`, `src/ui/UI.js`, `index.html`, `src/styles.css`, `tests/ClassicControls.test.js` (nuevo)
 **Qué y por qué:** Ale pidió un modo de controles nuevo en Ajustes llamado «Clásico». El actual pasa a llamarse «Arcade».
 - Teclado: flechas para mover, K para disparar a puerta (el juego elige la mejor dirección), L para pasar al compañero dejándosela delante y J + K para el disparo con curva a puerta.

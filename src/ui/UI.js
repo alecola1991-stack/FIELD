@@ -63,8 +63,8 @@ export class UI {
       missions: document.querySelector('#missions-screen'), career: document.querySelector('#career-screen'), progress: document.querySelector('#progress-screen'),
       modifiers: document.querySelector('#modifiers-screen'), quick: document.querySelector('#quick-screen'), legends: document.querySelector('#legends-screen'),
     };
-    this.cacheElements(); this.menuBackdrop = new MenuBackdrop(this.menu_backdrop); this.populateTeamPicker(); this.populateLeagueCompetitions(); this.fillInputs(); this.bind(); this.careerScreen = new CareerScreen(this); this.careerScreen.renderHomeStatus(); this.progressScreen = new ProgressScreen(this); this.backfillProgress(); this.progressScreen.renderHome(); this.renderDifficultyMode(); this.renderControlScheme();
-    document.querySelectorAll('[data-control-scheme]').forEach(button => button.addEventListener('click', () => { this.sound?.play('click'); this.setControlScheme(button.dataset.controlScheme); })); this.renderSoloFormat(); this.updateLeaguePreview(); this.renderProgress(); this.show('home'); this.refreshContinueButton();
+    this.cacheElements(); this.menuBackdrop = new MenuBackdrop(this.menu_backdrop); this.populateTeamPicker(); this.populateLeagueCompetitions(); this.fillInputs(); this.bind(); this.careerScreen = new CareerScreen(this); this.careerScreen.renderHomeStatus(); this.progressScreen = new ProgressScreen(this); this.backfillProgress(); this.progressScreen.renderHome(); this.renderDifficultyMode(); this.renderGameplay();
+    document.querySelectorAll('[data-gameplay]').forEach(button => button.addEventListener('click', () => { this.sound?.play('click'); this.setGameplay(button.dataset.gameplay); })); this.renderSoloFormat(); this.updateLeaguePreview(); this.renderProgress(); this.show('home'); this.refreshContinueButton();
   }
 
   cacheElements() {
@@ -92,7 +92,7 @@ export class UI {
 
   attach(game, sound, accountService = null, onlineMatch = null) {
     this.game = game; this.game.input.enabled = this.currentView === 'game' && !game.state.paused; this.sound = sound; this.accountService = accountService;
-    this.onlineMatch = onlineMatch; this.renderControlScheme();
+    this.onlineMatch = onlineMatch;
     this.hub = new OnlineHub(this);
     this.social = new ProfileSocial(this);
     this.controller = new GamepadController(this);
@@ -1472,7 +1472,7 @@ export class UI {
     let label = mode === 'training' ? baseLabel : /\bA \d+(?: GOLES)?\b/.test(baseLabel) ? baseLabel.replace(/\bA \d+(?: GOLES)?\b/g, target) : `${baseLabel} · ${target}`;
     if (aiMode) label += ` · ${this.settings.customDifficulty ? 'IA' : `RIVAL ${'★'.repeat(Math.max(1, Math.min(5, options.opponentTeam?.stars || 3)))} · IA`} ${difficultyLabel(this.game.botAI.difficulty).toUpperCase()}`;
     const duo = !!options.duo && ['bot', 'tournament', 'league', 'career'].includes(mode);
-    this.mode_label.textContent = (duo ? `2 CONTRA 2 · IA ${difficultyLabel(options.mateDifficulty || 'normal').toUpperCase()} · ` : '') + (modifiersAreDefault(options.modifiers) ? '' : 'REGLAS PERSONALIZADAS · ') + label;
+    this.mode_label.textContent = (mode !== 'online' && this.game.gameplay === 'classic' ? 'JUGABILIDAD CLÁSICA · ' : '') + (duo ? `2 CONTRA 2 · IA ${difficultyLabel(options.mateDifficulty || 'normal').toUpperCase()} · ` : '') + (modifiersAreDefault(options.modifiers) ? '' : 'REGLAS PERSONALIZADAS · ') + label;
     if (duo) this.hud_player_name.textContent = `${this.settings.name.toUpperCase()} + IA`;
     this.training_tools.classList.toggle('hidden', mode !== 'training');
     this.pause_overlay.classList.add('hidden'); this.result_overlay.classList.add('hidden'); this.goal_banner.classList.add('hidden');
@@ -2221,13 +2221,11 @@ export class UI {
     if (this.settings.customDifficulty) return chosen || this.settings.difficulty;
     return difficultyForStars(team?.stars);
   }
-  // Control scheme: "arcade" (Space, Shift/C curve) or "classic" (K shot at goal, L pass, J + K curve).
-  setControlScheme(scheme) { this.settings.controlScheme = scheme === 'classic' ? 'classic' : 'arcade'; this.persist(); this.renderControlScheme(); }
-  renderControlScheme() {
-    const scheme = this.settings.controlScheme === 'classic' ? 'classic' : 'arcade';
-    this.game?.input?.setScheme?.(scheme);
-    document.body.classList.toggle('scheme-classic', scheme === 'classic');
-    document.querySelectorAll('[data-control-scheme]').forEach(button => { const on = button.dataset.controlScheme === scheme; button.classList.toggle('active', on); button.setAttribute('aria-checked', String(on)); });
+  // Gameplay: "arcade" (default) or "classic" (close control, smaller ball). Online always plays arcade.
+  setGameplay(value) { this.settings.gameplay = value === 'classic' ? 'classic' : 'arcade'; this.persist(); this.renderGameplay(); }
+  renderGameplay() {
+    const value = this.settings.gameplay === 'classic' ? 'classic' : 'arcade';
+    document.querySelectorAll('[data-gameplay]').forEach(button => { const on = button.dataset.gameplay === value; button.classList.toggle('active', on); button.setAttribute('aria-checked', String(on)); });
   }
   setCustomDifficulty(on) { this.settings.customDifficulty = !!on; this.persist(); this.renderDifficultyMode(); }
   // Toggle + note next to every difficulty selector (home, Jugar, quick match and settings).

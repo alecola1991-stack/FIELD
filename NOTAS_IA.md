@@ -4,6 +4,29 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-18 · Claude · Jugabilidad «Clásico» (conducción pegada al pie, balón -5 %) en lugar de los controles clásicos
+**Commit:** rama `jugabilidad-clasica` (pendiente de pasar a main)
+**Archivos:** revierte el merge de `controles-clasico` (43e9f6f): se borran `ClassicAim.js` y su test, y se restauran `Input.js`, `GamepadController.js`, `Game.js`, `Renderer.js`, `OnlineMatch.js`, `SquadAI.js`, `index.html` y `styles.css`. Además: `src/game/Physics.js`, `src/game/Game.js`, `src/config/settings.js`, `src/ui/UI.js`, `index.html`, `src/styles.css`, `tests/ClassicGameplay.test.js` (nuevo)
+**Qué y por qué:** Ale cambió la idea:
+- Ya no son controles, sino una «Jugabilidad» en la pestaña Juego de Ajustes.
+- Clásico: el balón se conduce más fácil y va más pegado al jugador al avanzar, y es un 5 % más pequeño.
+- Se quitan los disparos dirigidos y curvados dirigidos (K/L/J y ○/✕/L2). Se dispara con Espacio, igual que en Arcade.
+- El online siempre es Arcade.
+**Cómo:**
+- `git revert -m 1 43e9f6f` quita todo lo de los controles clásicos. La entrada de NOTAS de ese merge se queda como historial.
+- `settings.gameplay` puede ser `'arcade'` (por defecto) o `'classic'`. En Ajustes › Juego hay un selector «Jugabilidad» (`UI.setGameplay` / `renderGameplay`).
+- `Game.start` fija `this.gameplay`: si el modo es `online`, siempre `'arcade'`. Se guarda en la instantánea de las competiciones.
+  - `applyModifiers`: en clásico, el radio del balón es `BALL_RADIUS * 0.95 * ballSize`.
+  - La etiqueta del partido empieza por «JUGABILIDAD CLÁSICA».
+- `Physics.dribbleAssist(player, ball, dt)`:
+  - Si el jugador corre (más de 45 de velocidad) y el balón está delante y en contacto (a menos de 16 de holgura), lo lleva a un punto justo delante y le iguala la velocidad (parámetros en `DRIBBLE`).
+  - No actúa justo después de un tiro (`shotCooldown`) ni con un balón que llega rápido.
+  - `resolvePlayerBall(..., soft)` da toques más suaves (impulso `-rel*1.04+10` en lugar de `-rel*1.26+41`).
+  - Solo se aplica al humano: en 1 contra 1 a `this.player`, y en el 2v2 sin conexión al asiento local. La IA no lo usa.
+**Para el otro asistente:** para hacer la conducción más o menos pegada, ajusta `DRIBBLE` en `Physics.js`.
+
+---
+
 ## 2026-10-18 · Claude · Controles «Clásico» (tiro a puerta, pase y curva con apuntado automático)
 **Commit:** fusionado en main (rama `controles-clasico`, merge 43e9f6f). Para deshacerlo: `git revert -m 1 43e9f6f`
 **Archivos:** `src/game/ClassicAim.js` (nuevo), `src/game/Input.js`, `src/game/GamepadController.js`, `src/game/Game.js`, `src/game/Renderer.js`, `src/game/OnlineMatch.js`, `src/game/SquadAI.js`, `src/config/settings.js`, `src/ui/UI.js`, `index.html`, `src/styles.css`, `tests/ClassicControls.test.js` (nuevo)

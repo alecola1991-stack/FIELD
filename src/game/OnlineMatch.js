@@ -7,8 +7,6 @@ const MATCHMAKING_TOPIC = 'field-matchmaking-v3';
 // wait with whoever is connected (an absent seat just stands still).
 const SQUAD_START_WAIT_MS = 12000;
 
-// Classic controls send which kick it is so the host aims it ('goal' / 'pass'); anything else is an arcade kick.
-const shotKind = value => value === 'goal' || value === 'pass' ? value : '';
 export class OnlineMatch {
   constructor(client) {
     this.client = client;
@@ -169,7 +167,7 @@ export class OnlineMatch {
   getSeatInput(seat) {
     const input = this.seatInputs.get(seat);
     if (!input || Date.now() - input.receivedAt > 350) return { x: 0, y: 0, kick: false };
-    const result = { x: input.x, y: input.y, kick: input.kick, curve: input.kick && input.curve, ...(input.kick && input.shot ? { shot: input.shot } : {}) }; input.kick = false; input.curve = false; input.shot = '';
+    const result = { x: input.x, y: input.y, kick: input.kick, curve: input.kick && input.curve }; input.kick = false; input.curve = false;
     return result;
   }
 
@@ -303,7 +301,7 @@ export class OnlineMatch {
       if (Number.isInteger(message.sequence) && message.sequence <= (this.seatSequences.get(seat) || 0)) return;
       if (Number.isInteger(message.sequence)) this.seatSequences.set(seat, message.sequence);
       const previous = this.seatInputs.get(seat);
-      this.seatInputs.set(seat, { x: clampAxis(message.x), y: clampAxis(message.y), kick: (previous?.kick || false) || message.kick === true, curve: (previous?.kick ? previous.curve : false) || (message.kick === true && message.curve === true), shot: (previous?.kick ? previous.shot : '') || (message.kick === true ? shotKind(message.shot) : ''), receivedAt: Date.now() });
+      this.seatInputs.set(seat, { x: clampAxis(message.x), y: clampAxis(message.y), kick: (previous?.kick || false) || message.kick === true, curve: (previous?.kick ? previous.curve : false) || (message.kick === true && message.curve === true), receivedAt: Date.now() });
       return;
     }
     if (this.role !== 'host' || !this.matched || message?.clientId !== this.opponent?.clientId) return;
@@ -312,7 +310,7 @@ export class OnlineMatch {
     if (Number.isInteger(message.sequence) && message.sequence <= this.lastInputSequence) return;
     if (Number.isInteger(message.sequence)) this.lastInputSequence = message.sequence;
     this.latestInput = {
-      x: clampAxis(message.x), y: clampAxis(message.y), kick: this.latestInput.kick || message.kick === true, curve: (this.latestInput.kick ? !!this.latestInput.curve : false) || (message.kick === true && message.curve === true), shot: (this.latestInput.kick ? this.latestInput.shot || '' : '') || (message.kick === true ? shotKind(message.shot) : ''),
+      x: clampAxis(message.x), y: clampAxis(message.y), kick: this.latestInput.kick || message.kick === true, curve: (this.latestInput.kick ? !!this.latestInput.curve : false) || (message.kick === true && message.curve === true),
       receivedAt: Date.now(),
     };
     this.handlers.onInput?.({ ...this.latestInput });
@@ -395,13 +393,13 @@ export class OnlineMatch {
   getRemoteInput() {
     if (Date.now() - this.latestInput.receivedAt > 350) return { x: 0, y: 0, kick: false };
     const input = { ...this.latestInput };
-    this.latestInput.kick = false; this.latestInput.curve = false; this.latestInput.shot = '';
+    this.latestInput.kick = false; this.latestInput.curve = false;
     return input;
   }
 
   sendInput(input) {
     if (this.role !== 'guest' || !this.matched) return;
-    this.send('input', { clientId: this.clientId, matchId: this.matchId, nonce: this.nonce, sequence: ++this.inputSequence, x: clampAxis(input.x), y: clampAxis(input.y), kick: input.kick === true, curve: input.kick === true && input.curve === true, ...(input.kick === true && shotKind(input.shot) ? { shot: shotKind(input.shot) } : {}), ...(this.assignment?.squad ? { seat: this.assignment.squad.localSeat } : {}) });
+    this.send('input', { clientId: this.clientId, matchId: this.matchId, nonce: this.nonce, sequence: ++this.inputSequence, x: clampAxis(input.x), y: clampAxis(input.y), kick: input.kick === true, curve: input.kick === true && input.curve === true, ...(this.assignment?.squad ? { seat: this.assignment.squad.localSeat } : {}) });
   }
 
   sendReplaySkip() {

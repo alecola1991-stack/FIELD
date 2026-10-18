@@ -30,7 +30,8 @@ export class Game {
     this.resetReplay();
   }
   start(mode = 'bot', difficulty = this.settings.difficulty, options = {}) {
-    this.state.start(mode); if (mode !== 'legends') this.settings.difficulty = difficulty; this.botAI.setDifficulty(mode === 'legends' ? 'legend' : difficulty);
+    // The match keeps its own AI level (automatic by stars or the chosen one); settings are not touched.
+    this.state.start(mode); this.matchDifficulty = mode === 'legends' ? 'legend' : difficulty; this.botAI.setDifficulty(this.matchDifficulty);
     this.modifiers = normalizeModifiers(mode === 'online' ? {} : options.modifiers || this.settings.modifiers);
     this.world = modifierWorld(this.modifiers);
     // Career matches use the career club or national team instead of the profile team.
@@ -86,7 +87,7 @@ export class Game {
       this.player.name = settings.name; this.player.number = settings.number;
       this.player.color = team?.primary || '#68746e'; this.player.secondaryColor = team?.secondary || null; this.player.numberColor = team?.numberColor || '#ffffff'; this.player.kitPattern = team?.kitPattern || 'half-vertical'; this.player.tertiaryColor = team?.tertiary || null; this.player.kitBands = team?.kitBands || null; this.player.numberOutline = team?.numberOutline !== false;
     }
-    this.botAI.setDifficulty(this.state.mode === 'legends' ? 'legend' : settings.difficulty); this.trajectory = !!settings.trajectory;
+    this.botAI.setDifficulty(this.state.mode === 'legends' ? 'legend' : this.matchDifficulty || settings.difficulty); this.trajectory = !!settings.trajectory;
   }
   setPaused(paused) { this.state.paused = paused; this.input.enabled = !paused; this.last = 0; this.input.down.clear(); this.input.pressed.clear(); }
   stop() { if (this.replay) { this.replay = null; this.hooks.onReplay?.(null); } this.sound?.updateAmbience?.(null,null,false); this.input.enabled = false; this.state.running = false; this.state.paused = false; this.trajectory = false; if (this.raf) cancelAnimationFrame(this.raf); this.raf = 0; this.last = 0; }

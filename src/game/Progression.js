@@ -45,9 +45,10 @@ export class Progression {
   xpForNextLevel() { return this.level >= MAX_LEVEL ? 0 : 100 + this.level * 20; }
   progressRatio() { const need = this.xpForNextLevel(); return need === 0 ? 1 : this.xp / need; }
 
-  awardMatch(won = false) {
+  // multiplier: bonus for beating stronger rivals (only applied to wins).
+  awardMatch(won = false, multiplier = 1) {
     if (won) this.wins++;
-    const reward = this.awardXP(MATCH_XP);
+    const reward = this.awardXP(Math.round(MATCH_XP * (won ? Math.max(1, Number(multiplier) || 1) : 1)));
     return { ...reward, wins: this.wins };
   }
 

@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-18 · Claude · Dificultad automática según las estrellas del rival
-**Commit:** rama `dificultad-estrellas` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `dificultad-estrellas`, merge c97ba6c). Para deshacerlo: `git revert -m 1 c97ba6c`
 **Archivos:** `src/config/settings.js`, `src/game/Game.js`, `src/game/Progression.js`, `src/ui/UI.js`, `src/styles.css`, `tests/StarDifficulty.test.js` (nuevo)
 **Qué y por qué:** Ale pidió que la dificultad de los rivales solo se pueda elegir con un interruptor «Dificultad personalizada». Si está apagado, la IA usa la dificultad que marcan las estrellas del equipo rival. Además decidió:
 - Sin límite por nivel: un 5★ juega en Champions aunque seas nivel 1.

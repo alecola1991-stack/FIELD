@@ -106,7 +106,7 @@ export class CareerScreen {
     } else if (action === 'play') this.ui.startCareerMatch();
     else if (action === 'stay' || action === 'sign') {
       startNextSeason(this.state, action === 'sign' ? value : null);
-      this.save();
+      this.save(); this.ui.trackCareer?.(this.state);
       if (this.state.phase === 'finished') this.finish(); else this.setView('hub');
     } else if (action === 'finish') { startNextSeason(this.state); this.save(); this.finish(); }
     else if (action === 'home') this.ui.show('home');
@@ -115,7 +115,7 @@ export class CareerScreen {
   finish() {
     const score = careerScore(this.state), title = careerTitle(score);
     this.state.record = this.storeBest(score, title.label);
-    this.save(); this.ui.confetti?.play(); this.ui.sound?.play('win'); this.setView('final');
+    this.save(); this.ui.trackCareer?.(this.state, true); this.ui.confetti?.play(); this.ui.sound?.play('win'); this.setView('final');
   }
 
   render() {

@@ -4,6 +4,51 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-18 · Claude · Progreso: % del juego completado y recompensa dorada
+**Commit:** rama `progreso` (pendiente de pasar a main)
+**Archivos:** `src/game/GameProgress.js` (nuevo), `src/ui/ProgressScreen.js` (nuevo), `src/ui/UI.js`, `src/ui/OnlineHub.js`, `src/ui/ProfileSocial.js`, `src/ui/CareerScreen.js`, `src/game/Game.js`, `src/game/Renderer.js`, `src/config/settings.js`, `index.html`, `src/styles.css`, `tests/GameProgress.test.js` (nuevo)
+**Qué y por qué:** Ale pidió un submenú de progreso con el % completado y lo que queda por hacer:
+- En una página nueva de paneles del inicio, a la que se pasa con una flecha.
+- Ligas: solo las primeras divisiones.
+- Recompensa al 100 %: nombre dorado animado en el online y en el perfil, y dorsal y nombre dorados en la equipación con cualquier equipo.
+**Cómo:**
+- `GameProgress.computeProgress({ trophyIds, level })` reparte el 100 % en 8 categorías con estos pesos:
+
+  | Categoría | Peso |
+  |---|---|
+  | Copas | 20 |
+  | Ligas de primera | 20 |
+  | Modo Carrera | 15 |
+  | Nivel | 15 |
+  | Dificultades | 10 |
+  | Leyendas | 10 |
+  | Logros | 5 |
+  | Online | 5 |
+
+  Devuelve `percent` (no redondea a 100 hasta completarlo todo), el título y `nearest` (objetivos más cercanos, sin los bloqueados por nivel).
+- Los hitos nuevos se guardan como trofeos del perfil con id `progress-<categoría>-<id>`, así que se sincronizan con la cuenta. `UI.unlockProgress` los crea:
+  - Dificultad: al ganar contra la IA.
+  - Leyenda: al ganar ese partido.
+  - Rango: con `trackOnlineRank` al cargar la identidad online.
+  - Carrera: con `trackCareer`.
+  - `backfillProgress` recupera los hitos de carrera a partir del récord guardado.
+  - La lista de trofeos de la cuenta oculta los `progress-`.
+- Inicio:
+  - Los paneles están en `.hub-page` dentro de `#hub-pager`.
+  - La página 2 tiene Progreso (anillo y barras), Siguiente objetivo y Te queda poco.
+  - Se cambia de página con las flechas laterales, las teclas ← y →, o deslizando en móvil.
+- `ProgressScreen` pinta `#progress-root`:
+  - Cabecera con anillo, título y siguiente objetivo.
+  - 8 tarjetas; al pulsar una se ve el detalle.
+  - Te queda poco y la recompensa, con el interruptor `settings.goldKit`.
+- Dorado:
+  - Clase CSS `.gold-name` en el perfil, la identidad online, los puestos de la sala, la ficha pública y el marcador online.
+  - `onlinePlayer()` envía `gold` y `goldKit` en el perfil de sala. No hace falta cambiar el servidor, porque el JSON pasa tal cual. Lo marca el cliente, así que es cosmético y se podría falsear.
+  - `Renderer.drawPlayer` pinta nombre y dorsal con un degradado dorado móvil si `player.goldKit`.
+**Para el otro asistente:** para añadir una categoría, toca `PROGRESS_CATEGORIES` y `computeProgress`, y mantén que los pesos sumen 100 (hay un test que lo comprueba).
+
+---
+
 ## 2026-10-18 · Claude · Modo Carrera (10 temporadas)
 **Commit:** fusionado en main (rama `modo-carrera`, merge 35dcf97). Para deshacerlo: `git revert -m 1 35dcf97`
 **Archivos:** `src/game/CareerMode.js` (nuevo), `src/ui/CareerScreen.js` (nuevo), `src/ui/TrophyArt.js` (nuevo), `src/ui/UI.js`, `src/game/Game.js`, `index.html`, `src/styles.css`, `tests/CareerMode.test.js` (nuevo)

@@ -175,7 +175,7 @@ export class ProfileSocial {
     const kit = el('span', 'match-team-preview player-card-kit');
     this.ui.paintPlayerPreview(kit, team, { name: String(profile.name || data.username).slice(0, 10), number: profile.number ?? '' });
     const who = el('div', 'player-card-who');
-    const title = el('h2', '', `@${data.username}`); title.id = 'player-card-name';
+    const title = el('h2', profile.gold ? 'gold-name' : '', `@${data.username}`); title.id = 'player-card-name';
     const rank = el('p', 'player-card-rank'); rank.innerHTML = rankIconSvg(progress.rank, 30); rank.append(` ${progress.rank.name} · ${data.elo} ELO`);
     who.append(title, rank, el('small', '', [team?.name, profile.level ? `Nivel ${profile.level}` : '', `${data.friends || 0} amigos`].filter(Boolean).join(' · ')));
     head.append(kit, who);

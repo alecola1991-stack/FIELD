@@ -259,14 +259,20 @@ export class Renderer {
     c.fillStyle = grad; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill(); c.shadowBlur = 0;
     if (player.secondaryColor) this.drawKitPattern(c, player, r, color);
     c.strokeStyle = '#ffffff70'; c.lineWidth = 1.5; c.stroke();
-    const numberColor = player.numberColor || readable(color);
+    let numberColor = player.numberColor || readable(color);
     // The outline is the opposite of the text colour, never the same.
-    const { light: whiteDorsal, outline: dorsalOutline } = dorsalStyle(numberColor);
+    let { light: whiteDorsal, outline: dorsalOutline } = dorsalStyle(numberColor);
+    if (player.goldKit) {
+      // 100 % reward: golden name and number with a moving shine, on any kit.
+      const t = (performance.now() / 1400) % 1, shine = c.createLinearGradient(-r * 1.6 + t * r * 3.2 - r, -r, -r * .2 + t * r * 3.2 - r, r);
+      shine.addColorStop(0, '#b8860b'); shine.addColorStop(.45, '#ffd84a'); shine.addColorStop(.5, '#fff6c8'); shine.addColorStop(.55, '#ffd84a'); shine.addColorStop(1, '#b8860b');
+      numberColor = shine; whiteDorsal = false; dorsalOutline = '#3a2600';
+    }
     c.beginPath(); c.arc(0, 0, r - 1, 0, Math.PI * 2); c.clip();
     c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineJoin = 'round';
     const name = String(player.name || '').toUpperCase();
     c.font = `900 ${Math.round(r * .6)}px "DM Mono",monospace`;
-    const outline = player.numberOutline !== false;
+    const outline = player.numberOutline !== false || player.goldKit;
     c.lineWidth = whiteDorsal ? 4.3 : 2.3; c.strokeStyle = dorsalOutline; if (outline) c.strokeText(name, 0, -r * .5, r * 1.6);
     c.fillStyle = numberColor; c.fillText(name, 0, -r * .5, r * 1.6);
     c.font = `900 ${Math.round(r * 1.15)}px "DM Mono",monospace`;

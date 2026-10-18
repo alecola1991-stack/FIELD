@@ -19,7 +19,9 @@ import { MISSION_TIERS } from '../game/Missions.js';
 import { Ads } from './Ads.js';
 import { TROPHY_ART } from './TrophyArt.js';
 import { CareerScreen } from './CareerScreen.js';
-import { setCareerScope, loadCareer, saveCareer, nextCareerMatch, recordCareerMatch, careerDifficulty, careerLeagueOf, CAREER_GOAL_TARGET, CAREER_SEASONS, COMPETITION_NAMES } from '../game/CareerMode.js';
+import { ProgressScreen, isProgressTrophy } from './ProgressScreen.js';
+import { computeProgress, progressId, CAREER_MILESTONES } from '../game/GameProgress.js';
+import { setCareerScope, loadCareer, saveCareer, nextCareerMatch, recordCareerMatch, careerDifficulty, careerLeagueOf, loadCareerBest, CAREER_GOAL_TARGET, CAREER_SEASONS, COMPETITION_NAMES } from '../game/CareerMode.js';
 import { LEGEND_MATCHES, LEGENDS_UNLOCK_LEVEL, resolveLegendMatch } from '../config/legends.js';
 
 const ROUND_NAMES = ['OCTAVOS DE FINAL', 'CUARTOS DE FINAL', 'SEMIFINAL', 'FINAL'];
@@ -58,10 +60,10 @@ export class UI {
       home: document.querySelector('#home-screen'), play: document.querySelector('#play-screen'), customize: document.querySelector('#customize-screen'),
       settings: document.querySelector('#settings-screen'), account: document.querySelector('#account-screen'), online: document.querySelector('#online-screen'), leaderboard: document.querySelector('#leaderboard-screen'), competitions: document.querySelector('#competition-screen'), tournament: document.querySelector('#tournament-screen'),
       league: document.querySelector('#league-screen'), game: document.querySelector('#game-screen'), profile: document.querySelector('#profile-screen'),
-      missions: document.querySelector('#missions-screen'), career: document.querySelector('#career-screen'),
+      missions: document.querySelector('#missions-screen'), career: document.querySelector('#career-screen'), progress: document.querySelector('#progress-screen'),
       modifiers: document.querySelector('#modifiers-screen'), quick: document.querySelector('#quick-screen'), legends: document.querySelector('#legends-screen'),
     };
-    this.cacheElements(); this.menuBackdrop = new MenuBackdrop(this.menu_backdrop); this.populateTeamPicker(); this.populateLeagueCompetitions(); this.fillInputs(); this.bind(); this.careerScreen = new CareerScreen(this); this.careerScreen.renderHomeStatus(); this.renderSoloFormat(); this.updateLeaguePreview(); this.renderProgress(); this.show('home'); this.refreshContinueButton();
+    this.cacheElements(); this.menuBackdrop = new MenuBackdrop(this.menu_backdrop); this.populateTeamPicker(); this.populateLeagueCompetitions(); this.fillInputs(); this.bind(); this.careerScreen = new CareerScreen(this); this.careerScreen.renderHomeStatus(); this.progressScreen = new ProgressScreen(this); this.backfillProgress(); this.progressScreen.renderHome(); this.renderSoloFormat(); this.updateLeaguePreview(); this.renderProgress(); this.show('home'); this.refreshContinueButton();
   }
 
   cacheElements() {
@@ -542,9 +544,10 @@ export class UI {
     this.account_level.textContent = String(this.progression.level); this.account_wins.textContent = String(stats.wins);
     this.account_matches.textContent = String(stats.matches); this.account_goals.textContent = String(stats.goalsFor + stats.trainingGoals);
     this.account_conceded.textContent = String(stats.goalsAgainst); this.account_seasons.textContent = String(stats.leagueSeasons);
-    this.account_trophy_count.textContent = String(this.career.trophies.length); this.account_trophies.replaceChildren();
-    if (!this.career.trophies.length) { const empty = document.createElement('span'); empty.className = 'empty-trophies'; empty.textContent = 'Tus copas aparecerán aquí al ganarlas.'; this.account_trophies.append(empty); }
-    else for (const trophy of this.career.trophies) { const chip = document.createElement('span'); chip.className = 'trophy-chip'; const cup = document.createElement('i'); const title = document.createElement('span'); title.textContent = trophy.name; chip.append(cup, title); this.account_trophies.append(chip); }
+    const shownTrophies = this.career.trophies.filter(trophy => !isProgressTrophy(trophy.id));
+    this.account_trophy_count.textContent = String(shownTrophies.length); this.account_trophies.replaceChildren();
+    if (!shownTrophies.length) { const empty = document.createElement('span'); empty.className = 'empty-trophies'; empty.textContent = 'Tus copas aparecerán aquí al ganarlas.'; this.account_trophies.append(empty); }
+    else for (const trophy of shownTrophies) { const chip = document.createElement('span'); chip.className = 'trophy-chip'; const cup = document.createElement('i'); const title = document.createElement('span'); title.textContent = trophy.name; chip.append(cup, title); this.account_trophies.append(chip); }
   }
 
   renderProfile() {
@@ -552,6 +555,7 @@ export class UI {
     const name = this.settings.profileReady && this.settings.name ? this.settings.name.trim() : (this.user?.email?.split('@')[0] || 'Jugador');
     this.career_name.textContent = name;
     this.paintPlayerPreview(this.career_avatar, team, { name: name.slice(0, 10).toUpperCase(), number: this.settings.number });
+    this.career_avatar.classList.toggle('gold-dorsal', this.goldUnlocked() && !!this.settings.goldKit);
     this.career_team_label.textContent = team ? `· ${team.name}` : '';
     this.career_subtitle.textContent = this.user ? 'Cuenta conectada · progreso sincronizado' : 'Progreso guardado en este dispositivo';
     this.career_level.textContent = String(this.progression.level);
@@ -1133,11 +1137,14 @@ export class UI {
     });
     for (const [key, screen] of Object.entries(this.screens)) screen.classList.toggle('hidden', key !== view);
     // Animated background: one canvas moves into the visible menu and draws its scene.
-    const backdropScene = { home: 'home', play: 'play', online: 'online', settings: 'settings', tournament: 'champions', league: 'league', career: 'champions' }[view];
+    const backdropScene = { home: 'home', play: 'play', online: 'online', settings: 'settings', tournament: 'champions', league: 'league', career: 'champions', progress: 'home' }[view];
     if (backdropScene && this.screens[view]) this.menuBackdrop?.setScene(backdropScene, this.screens[view]);
     this.menuBackdrop?.setActive(!!backdropScene);
     if (view === 'profile') { this.renderProfile(); this.social?.setTab(this.social.tab); } else this.social?.closePlayer();
     if (view === 'missions') this.renderMissions();
+    if (view === 'progress') this.progressScreen?.render();
+    if (view === 'home') this.progressScreen?.renderHome();
+    this.applyGoldName();
     if (view === 'play') this.refreshContinueButton();
     if (view === 'game') requestAnimationFrame(() => this.game?.renderer.resize());
   }
@@ -1449,6 +1456,12 @@ export class UI {
     this.hud_player_name.textContent = this.settings.name.toUpperCase(); this.player_dot.style.background = (options.playerTeam || getTeamById(this.settings.teamId))?.primary || '#68746e';
     this.opponent_dot.style.background = options.opponentTeam?.primary || '#f19676';
     this.hud_opponent_name.textContent = mode === 'training' ? 'PRÁCTICA' : (options.opponentName || 'BOT');
+    // 100 % reward: golden name online and golden name/number on the kit with any team.
+    const gold = this.goldUnlocked();
+    if (this.game.player) this.game.player.goldKit = gold && !!this.settings.goldKit;
+    if (this.game.bot && mode === 'online' && !options.squad) this.game.bot.goldKit = !!options.opponentGoldKit;
+    this.hud_player_name.classList.toggle('gold-name', mode === 'online' && gold);
+    this.hud_opponent_name.classList.toggle('gold-name', mode === 'online' && !!options.opponentGold);
     const baseLabel = options.label || (mode === 'training' ? 'MODO ENTRENAMIENTO' : `PARTIDO · ${difficultyLabel(this.settings.difficulty).toUpperCase()}`);
     const target = `A ${this.game.goalTarget} ${this.game.goalTarget === 1 ? 'GOL' : 'GOLES'}`;
     const label = mode === 'training' ? baseLabel : /\bA \d+(?: GOLES)?\b/.test(baseLabel) ? baseLabel.replace(/\bA \d+(?: GOLES)?\b/g, target) : `${baseLabel} · ${target}`;
@@ -1559,7 +1572,7 @@ export class UI {
   createOnlineRoom() { return this.hub.action('create', { kind: 'quick', size: this.hub.formats.quick }); }
   findOnlineMatch() { return this.hub.action('queue', { kind: 'quick', size: this.hub.formats.quick }); }
   joinOnlineRoom() { return this.hub.action('join', { kind: 'quick', code: this.online_room_input.value }); }
-  onlinePlayer() { return { name: this.settings.name, number: this.settings.number, teamId: this.settings.teamId, modifiers: DEFAULT_MODIFIERS, level: this.progression.level,
+  onlinePlayer() { const gold = this.goldUnlocked(); return { name: this.settings.name, number: this.settings.number, teamId: this.settings.teamId, modifiers: DEFAULT_MODIFIERS, level: this.progression.level, gold, goldKit: gold && !!this.settings.goldKit,
     userId: this.user?.id || '', username: this.hub?.identity?.username || '', elo: this.hub?.identity?.elo ?? 500 }; }
 
   updateOnlineStatus(status, detail = '') {
@@ -1607,7 +1620,7 @@ export class UI {
     }
     this.start('online', {
       modifiers: DEFAULT_MODIFIERS, localSide: info.localSide, opponentName: other.name || 'RIVAL', opponentNumber: other.number, opponentLevel: other.level || 1,
-      opponentTeam: team, opponentUsername: other.username, opponentElo: other.elo, roomCode: info.roomCode, label, ...teamExtras,
+      opponentTeam: team, opponentUsername: other.username, opponentElo: other.elo, opponentGold: !!other.gold, opponentGoldKit: !!other.goldKit, roomCode: info.roomCode, label, ...teamExtras,
     });
     // Names with rank badges: both teammates in 2v2.
     const people = seats => seats.map(seat => ({ name: squad.seats[seat]?.username || squad.seats[seat]?.name || 'jugador', elo: squad.seats[seat]?.elo }));
@@ -1999,7 +2012,7 @@ export class UI {
       const state = loadCareer(), current = nextCareerMatch(state);
       const event = current ? recordCareerMatch(state, result.playerScore, result.botScore) : null;
       if (event) {
-        saveCareer(state); this.careerScreen.reload();
+        saveCareer(state); this.careerScreen.reload(); this.trackCareer(state);
         const stage = event.stage, label = current.match.label;
         careerChampion = !!event.trophy; careerCompetition = stage.kind === 'league' ? 'league' : stage.competitionId;
         this.result_eyebrow.textContent = `MODO CARRERA · T${state.season} · ${stage.name.toUpperCase()} · ${label.toUpperCase()}`;
@@ -2026,6 +2039,7 @@ export class UI {
       competitionId: result.mode === 'tournament' ? this.tournament?.competitionId : (result.mode === 'league' ? this.league?.competitionId : result.mode === 'career' ? careerCompetition : ''),
       isFinal: cupFinal, isChampion: cupChampion || (careerChampion && careerCompetition !== 'league'), isLeagueChampion: leagueChampion || (careerChampion && careerCompetition === 'league'),
     }, this.progression.level);
+    this.trackProgress(result, won);
     const missionXp = newMissions.reduce((sum, mission) => sum + mission.xp, 0);
     if (missionXp) {
       const missionReward = this.progression.awardXP(missionXp);
@@ -2190,6 +2204,65 @@ export class UI {
       const wrap = this.league_standings_body.closest('.league-table-wrap'), mine = this.league_standings_body.querySelector('.your-league-team');
       if (wrap && mine) wrap.scrollTop = Math.max(0, mine.offsetTop - wrap.clientHeight / 2);
     });
+  }
+
+  // ---- Progress (Progreso) ---------------------------------------------------
+  progressData() { return computeProgress({ trophyIds: this.career.trophies.map(item => item.id), level: this.progression.level }); }
+  goldUnlocked() { return this.progressData().complete; }
+  unlockProgress(category, id, label) {
+    const before = this.goldUnlocked();
+    const added = this.unlockTrophy(progressId(category, id), `Progreso · ${label}`);
+    if (added && !before && this.goldUnlocked()) {
+      this.confetti.play(); this.trophy_toast_name.textContent = '¡100 %! Nombre dorado desbloqueado';
+      this.settings.goldKit = true; this.persist(); this.applyGoldName();
+    }
+    if (added) this.progressScreen?.renderHome();
+    return added;
+  }
+  // Milestones that can be read from saved data (career record, online rank).
+  backfillProgress() {
+    const best = loadCareerBest();
+    if (best) {
+      this.unlockProgress('career', 'finish', CAREER_MILESTONES[0].label);
+      if (best.score >= 300) this.unlockProgress('career', 'pro', CAREER_MILESTONES[1].label);
+      if (best.score >= 800) this.unlockProgress('career', 'star', CAREER_MILESTONES[2].label);
+      if (best.score >= 1500) this.unlockProgress('career', 'legend', CAREER_MILESTONES[3].label);
+    }
+    this.trackOnlineRank(this.hub?.identity);
+  }
+  trackOnlineRank(identity) {
+    if (!identity) return;
+    const reached = rankIndex(identity.elo);
+    RANKS.forEach((rank, index) => { if (index <= reached) this.unlockProgress('rank', rank.id, `Rango ${rank.name}`); });
+  }
+  trackProgress(result, won) {
+    if (!won) return;
+    const difficulty = this.game?.botAI?.difficulty;
+    if (!['online', 'training', 'legends'].includes(result.mode) && DIFFICULTIES.some(item => item.id === difficulty)) this.unlockProgress('difficulty', difficulty, `Victoria en ${difficultyLabel(difficulty)}`);
+    if (result.mode === 'legends' && this.currentMatchOptions?.legendId) {
+      const legend = LEGEND_MATCHES.find(item => item.id === this.currentMatchOptions.legendId);
+      if (legend) this.unlockProgress('legend', legend.id, legend.name);
+    }
+  }
+  // Career milestones, called by the career screen.
+  trackCareer(state, finished = false) {
+    if (!state) return;
+    const startTier = TEAM_LEAGUES.find(item => item.id === getTeamById(state.startClubId)?.league)?.tier ?? 1;
+    const tierNow = TEAM_LEAGUES.find(item => item.id === careerLeagueOf(state, state.clubId))?.tier ?? 1;
+    if (startTier >= 4 && (tierNow === 1 || state.history.some(item => item.tier === 1))) this.unlockProgress('career', 'climb', CAREER_MILESTONES[5].label);
+    if (state.trophies.some(item => item.kind === 'world-cup')) this.unlockProgress('career', 'world-cup', CAREER_MILESTONES[4].label);
+    if (finished) {
+      const score = state.finalScore ?? 0;
+      this.unlockProgress('career', 'finish', CAREER_MILESTONES[0].label);
+      if (score >= 300) this.unlockProgress('career', 'pro', CAREER_MILESTONES[1].label);
+      if (score >= 800) this.unlockProgress('career', 'star', CAREER_MILESTONES[2].label);
+      if (score >= 1500) this.unlockProgress('career', 'legend', CAREER_MILESTONES[3].label);
+    }
+  }
+  // Golden animated name on the profile and the online identity once the game is complete.
+  applyGoldName() {
+    const gold = this.goldUnlocked();
+    for (const id of ['career-name', 'online-identity']) document.getElementById(id)?.classList.toggle('gold-name', gold);
   }
 
   // Career mode: plays the next key match of the saved career with the club or national team.

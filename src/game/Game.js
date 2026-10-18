@@ -511,7 +511,7 @@ export class Game {
     const kits = [getTeamById(seats[0].teamId), getTeamById(seats[2].teamId)];
     const bodies = seats.map((seat, index) => {
       const team = kits[index < 2 ? 0 : 1], fallback = index < 2 ? '#68746e' : '#f19676';
-      return new Player({ x: 0, y: 0, name: String(seat.name || 'JUGADOR').slice(0, 16), number: Number.isFinite(Number(seat.number)) ? Number(seat.number) : 10, color: team?.primary || fallback, secondaryColor: team?.secondary || null, numberColor: team?.numberColor, kitPattern: team?.kitPattern, tertiaryColor: team?.tertiary || null, kitBands: team?.kitBands || null, numberOutline: team?.numberOutline, isBot: false, speed: 305 });
+      return Object.assign(new Player({ x: 0, y: 0, name: String(seat.name || 'JUGADOR').slice(0, 16), number: Number.isFinite(Number(seat.number)) ? Number(seat.number) : 10, color: team?.primary || fallback, secondaryColor: team?.secondary || null, numberColor: team?.numberColor, kitPattern: team?.kitPattern, tertiaryColor: team?.tertiary || null, kitBands: team?.kitBands || null, numberOutline: team?.numberOutline, isBot: false, speed: 305 }), { goldKit: !!seat.goldKit });
     });
     const botSeat = localSeat < 2 ? 2 : 0;
     this.squad = { bodies, localSeat, botSeat, otherSeats: [0, 1, 2, 3].filter(seat => seat !== localSeat && seat !== botSeat), seats };

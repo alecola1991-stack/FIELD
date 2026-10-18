@@ -65,7 +65,7 @@ export function resolveBallWalls(ball, onWallBounce = () => {}) {
   if (ball.x > world.width - goalBack - r) { ball.x = world.width - goalBack - r; if (ball.vx > 0) { ball.vx *= -.62; onBounce(); } }
 }
 
-export function resolvePlayerBall(player, ball, onHit = () => {}) {
+export function resolvePlayerBall(player, ball, onHit = () => {}, soft = false) {
   let dx = ball.x - player.x, dy = ball.y - player.y;
   let dist = Math.hypot(dx, dy), min = player.radius + ball.radius;
   if (dist >= min) return false;
@@ -79,11 +79,32 @@ export function resolvePlayerBall(player, ball, onHit = () => {}) {
   const rel = (ball.vx - player.vx) * nx + (ball.vy - player.vy) * ny;
   if (rel < 0) {
     ball.curl = 0;
-    const impulse = -rel * 1.26 + 41;
+    // Clásico gameplay (soft): gentler touches so the ball does not bounce away while dribbling.
+    const impulse = soft ? -rel * 1.04 + 10 : -rel * 1.26 + 41;
     ball.vx += nx * impulse; ball.vy += ny * impulse;
     player.vx -= nx * impulse * .16; player.vy -= ny * impulse * .16;
   }
   onHit(Math.abs(rel));
+  return true;
+}
+
+// Clásico gameplay: close control. While the player runs with the ball in front of them it stays
+// glued to the boot: it is pulled to a point just ahead and takes the player's speed. A shot (recent
+// kick), a fast ball arriving or a ball behind/beside the player are left alone.
+export const DRIBBLE = Object.freeze({ reach: 16, minSpeed: 45, maxRelative: 280, facing: .3, pull: 15, match: 11 });
+export function dribbleAssist(player, ball, dt) {
+  if (!player || !ball || dt <= 0 || (player.shotCooldown || 0) > .12) return false;
+  const speed = Math.hypot(player.vx || 0, player.vy || 0); if (speed < DRIBBLE.minSpeed) return false;
+  const ux = player.vx / speed, uy = player.vy / speed;
+  const dx = ball.x - player.x, dy = ball.y - player.y, dist = Math.hypot(dx, dy) || 1;
+  const contact = player.radius + ball.radius;
+  if (dist > contact + DRIBBLE.reach || (dx * ux + dy * uy) / dist < DRIBBLE.facing) return false;
+  if (Math.hypot(ball.vx - player.vx, ball.vy - player.vy) > DRIBBLE.maxRelative) return false;
+  const tx = player.x + ux * (contact + 1.5), ty = player.y + uy * (contact + 1.5);
+  const pull = 1 - Math.exp(-DRIBBLE.pull * dt), match = 1 - Math.exp(-DRIBBLE.match * dt);
+  ball.x += (tx - ball.x) * pull; ball.y += (ty - ball.y) * pull;
+  ball.vx += (player.vx - ball.vx) * match; ball.vy += (player.vy - ball.vy) * match;
+  ball.curl = 0;
   return true;
 }
 

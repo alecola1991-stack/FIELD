@@ -8,7 +8,7 @@ import { SquadAI } from './SquadAI.js';
 import { Renderer } from './Renderer.js';
 import { GameState } from './GameState.js';
 import { getTeamById } from '../config/teams.js';
-import { kickBall, curveSide, resolveBallNet, resolveBallWalls, resolvePlayerBall, resolvePlayerPlayers, resolvePlayerWalls, isGoal } from './Physics.js';
+import { kickBall, curveSide, dribbleAssist, resolveBallNet, resolveBallWalls, resolvePlayerBall, resolvePlayerPlayers, resolvePlayerWalls, isGoal } from './Physics.js';
 
 const POWER_SHOT_COOLDOWN_SECONDS = 20;
 const ONLINE_PACKET_INTERVAL = 1 / 30;
@@ -33,6 +33,8 @@ export class Game {
     // The match keeps its own AI level (automatic by stars or the chosen one); settings are not touched.
     this.state.start(mode); this.matchDifficulty = mode === 'legends' ? 'legend' : difficulty; this.botAI.setDifficulty(this.matchDifficulty);
     this.modifiers = normalizeModifiers(mode === 'online' ? {} : options.modifiers || this.settings.modifiers);
+    // Gameplay: "classic" (close control, ball 5 % smaller) or "arcade". Online is always arcade.
+    this.gameplay = mode !== 'online' && (options.gameplay || this.settings.gameplay) === 'classic' ? 'classic' : 'arcade';
     this.world = modifierWorld(this.modifiers);
     // Career matches use the career club or national team instead of the profile team.
     this.playerTeamId = options.playerTeamId || null;
@@ -77,7 +79,7 @@ export class Game {
       body.maxSpeed = (body.isBot ? 280 : 305) * body.speedScale;
       body.shotPower = this.modifiers.shotPower; body.world = this.world;
     }
-    this.ball.radius = BALL_RADIUS * this.modifiers.ballSize; this.ball.world = this.world;
+    this.ball.radius = BALL_RADIUS * (this.gameplay === 'classic' ? .95 : 1) * this.modifiers.ballSize; this.ball.world = this.world;
     this.ball.maxSpeed = Ball.MAX_SPEED * Math.max(1, this.modifiers.shotPower);
   }
   updateSettings(settings) {
@@ -206,7 +208,9 @@ export class Game {
     for (let step = 0; step < steps; step++) {
     this.ball.update(dt / steps);
     if (this.bot) resolvePlayerBall(this.bot, this.ball, strength => { if (strength > 30) this.sound.bump(); });
-    resolvePlayerBall(this.player, this.ball, strength => { if (strength > 30) this.sound.bump(); });
+    const classic = this.gameplay === 'classic';
+    resolvePlayerBall(this.player, this.ball, strength => { if (strength > 30) this.sound.bump(); }, classic);
+    if (classic) dribbleAssist(this.player, this.ball, dt / steps);
     resolvePlayerWalls(this.player); if (this.bot) resolvePlayerWalls(this.bot);
     const goalSide = isGoal(this.ball);
     if (goalSide !== 0) { this.recordGoal(goalSide); return; }
@@ -375,7 +379,7 @@ export class Game {
       goalTimer: this.replay ? Math.max(this.state.goalTimer, .01) : this.state.goalTimer, goalSide: this.state.goalSide, matchOver: this.state.matchOver, goalTarget: this.goalTarget,
       ...(online ? { replay: this.replay ? { active: true, skipHost: this.replay.localSkip, skipGuest: this.replay.remoteSkip, ...(this.squad ? { seats: [...(this.replay.remoteSeats || [])] } : {}) } : null } : {}),
       countdown: this.countdown, countdownClock: this.countdownClock, trajectory: this.trajectory,
-      ...(online ? {} : { modifiers: this.modifiers, fieldTheme: this.fieldTheme, competitionRound: this.competitionRound }),
+      ...(online ? {} : { modifiers: this.modifiers, gameplay: this.gameplay, fieldTheme: this.fieldTheme, competitionRound: this.competitionRound }),
       matchStats: online ? this.matchStats : this.matchSummary(),
       player: entity(this.player), bot: entity(this.bot), ball: entity(this.ball),
       ...(online && this.squad ? { seats: this.squad.bodies.map(entity) } : {}),
@@ -385,6 +389,7 @@ export class Game {
   }
   restoreSnapshot(snapshot, notify = true, resetRender = true) {
     if (!snapshot || snapshot.mode !== this.state.mode || !snapshot.player || !snapshot.ball) return false;
+    if (this.state.mode !== 'online' && snapshot.gameplay) this.gameplay = snapshot.gameplay === 'classic' ? 'classic' : 'arcade';
     if (snapshot.modifiers && this.state.mode !== 'online') { this.modifiers = normalizeModifiers(snapshot.modifiers); this.applyModifiers(); }
     const restoreBody = (body, saved) => {
       if (!body || !saved) return;
@@ -589,7 +594,9 @@ export class Game {
     const steps = Math.max(1, Math.ceil(Math.hypot(this.ball.vx, this.ball.vy) * dt / Math.max(5, this.ball.radius)));
     for (let step = 0; step < steps; step++) {
       this.ball.update(dt / steps);
-      for (const body of bodies) resolvePlayerBall(body, this.ball, strength => { if (strength > 30) this.sound.bump(); });
+      const classic = this.gameplay === 'classic', human = bodies[localSeat];
+      for (const body of bodies) resolvePlayerBall(body, this.ball, strength => { if (strength > 30) this.sound.bump(); }, classic && body === human);
+      if (classic) dribbleAssist(human, this.ball, dt / steps);
       for (const body of bodies) resolvePlayerWalls(body);
       const goalSide = isGoal(this.ball);
       if (goalSide !== 0) { this.recordGoal(goalSide); return; }

@@ -1766,3 +1766,10 @@ body:not(.solo-duo) [data-duo-only]{display:none!important}
 body:not(.auto-difficulty) .auto-difficulty-note{display:none}
 body.auto-difficulty select.difficulty-select{display:none!important}
 .difficulty-row:has(.difficulty-mode){gap:14px;flex-wrap:wrap}
+
+/* ---- Gameplay: Arcade / Clásico (Ajustes › Juego) ------------------------------------------- */
+.gameplay-options{display:inline-flex;gap:4px;padding:3px;border:1px solid #91b9ff30;border-radius:8px;background:#0c1932;flex:none}
+.gameplay-options button{border:0;border-radius:6px;padding:8px 14px;background:transparent;color:#b6c7e2;font:700 12px Manrope,sans-serif;cursor:pointer}
+.gameplay-options button.active{background:#e7f1ff;color:#0b1d39}
+.gameplay-options button:not(.active):hover{color:#fff}
+.setting-line>.gameplay-options{flex-direction:row}

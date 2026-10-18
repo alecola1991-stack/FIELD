@@ -1721,3 +1721,36 @@ body:not(.solo-duo) [data-duo-only]{display:none!important}
 .hub-near-list{gap:4px}.hub-near-list span{padding:4px 8px;font-size:12px}
 .gold-name,.player-circle-preview.gold-dorsal :is(.circle-preview-name,.circle-preview-number){background-position:45% 0}
 @media(max-width:600px){.hub-arrow-badge{display:none}.hub-page-arrow.next{right:-12px}.hub-page-arrow.prev{left:-12px}.hub-page-arrow{width:28px;height:60px;font-size:26px;top:120px}}
+
+/* ---- Phones and tablets: "app coming soon" notice (src/mobileGate.js) ------------------------ */
+.mobile-blocked,.mobile-blocked body{min-height:100%;overflow-x:hidden}
+.mobile-notice{position:relative;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:28px 20px calc(28px + env(safe-area-inset-bottom));text-align:center;color:#eef4ff;background:radial-gradient(ellipse at 50% 0,#1d4a8a66,transparent 60%),linear-gradient(180deg,#0b1730,#060c18);overflow:hidden}
+.mobile-notice-glow{position:absolute;inset:auto -30% -40% -30%;height:70%;background:radial-gradient(ellipse at 50% 100%,#2f7bff40,transparent 65%);pointer-events:none}
+.mobile-notice>*{position:relative}
+.mobile-notice-brand{display:flex;align-items:center;gap:10px;font-size:15px;letter-spacing:.12em;text-transform:uppercase}
+.mobile-notice-brand em{font-style:normal;color:#8dc3ff}
+.mobile-notice-brand .brand-mark{width:30px;height:28px}
+.mobile-notice-phone{position:relative;width:150px;height:250px;border-radius:28px;padding:10px;background:linear-gradient(160deg,#2a3d5c,#111c30);box-shadow:0 24px 60px #000a,inset 0 0 0 2px #ffffff22;animation:mnFloat 4s ease-in-out infinite;margin:8px 0 4px}
+.mobile-notice-screen{position:relative;width:100%;height:100%;border-radius:20px;overflow:hidden;background:repeating-linear-gradient(0deg,#2f9a55 0 26px,#2a8c4d 26px 52px)}
+.mn-line{position:absolute;left:0;right:0;top:50%;height:2px;background:#ffffffcc}
+.mn-circle{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border:2px solid #ffffffcc;border-radius:50%}
+.mn-player{position:absolute;width:24px;height:24px;border-radius:50%;box-shadow:0 3px 6px #0006}
+.mn-player.a{background:#2f7bff;left:30%;top:70%;animation:mnPlayerA 3s ease-in-out infinite}
+.mn-player.b{background:#e8594a;left:58%;top:22%;animation:mnPlayerB 3s ease-in-out infinite}
+.mn-ball{position:absolute;width:12px;height:12px;border-radius:50%;background:#ffd400;border:1px solid #000;left:46%;top:58%;animation:mnBall 3s ease-in-out infinite}
+.mobile-notice-badge{position:absolute;left:50%;bottom:-12px;transform:translateX(-50%);white-space:nowrap;padding:5px 10px;border-radius:4px;background:#f2cf5b;color:#2a1d02;font:700 10px 'DM Mono',monospace;letter-spacing:.12em;box-shadow:0 6px 18px #0008}
+.mobile-notice-kicker{margin:10px 0 0;font:500 11px 'DM Mono',monospace;letter-spacing:.16em;color:#8dc3ff}
+.mobile-notice h1{margin:0;font-size:clamp(28px,8vw,44px);line-height:1.02;letter-spacing:-.05em;font-weight:800}
+.mobile-notice h1 em{font-style:normal;color:#8dc3ff}
+.mobile-notice-text{margin:0;max-width:440px;font-size:15px;line-height:1.55;color:#b6c7e2}
+.mobile-notice-card{display:flex;gap:12px;align-items:flex-start;max-width:440px;text-align:left;padding:14px;border-radius:12px;border:1px solid #91b9ff40;background:#0f1f3acc}
+.mobile-notice-card>span{font-size:24px;line-height:1}
+.mobile-notice-card p{margin:0;font-size:13px;line-height:1.5;color:#c6d5ec}.mobile-notice-card b{display:block;color:#fff;font-size:14px;margin-bottom:2px}.mobile-notice-card strong{color:#8dc3ff}
+.mobile-notice-share{border:0;border-radius:10px;padding:14px 22px;background:#91c3ff;color:#08172f;font:700 14px Manrope,sans-serif;cursor:pointer;min-width:240px}
+.mobile-notice-share:active{transform:scale(.98)}
+.mobile-notice-foot{font-size:12px;color:#7f95b8}
+@keyframes mnFloat{50%{transform:translateY(-8px) rotate(-1.5deg)}}
+@keyframes mnPlayerA{50%{left:40%;top:60%}}
+@keyframes mnPlayerB{50%{left:50%;top:32%}}
+@keyframes mnBall{0%,100%{left:46%;top:58%}45%{left:52%;top:28%}55%{left:52%;top:28%}}
+@media(prefers-reduced-motion:reduce){.mobile-notice *{animation:none!important}}

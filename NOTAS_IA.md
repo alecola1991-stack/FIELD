@@ -4,6 +4,25 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-18 · Claude · Web bloqueada en móviles y tablets con aviso de app en desarrollo
+**Commit:** rama `bloqueo-movil` (pendiente de pasar a main)
+**Archivos:** `src/main.js` (ahora solo decide), `src/app.js` (el antiguo `main.js`, sin cambios), `src/mobileGate.js` (nuevo), `src/styles.css`, `tests/MobileGate.test.js` (nuevo)
+**Qué y por qué:** Ale pidió desactivar la web en dispositivos móviles. En su lugar se muestra una pantalla propia que dice que estamos creando una app para teléfonos, para mejorar la experiencia de los jugadores.
+**Cómo:**
+- `main.js` llama a `isMobileDevice()`.
+  - Si es un móvil o una tablet, `showMobileNotice()` quita `.app-shell`, pinta el aviso y oculta la pantalla de carga. El juego no se descarga ni se inicia.
+  - Si no, hace `await import('./app.js')`, que arranca el juego como antes.
+- Cuenta como móvil:
+  - Un agente de usuario móvil: Android, iPhone, iPad, Mobile…
+  - `userAgentData.mobile`.
+  - iPadOS, que se presenta como Mac pero es táctil.
+  - Un dispositivo con solo puntero táctil (`pointer: coarse` sin ningún `any-pointer: fine`).
+  - Electron (app de escritorio) nunca se bloquea, y un portátil táctil con ratón tampoco.
+- El aviso tiene: logo, un móvil animado con un minipartido, la etiqueta «EN DESARROLLO», el texto, una tarjeta «juega en tu ordenador» y un botón «Compartir el enlace» (comparte o copia https://futarcade.es/).
+**Para el otro asistente:** para volver a abrir la web en móviles, haz que `main.js` importe `app.js` siempre, o revierte este merge. Los scripts de prueba que inyectaban código en `/src/main.js` deben apuntar ahora a `/src/app.js`.
+
+---
+
 ## 2026-10-18 · Claude · Jugadores un 5 % más pequeños y balón un 10 % más pequeño
 **Commit:** fusionado en main (rama `tamanos`, merge 3db286b). Para deshacerlo: `git revert -m 1 3db286b`
 **Archivos:** `src/game/Player.js`, `src/game/Ball.js`, `src/game/Game.js`, `tests/Modifiers.test.js`, `tests/GameStats.test.js`

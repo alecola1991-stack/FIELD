@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-18 · Claude · Táctico: balón que «atravesaba» al jugador y modo 3 contra 3 (portero, mediocentro y delantero)
-**Commit:** rama `tactico-3v3` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `tactico-3v3`, merge 4bc15f6). Para deshacerlo: `git revert -m 1 4bc15f6`
 **Archivos:** `src/game/Tactical.js`, `src/game/TacticalAI.js`, `src/game/Game.js`, `src/game/Renderer.js`, `src/config/modifiers.js`, `src/ui/UI.js`, `src/styles.css`, `tests/Tactical3v3.test.js` (nuevo)
 **Qué y por qué:**
 - Ale vio que, con la IA en posesión, a veces el balón pasaba por encima del jugador, y fallos parecidos al chutar.

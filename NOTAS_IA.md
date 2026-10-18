@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-19 · Claude · Táctico: porteros con menos reflejos, conducción de la IA sin zigzag y disputas sin ping-pong
-**Commit:** rama `tactico-ajustes-ia` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `tactico-ajustes-ia`, merge bc82ac3). Para deshacerlo: `git revert -m 1 bc82ac3`
 **Archivos:** src/game/Tactical.js, src/game/TacticalAI.js, tests/TacticalDisputes.test.js, NOTAS_IA.md
 **Qué y por qué:** Ale pidió (1) bajar los reflejos de los porteros del 3 contra 3, que lo paraban casi todo; (2) que la IA con balón no cambie de dirección tantas veces (se veía poco natural); (3) arreglar las disputas cuando dos jugadores se juntan (el balón cambiaba de dueño una y otra vez).
 **Cómo:**

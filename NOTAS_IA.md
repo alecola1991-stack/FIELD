@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-19 · Claude · Táctico: modo 7 contra 7 con cámara y saque de centro en 3v3 / 7v7
-**Commit:** rama `tactico-7v7` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `tactico-7v7`, merge 9b521b0). Para deshacerlo: `git revert -m 1 9b521b0`
 **Archivos:** src/game/Game.js, src/game/TacticalAI.js, src/game/Renderer.js, src/ui/UI.js, src/styles.css, tests/Tactical7v7.test.js, NOTAS_IA.md
 **Qué y por qué:** Ale pidió un modo 7 contra 7 (solo Táctico) donde él es el delantero, con campo e IA adaptados, y que en 3v3 y 7v7 saque el local al empezar y, tras cada gol, el equipo que lo ha encajado.
 **Cómo:**

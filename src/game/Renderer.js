@@ -54,7 +54,7 @@ function seeded(seed) { let value = seed >>> 0 || 1; return () => (value = (valu
 const PITCH_LINE = 'rgba(255,255,255,.88)';
 export const BALL_COLOR = '#ffd400';
 
-const VIEW_TOP = 25, VIEW_BOTTOM = WORLD.height - 25; // reachable band of the world
+const VIEW_TOP = 25; // reachable band of the world: [VIEW_TOP, world.height - 25]
 const TOUCH_CONTROLS_HEIGHT = 176; // css px kept clear for the portrait D-pad and kick button
 
 export class Renderer {
@@ -75,22 +75,22 @@ export class Renderer {
     // Portrait screens (phones held upright) rotate the pitch so it fills the
     // height: the attacked goal (+x) points up. On touch layouts the bottom of
     // the canvas is reserved for the on-screen controls so they never cover it.
-    const cw = this.canvas.width, ch = this.canvas.height, viewH = VIEW_BOTTOM - VIEW_TOP;
+    const world = this.world || WORLD, cw = this.canvas.width, ch = this.canvas.height, viewH = world.height - 25 - VIEW_TOP;
     this.rotated = this.allowRotate && ch > cw * 1.1;
     if (this.rotated) {
       const touch = window.matchMedia?.('(pointer:coarse), (max-width:700px)').matches;
       const usable = Math.max(ch * .55, ch - (touch ? TOUCH_CONTROLS_HEIGHT * this.dpr : 0));
-      this.scale = Math.min(cw / viewH, usable / WORLD.width);
-      this.ox = (cw - viewH * this.scale) / 2; this.oy = Math.max(0, (usable - WORLD.width * this.scale) / 2);
+      this.scale = Math.min(cw / viewH, usable / world.width);
+      this.ox = (cw - viewH * this.scale) / 2; this.oy = Math.max(0, (usable - world.width * this.scale) / 2);
     } else {
-      this.scale = Math.min(cw / WORLD.width, ch / viewH);
-      this.ox = (cw - WORLD.width * this.scale) / 2; this.oy = (ch - viewH * this.scale) / 2;
+      this.scale = Math.min(cw / world.width, ch / viewH);
+      this.ox = (cw - world.width * this.scale) / 2; this.oy = (ch - viewH * this.scale) / 2;
     }
   }
   setAllowRotate(allow) { if (this.allowRotate !== !!allow) { this.allowRotate = !!allow; this.resize(); } }
   applyWorldTransform(c) {
     const s = this.scale;
-    if (this.rotated) c.setTransform(0, -s, s, 0, this.ox - VIEW_TOP * s, this.oy + WORLD.width * s);
+    if (this.rotated) c.setTransform(0, -s, s, 0, this.ox - VIEW_TOP * s, this.oy + (this.world || WORLD).width * s);
     else c.setTransform(s, 0, 0, s, this.ox, this.oy - VIEW_TOP * s);
   }
   burst(x, y, color, count = 8, force = 120) {
@@ -105,20 +105,32 @@ export class Renderer {
   }
   render(game, dt) {
     this.renderBlend = 1 - Math.exp(-24 * (dt > 0 ? Math.min(dt, .05) : 1 / 60));
-    this.world = game.world || WORLD;
+    const world = game.world || WORLD;
+    // A bigger pitch (3 contra 3) changes the framing and the size of the cached field.
+    if (!this.world || world.width !== this.world.width || world.height !== this.world.height) {
+      this.world = world; if (this.canvas?.getBoundingClientRect) this.resize();
+      if (this.fieldCache && (this.fieldCache.width !== world.width || this.fieldCache.height !== world.height)) { this.fieldCache.width = world.width; this.fieldCache.height = world.height; this.fieldCacheKey = ''; }
+    }
+    this.world = world; this.frameId = (this.frameId || 0) + 1;
     this.ballStyle = ballStyleFor(game.fieldTheme, game.mode);
     // Fill the spare canvas with the pitch surround colour: no black bands.
     const c = this.ctx, W = this.world; c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = (FIELD_THEMES[game.fieldTheme] || FIELD_THEMES.arcade).net; c.fillRect(0, 0, this.canvas.width, this.canvas.height);
     this.applyWorldTransform(c);
     if (this.fieldCacheContext) {
-      const key = `${game.fieldTheme}|${game.competitionRound}|${W.goalTop}|${W.goalBottom}|${W.goalBack}|${this.rotated}`;
+      const key = `${game.fieldTheme}|${game.competitionRound}|${W.goalTop}|${W.goalBottom}|${W.goalBack}|${W.width}|${this.rotated}`;
       if (key !== this.fieldCacheKey) { this.drawField(this.fieldCacheContext, game.fieldTheme, game.competitionRound); this.fieldCacheKey = key; }
       c.drawImage(this.fieldCache, 0, 0);
     } else this.drawField(c, game.fieldTheme, game.competitionRound);
     this.drawNets(c, game.ball, dt);
     if (game.trajectory) this.drawTrajectory(c, game.ball);
     if (game.shotRangeTimer > 0) this.drawShotRange(c, game.player, game.ball, game.shotRangeTimer);
-    const ballPosition = this.smooth(game.ball);
+    // Táctico: a held ball is drawn from its holder's drawn position, so it never cuts across the body.
+    let ballPosition;
+    if (game.heldBy) {
+      const [hx, hy] = this.smooth(game.heldBy);
+      ballPosition = [hx + game.ball.x - game.heldBy.x, hy + game.ball.y - game.heldBy.y];
+      game.ball._rx = ballPosition[0]; game.ball._ry = ballPosition[1]; game.ball._rframe = this.frameId;
+    } else ballPosition = this.smooth(game.ball);
     if (game.shotPreview) this.drawShotPreview(c, game.player, game.ball, ballPosition, game.aimedShot ? game.aimedShot.curve : game.curveAim, game.aimedShot);
     if (game.bot) this.drawPlayer(c, game.bot, game.bot.color);
     for (const other of game.others || []) this.drawPlayer(c, other, other.color);
@@ -240,6 +252,9 @@ export class Renderer {
     }
   }
   smooth(entity) {
+    // Once per frame per entity (a held ball reads its holder's smoothed position too).
+    if (entity._rframe === this.frameId && entity._rx !== undefined) return [entity._rx, entity._ry];
+    entity._rframe = this.frameId;
     if (entity._rx === undefined || Math.hypot(entity.x - entity._rx, entity.y - entity._ry) > 160) { entity._rx = entity.x; entity._ry = entity.y; }
     const blend = this.renderBlend ?? .33; entity._rx += (entity.x - entity._rx) * blend; entity._ry += (entity.y - entity._ry) * blend;
     return [entity._rx, entity._ry];

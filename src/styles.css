@@ -1777,3 +1777,7 @@ body.auto-difficulty select.difficulty-select{display:none!important}
 body:not(.gameplay-tactical) .tactical-hint,body.gameplay-tactical .arcade-hint{display:none!important}
 body.gameplay-tactical.match-online .tactical-hint{display:none!important}
 body.gameplay-tactical.match-online .arcade-hint{display:flex!important}
+/* 3 contra 3 (only in Táctico): a third option in the format selector. */
+.solo-format-options:has([data-solo-format="3v3"]:not([hidden])){grid-template-columns:repeat(3,auto)}
+.solo-format-options button[hidden]{display:none}
+.solo-format-options:has([data-solo-format="3v3"]:not([hidden])) button{padding:6px 8px;font-size:13px}

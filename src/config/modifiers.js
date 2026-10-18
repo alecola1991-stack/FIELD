@@ -23,11 +23,18 @@ export function modifiersAreDefault(value) {
   const rules = normalizeModifiers(value);
   return MODIFIER_OPTIONS.every(option => rules[option.key] === option.default);
 }
-export function modifierWorld(value) {
-  const rules = normalizeModifiers(value), center = WORLD.height / 2;
+// `scale` enlarges the pitch (3 contra 3 in Táctico: 1.3) keeping the goals and the margins the same size.
+export function modifierWorld(value, scale = 1) {
+  const rules = normalizeModifiers(value);
+  const base = scale === 1 ? WORLD : {
+    ...WORLD, width: Math.round(WORLD.width * scale), height: Math.round(WORLD.height * scale),
+    right: Math.round(WORLD.width * scale) - (WORLD.width - WORLD.right), bottom: Math.round(WORLD.height * scale) - (WORLD.height - WORLD.bottom),
+    centerCircleRadius: Math.round(WORLD.centerCircleRadius * scale),
+  };
+  const center = base.height / 2;
   const half = (WORLD.goalBottom - WORLD.goalTop) * rules.goalSize / 2;
   const depth = Math.max(WORLD.left - WORLD.goalBack, 24 * rules.ballSize + 5);
-  return Object.freeze({ ...WORLD, goalTop: center - half, goalBottom: center + half, goalBack: WORLD.left - depth });
+  return Object.freeze({ ...base, goalTop: center - half, goalBottom: center + half, goalBack: base.left - depth });
 }
 export function formatModifier(option, value) {
   if (option.unit === 's') return `${value} s`;

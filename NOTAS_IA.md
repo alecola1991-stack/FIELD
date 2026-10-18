@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-18 · Claude · Progreso: % del juego completado y recompensa dorada
-**Commit:** rama `progreso` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `progreso`, merge 498bdd6). Para deshacerlo: `git revert -m 1 498bdd6`
 **Archivos:** `src/game/GameProgress.js` (nuevo), `src/ui/ProgressScreen.js` (nuevo), `src/ui/UI.js`, `src/ui/OnlineHub.js`, `src/ui/ProfileSocial.js`, `src/ui/CareerScreen.js`, `src/game/Game.js`, `src/game/Renderer.js`, `src/config/settings.js`, `index.html`, `src/styles.css`, `tests/GameProgress.test.js` (nuevo)
 **Qué y por qué:** Ale pidió un submenú de progreso con el % completado y lo que queda por hacer:
 - En una página nueva de paneles del inicio, a la que se pasa con una flecha.

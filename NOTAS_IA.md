@@ -4,6 +4,19 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-19 · Claude · Táctico: modo 7 contra 7 con cámara y saque de centro en 3v3 / 7v7
+**Commit:** rama `tactico-7v7` (pendiente de pasar a main)
+**Archivos:** src/game/Game.js, src/game/TacticalAI.js, src/game/Renderer.js, src/ui/UI.js, src/styles.css, tests/Tactical7v7.test.js, NOTAS_IA.md
+**Qué y por qué:** Ale pidió un modo 7 contra 7 (solo Táctico) donde él es el delantero, con campo e IA adaptados, y que en 3v3 y 7v7 saque el local al empezar y, tras cada gol, el equipo que lo ha encajado.
+**Cómo:**
+- `Game.start(…, { seven: true })` → `this.seven` (solo Táctico y fuera de online/entrenamiento/leyendas). Campo `SEVEN_FIELD_SCALE` = 1,9 (porterías del mismo tamaño). `setupSeven()` crea 14 cuerpos (`squad.teamSize = 7`), roles `SEVEN_ROLES` = [forward, midC, keeper, defL, defR, midL, midR] por equipo; el asiento 0 es el humano (delantero). Dorsales sin repetir en cada equipo.
+- IA: nueva clase `SevenAI extends TeamAI` (TacticalAI.js). Cada jugador tiene un puesto (`SEVEN_SPOTS`) que se desplaza con el balón; defiende con un presionador (dos en niveles altos en campo propio) y defensa zonal (sale al balón si entra en su zona); con balón tira en rango, pasa al compañero más libre que gane metros (`bestPass`, usa el nuevo `passLane()`), los defensas despejan si los presionan sin pase, y los medios con 4+ estrellas pasan con curva. Portero = el del 3v3 con distribución al compañero libre.
+- `passLane()` (en TacticalAI) también lo usa el mediocentro del 3v3: en niveles altos solo pasa al delantero si está libre (antes se lo interceptaban).
+- Saque (3v3 y 7v7): `kickoffSide` ('left' al empezar; en `recordGoal` pasa al equipo que encaja). `setupKickoff()` pone al delantero del equipo que saca con el balón; `holdKickoff()` mantiene al rival en su campo y fuera del círculo central hasta que el balón se mueve (o 4 s), y luego da 1,5 s (`KICKOFF_GRACE`) en los que no se le puede robar al equipo que sacó. La IA saca con un pase atrás al mediocentro (`TeamAI.kickoffPass`). `ai.kickoff` se inicializa en `TacticalAI`.
+- Renderer: cámara para campos grandes. `game.camera = { focus: ball, keep: player }` solo en 7v7 (también en repeticiones). Encuadra `CAMERA_VIEW` (≈ el tamaño del 3v3, aprovechando todo el ancho de la pantalla), sigue balón 60 % / jugador 40 % y mantiene ambos en pantalla. `applyWorldTransform` usa `cameraCenter()`; sin cámara el resultado es idéntico al de antes.
+- UI: botón «7 contra 7» junto a «3 contra 3» (solo en Táctico). Con cuatro formatos las etiquetas se acortan a 1v1 · 2v2 · 3v3 · 7v7 (clase `.four-formats`, el texto largo queda en `title`). Partido rápido, copas y ligas pasan `seven`. Etiquetas «7 CONTRA 7 ·» y «NOMBRE + 6 IA».
+**Para el otro asistente:** el modo Carrera sigue en 1v1/2v2. Si se añaden elementos dibujados en coordenadas de pantalla, ojo con la cámara (todo lo del mundo se dibuja con `applyWorldTransform`). En simulación, contra un humano muy agresivo el rival del 7v7 marca poco; si se nota jugando, ajustar `SEVEN_SPOTS` / `HOLD_LIMIT` o los rangos de tiro.
+
 ## 2026-10-19 · Claude · Táctico: porteros con menos reflejos, conducción de la IA sin zigzag y disputas sin ping-pong
 **Commit:** fusionado en main (rama `tactico-ajustes-ia`, merge bc82ac3). Para deshacerlo: `git revert -m 1 bc82ac3`
 **Archivos:** src/game/Tactical.js, src/game/TacticalAI.js, tests/TacticalDisputes.test.js, NOTAS_IA.md

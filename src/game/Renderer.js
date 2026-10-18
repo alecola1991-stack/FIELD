@@ -56,6 +56,9 @@ export const BALL_COLOR = '#ffd400';
 
 const VIEW_TOP = 25; // reachable band of the world: [VIEW_TOP, world.height - 25]
 const TOUCH_CONTROLS_HEIGHT = 176; // css px kept clear for the portrait D-pad and kick button
+// Big pitches (7 contra 7) are not shown whole: a camera frames this much of the world (the same
+// player size as in 3 contra 3) and follows the ball, keeping the local player in view.
+export const CAMERA_VIEW = Object.freeze({ width: Math.round(WORLD.width * 1.35), height: Math.round(WORLD.height * 1.35) - 50 });
 
 export class Renderer {
   constructor(canvas) {
@@ -76,22 +79,50 @@ export class Renderer {
     // height: the attacked goal (+x) points up. On touch layouts the bottom of
     // the canvas is reserved for the on-screen controls so they never cover it.
     const world = this.world || WORLD, cw = this.canvas.width, ch = this.canvas.height, viewH = world.height - 25 - VIEW_TOP;
+    // Framed area: the whole band, or the camera window on big pitches.
+    const frameW = this.cameraOn ? Math.min(world.width, CAMERA_VIEW.width) : world.width, frameH = this.cameraOn ? Math.min(viewH, CAMERA_VIEW.height) : viewH;
     this.rotated = this.allowRotate && ch > cw * 1.1;
     if (this.rotated) {
       const touch = window.matchMedia?.('(pointer:coarse), (max-width:700px)').matches;
       const usable = Math.max(ch * .55, ch - (touch ? TOUCH_CONTROLS_HEIGHT * this.dpr : 0));
-      this.scale = Math.min(cw / viewH, usable / world.width);
-      this.ox = (cw - viewH * this.scale) / 2; this.oy = Math.max(0, (usable - world.width * this.scale) / 2);
+      this.scale = Math.min(cw / frameH, usable / frameW);
+      this.visible = this.cameraOn ? { width: Math.min(world.width, usable / this.scale), height: Math.min(viewH, cw / this.scale) } : { width: world.width, height: viewH };
+      this.ox = (cw - this.visible.height * this.scale) / 2; this.oy = Math.max(0, (usable - this.visible.width * this.scale) / 2);
     } else {
-      this.scale = Math.min(cw / world.width, ch / viewH);
-      this.ox = (cw - world.width * this.scale) / 2; this.oy = (ch - viewH * this.scale) / 2;
+      this.scale = Math.min(cw / frameW, ch / frameH);
+      // With a camera, use the whole canvas (a wider screen shows more of the pitch).
+      this.visible = this.cameraOn ? { width: Math.min(world.width, cw / this.scale), height: Math.min(viewH, ch / this.scale) } : { width: world.width, height: viewH };
+      this.ox = (cw - this.visible.width * this.scale) / 2; this.oy = (ch - this.visible.height * this.scale) / 2;
     }
+  }
+  // Camera centre (world units), clamped so the view never leaves the pitch band.
+  cameraCenter() {
+    const world = this.world || WORLD, viewH = world.height - 25 - VIEW_TOP, visible = this.visible || { width: world.width, height: viewH };
+    const cam = this.cameraOn && this.cam ? this.cam : { x: world.width / 2, y: VIEW_TOP + viewH / 2 };
+    return {
+      x: Math.max(visible.width / 2, Math.min(world.width - visible.width / 2, cam.x)),
+      y: Math.max(VIEW_TOP + visible.height / 2, Math.min(world.height - 25 - visible.height / 2, cam.y)),
+    };
+  }
+  // Follow the ball (60 %) and the local player (40 %), keeping both on screen when possible (the ball first).
+  updateCamera(camera, dt) {
+    const on = !!camera;
+    if (on !== !!this.cameraOn) { this.cameraOn = on; this.cam = null; if (this.canvas?.getBoundingClientRect) this.resize(); }
+    if (!on) return;
+    const visible = this.visible || CAMERA_VIEW, focus = camera.focus, keep = camera.keep || focus;
+    let x = focus.x * .6 + keep.x * .4, y = focus.y * .6 + keep.y * .4;
+    const fit = (value, point, half, margin) => Math.max(point - half + margin, Math.min(point + half - margin, value));
+    x = fit(x, keep.x, visible.width / 2, 90); y = fit(y, keep.y, visible.height / 2, 70);
+    x = fit(x, focus.x, visible.width / 2, 110); y = fit(y, focus.y, visible.height / 2, 80);
+    if (!this.cam || Math.hypot(this.cam.x - x, this.cam.y - y) > 900) this.cam = { x, y };
+    else { const k = 1 - Math.exp(-5 * (dt > 0 ? Math.min(dt, .05) : 1 / 60)); this.cam = { x: this.cam.x + (x - this.cam.x) * k, y: this.cam.y + (y - this.cam.y) * k }; }
   }
   setAllowRotate(allow) { if (this.allowRotate !== !!allow) { this.allowRotate = !!allow; this.resize(); } }
   applyWorldTransform(c) {
-    const s = this.scale;
-    if (this.rotated) c.setTransform(0, -s, s, 0, this.ox - VIEW_TOP * s, this.oy + (this.world || WORLD).width * s);
-    else c.setTransform(s, 0, 0, s, this.ox, this.oy - VIEW_TOP * s);
+    const s = this.scale, world = this.world || WORLD, visible = this.visible || { width: world.width, height: world.height - 25 - VIEW_TOP }, center = this.cameraCenter();
+    const left = center.x - visible.width / 2, top = center.y - visible.height / 2;
+    if (this.rotated) c.setTransform(0, -s, s, 0, this.ox - top * s, this.oy + (left + visible.width) * s);
+    else c.setTransform(s, 0, 0, s, this.ox - left * s, this.oy - top * s);
   }
   burst(x, y, color, count = 8, force = 120) {
     for (let i = 0; i < count; i++) { const a = Math.random() * Math.PI * 2, speed = force * (.25 + Math.random() * .75); this.particles.push({ x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, life: .32 + Math.random() * .28, max: .6, size: 1.5 + Math.random() * 2.5, color }); }
@@ -112,6 +143,7 @@ export class Renderer {
       if (this.fieldCache && (this.fieldCache.width !== world.width || this.fieldCache.height !== world.height)) { this.fieldCache.width = world.width; this.fieldCache.height = world.height; this.fieldCacheKey = ''; }
     }
     this.world = world; this.frameId = (this.frameId || 0) + 1;
+    this.updateCamera(game.camera, dt);
     this.ballStyle = ballStyleFor(game.fieldTheme, game.mode);
     // Fill the spare canvas with the pitch surround colour: no black bands.
     const c = this.ctx, W = this.world; c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = (FIELD_THEMES[game.fieldTheme] || FIELD_THEMES.arcade).net; c.fillRect(0, 0, this.canvas.width, this.canvas.height);

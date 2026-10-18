@@ -28,7 +28,7 @@ export class TacticalAI {
     this.level = TACTICAL_AI_LEVELS[difficulty] ? difficulty : 'normal';
     this.mateLevel = TACTICAL_AI_LEVELS[mateLevel] ? mateLevel : this.level;
     this.rivalStars = rivalStars; this.mateStars = mateStars; this.random = random;
-    this.brains = new Map(); this.possession = null; this.humanPass = null;
+    this.brains = new Map(); this.possession = null; this.humanPass = null; this.kickoff = null;
   }
   brain(body) {
     let brain = this.brains.get(body);
@@ -200,6 +200,16 @@ export class TacticalAI {
     return brain.heading;
   }
 
+  // Is `mate` a safe pass from `ball`? Returns { open, length } or null (marked or lane blocked).
+  passLane(ball, mate, rivals, minOpen = 90, laneWidth = 38) {
+    const length = dist(ball, mate); if (length < 1) return null;
+    const open = Math.min(...rivals.filter(Boolean).map(rival => dist(rival, mate)), 400);
+    if (open < minOpen) return null;
+    const ux = (mate.x - ball.x) / length, uy = (mate.y - ball.y) / length;
+    const blocked = rivals.some(rival => { if (!rival) return false; const along = (rival.x - ball.x) * ux + (rival.y - ball.y) * uy; return along > 20 && along < length - 10 && Math.abs((rival.x - ball.x) * uy - (rival.y - ball.y) * ux) < laneWidth; });
+    return blocked ? null : { open, length };
+  }
+
   shoot(body, ball, { attackRight, rivals, config, world }) {
     const axisY = this.random() < .5 ? -1 : this.random() < .5 ? 1 : 0;
     const curve = this.random() < config.curve;
@@ -254,6 +264,14 @@ export class TeamAI extends TacticalAI {
     return commands;
   }
 
+  // Kick-off taken by the AI: a short pass back to the midfielder, as in real football.
+  kickoffPass(body, mid, context) {
+    const { ball, attackRight, config } = context, world = ball.world || WORLD;
+    if (!this.kickoff || this.possession?.holder !== body || !mid || !canKickBall(body, ball) || body.shotCooldown > 0) return null;
+    const result = passFor(body, ball, { mates: [mid], direction: { x: mid.x - body.x, y: mid.y - body.y }, world, attackRight });
+    return { x: 0, y: 0, speed: config.speed, kick: true, aim: result.aim, power: result.power, pass: true };
+  }
+
   keeper(body, context) {
     const { ball, attackRight, mates, config } = context, world = ball.world || WORLD;
     const holder = this.possession?.holder || null, line = attackRight ? world.left : world.right, inward = attackRight ? 1 : -1;
@@ -295,7 +313,8 @@ export class TeamAI extends TacticalAI {
         const pastHalf = attackRight ? body.x > half : body.x < half;
         if (pastHalf && toGoal < config.range * .9) return this.shoot(body, ball, { attackRight, rivals, config, world });
         // Pass to the forward: through ball ahead of them when they are in front, curved with 4+ stars.
-        if (striker && striker !== body && this.random() < .35 + config.pass * .6) {
+        // Better levels only pass when the forward is free (lower levels misread it sometimes).
+        if (striker && striker !== body && (this.random() > config.pass || this.passLane(ball, striker, rivals, 80, 34)) && this.random() < .35 + config.pass * .6) {
           const ahead = (striker.x - body.x) * forward > 30;
           const result = passFor(body, ball, { mates: [striker], direction: { x: striker.x - body.x, y: striker.y - body.y }, through: ahead, world, attackRight });
           let aim = result.aim, curve = 0;
@@ -320,7 +339,7 @@ export class TeamAI extends TacticalAI {
   forward(body, context) {
     const { ball, attackRight, config, team } = context, world = ball.world || WORLD;
     const holder = this.possession?.holder || null, forward = attackRight ? 1 : -1, half = world.width / 2;
-    if (holder === body) return this.attack(body, context, this.brain(body), world);
+    if (holder === body) return this.kickoffPass(body, team[1], context) || this.attack(body, context, this.brain(body), world);
     if (holder && team.includes(holder)) {
       // Get open ahead of the ball for the through pass.
       const base = attackRight ? Math.max(holder.x, half) : Math.min(holder.x, half);
@@ -331,5 +350,147 @@ export class TeamAI extends TacticalAI {
     const rivalHalf = attackRight ? ball.x > half - 80 : ball.x < half + 80;
     if (rivalHalf || !holder) return this.decide(body, { ...context, mates: [] });
     return this.moveTo(body, { x: half + forward * 60, y: clamp(ball.y, world.top + 100, world.bottom - 100) }, config.speed * .85);
+  }
+}
+
+// 7 contra 7 (Táctico): seats 0..6 left team, 7..13 right team, each with roles
+// [forward, midC, keeper, defL, defR, midL, midR] (seat 0 is the human forward).
+//  - Everyone has a formation spot that slides with the ball (the block moves up when attacking and
+//    drops back, with the defenders goal-side of the ball, when defending).
+//  - Defending: the closest outfield player presses the ball (a second one joins in its own half on
+//    high levels); the rest keep their spots.
+//  - With the ball: defenders move it on quickly, midfielders combine (curved passes with 4+ stars)
+//    and the forward dribbles and shoots. Passes go to the most open teammate that gains ground.
+export const SEVEN_ROLES = Object.freeze(['forward', 'midC', 'keeper', 'defL', 'defR', 'midL', 'midR']);
+// Spot as [fraction of the pitch length from our own goal line, fraction of its width].
+export const SEVEN_SPOTS = Object.freeze({
+  forward: [.62, .5], midC: [.42, .5], midL: [.47, .17], midR: [.47, .83], defL: [.2, .3], defR: [.2, .7],
+});
+export const SEVEN_KICKOFF = Object.freeze({
+  forward: [.47, .5], midC: [.36, .5], midL: [.4, .18], midR: [.4, .82], defL: [.19, .32], defR: [.19, .68],
+});
+const HOLD_LIMIT = { defL: .55, defR: .55, midC: 1, midL: 1.1, midR: 1.1, forward: 2.4 };
+
+export class SevenAI extends TeamAI {
+  constructor(options = {}) { super(options); this.roles = options.roles || [...SEVEN_ROLES, ...SEVEN_ROLES]; }
+
+  update(bodies, ball, dt) {
+    const commands = {}, size = bodies.length / 2;
+    const mateConfig = this.config(this.mateStars, this.mateLevel), rivalConfig = this.config(this.rivalStars, this.level);
+    const teams = [bodies.slice(0, size), bodies.slice(size)];
+    // Pressers per team: the closest outfield player (not the human), plus a second one on high levels.
+    const pressers = teams.map((team, side) => {
+      const outfield = team.filter((body, index) => body && this.roles[index + side * size] !== 'keeper');
+      const sorted = outfield.slice().sort((a, b) => dist(a, ball) - dist(b, ball));
+      const config = side === 0 ? mateConfig : rivalConfig, chosen = new Set();
+      const ai = sorted.filter(body => !(side === 0 && body === bodies[0]));
+      if (ai[0] && !(side === 0 && sorted[0] === bodies[0] && dist(ai[0], ball) > 140)) chosen.add(ai[0]);
+      const ownHalf = side === 0 ? ball.x < (ball.world || WORLD).width / 2 : ball.x > (ball.world || WORLD).width / 2;
+      if (ai[1] && config.press >= .95 && ownHalf && dist(ai[1], ball) < 160) chosen.add(ai[1]);
+      return chosen;
+    });
+    for (let seat = 1; seat < bodies.length; seat++) {
+      const left = seat < size, side = left ? 0 : 1, team = teams[side], rivals = teams[1 - side], body = bodies[seat], role = this.roles[seat];
+      if (!body) continue;
+      const brain = this.brain(body); brain.timer -= dt;
+      if (this.possession?.holder !== body) { brain.heading = null; brain.hold = 0; }
+      const context = { noTick: true, ball, dt, attackRight: left, mates: team.filter(other => other && other !== body), rivals, config: left ? mateConfig : rivalConfig, stars: left ? this.mateStars : this.rivalStars, team, humanMate: left ? bodies[0] : null, role, presser: pressers[side].has(body) };
+      if (seat === 1 && this.humanPass) { const run = this.humanPassRun(body, ball, dt); if (run) { commands[seat] = run; continue; } }
+      commands[seat] = role === 'keeper' ? this.sevenKeeper(body, context) : this.outfield(body, context);
+    }
+    return commands;
+  }
+
+  // Formation spot for a role, sliding with the ball.
+  spot(role, context, kickoff = false) {
+    const { ball, attackRight } = context, world = ball.world || WORLD, length = world.right - world.left, width = world.bottom - world.top;
+    const [baseX, baseY] = (kickoff ? SEVEN_KICKOFF : SEVEN_SPOTS)[role] || SEVEN_SPOTS.midC;
+    let x = baseX, y = baseY;
+    if (!kickoff) {
+      const holder = this.possession?.holder, attacking = !!holder && context.team.includes(holder);
+      const bx = clamp(attackRight ? (ball.x - world.left) / length : (world.right - ball.x) / length, 0, 1), by = clamp((ball.y - world.top) / width, 0, 1);
+      x = baseX + (bx - .5) * .5 + (attacking ? .18 : -.03);
+      if (!attacking && (role === 'defL' || role === 'defR')) x = Math.min(x, bx - .06);
+      x = clamp(x, .05, role === 'forward' ? .92 : role.startsWith('def') ? .7 : .86);
+      y = clamp(baseY + (by - .5) * .3, .06, .94);
+    }
+    return { x: attackRight ? world.left + x * length : world.right - x * length, y: world.top + y * width };
+  }
+
+  outfield(body, context) {
+    const { ball, config, team, role } = context, world = ball.world || WORLD;
+    const holder = this.possession?.holder || null, brain = this.brain(body);
+    if (holder === body) return (role === 'forward' && this.kickoffPass(body, team[1], context)) || this.playmake(body, context, brain, world);
+    // Kick-off for the other team: wait in position (the game keeps everyone out of the centre circle).
+    if (this.kickoff && this.kickoff.left !== context.attackRight) return this.moveTo(body, this.spot(role, context), config.speed * .8);
+    if (holder && team.includes(holder)) return this.moveTo(body, this.spot(role, context), config.speed * .9);
+    if (context.presser) return this.decide(body, { ...context, mates: [] });
+    // Zonal defending: step out to the ball when it comes into our zone (a rival dribbling close by,
+    // or a loose ball within reach), otherwise hold the spot.
+    const zone = role.startsWith('def') ? 170 : 140;
+    if ((holder && dist(body, holder) < zone) || (!holder && dist(body, ball) < 110)) return this.decide(body, { ...context, mates: [] });
+    return this.moveTo(body, this.spot(role, context), config.speed * .88);
+  }
+
+  // With the ball: shoot in range, pass to the best open teammate, or carry it.
+  playmake(body, context, brain, world) {
+    const { ball, attackRight, rivals, config, stars, role, dt } = context;
+    brain.hold = (brain.hold || 0) + dt;
+    const forward = attackRight ? 1 : -1, goalX = attackRight ? world.right : world.left;
+    const toGoal = Math.abs(goalX - body.x), pastHalf = attackRight ? body.x > world.width / 2 : body.x < world.width / 2;
+    const threat = rivals.filter(Boolean).reduce((best, rival) => (!best || dist(rival, body) < dist(best, body) ? rival : best), null);
+    const threatDistance = threat ? dist(threat, body) : Infinity;
+    if (canKickBall(body, ball) && body.shotCooldown <= 0 && brain.timer <= 0) {
+      brain.timer = config.react;
+      const defender = role === 'defL' || role === 'defR';
+      if (pastHalf && toGoal < config.range * (defender ? .6 : role === 'forward' ? 1 : .9)) return this.shoot(body, ball, { attackRight, rivals, config, world });
+      const option = this.bestPass(body, context);
+      const pressed = threatDistance < 110 && this.random() < .3 + config.pass * .6;
+      const slow = brain.hold > (HOLD_LIMIT[role] || 1) && option && option.gain > 30 && (threatDistance < 220 || brain.hold > (HOLD_LIMIT[role] || 1) * 2.5);
+      if (option && (pressed || slow)) {
+        const mate = option.mate, through = (mate.x - body.x) * forward > 140 && role !== 'forward';
+        const result = passFor(body, ball, { mates: [mate], direction: { x: mate.x - body.x, y: mate.y - body.y }, through, world, attackRight });
+        let aim = result.aim, curve = 0;
+        if (stars >= 4 && role.startsWith('mid') && !option.clear) { const curved = curvedPassAim(body, ball, result.target, result.power); if (curved) { aim = curved.aim; curve = curved.curve; } }
+        return { x: 0, y: 0, speed: config.speed, kick: true, aim, power: result.power, curve, pass: true };
+      }
+      // A defender closed down with no pass on: clear it long towards our most advanced player.
+      if (defender && !option && threatDistance < 90) {
+        const target = context.mates.filter(Boolean).reduce((best, mate) => !best || (mate.x - best.x) * forward > 0 ? mate : best, null);
+        if (target) { const result = passFor(body, ball, { mates: [target], direction: { x: target.x - body.x, y: target.y - body.y }, world, attackRight }); return { x: 0, y: 0, speed: config.speed, kick: true, aim: result.aim, power: .95, pass: true }; }
+      }
+    }
+    return this.attack(body, { ball, dt, attackRight, mates: [], rivals, config }, brain, world);
+  }
+
+  // The most useful teammate to pass to: open (no rival close), clear lane, gaining ground.
+  bestPass(body, context) {
+    const { ball, attackRight, mates, rivals } = context, forward = attackRight ? 1 : -1;
+    let best = null;
+    for (const mate of mates) {
+      if (!mate || this.roles[context.team.indexOf(mate) + (attackRight ? 0 : context.team.length)] === 'keeper') continue;
+      const length = dist(body, mate); if (length < 70 || length > 470) continue;
+      // Open (no rival close to the mate) and a clear lane between the ball and the mate.
+      const lane = this.passLane(ball, mate, rivals); if (!lane) continue;
+      const open = lane.open;
+      const gain = (mate.x - body.x) * forward;
+      const score = gain * 1.2 + Math.min(open, 220) * .6 - Math.max(0, length - 380) * .5 + (mate === context.humanMate ? 40 : 0);
+      if (!best || score > best.score) best = { mate, gain, score };
+    }
+    return best;
+  }
+
+  // Goalkeeper: the 3v3 keeper, but it distributes to an open defender or midfielder.
+  sevenKeeper(body, context) {
+    const { ball, attackRight, config } = context, world = ball.world || WORLD;
+    if (this.possession?.holder === body && canKickBall(body, ball) && body.shotCooldown <= 0) {
+      const option = this.bestPass(body, context);
+      const target = option?.mate || context.mates.filter(Boolean).reduce((best, mate) => !best || (mate.x - body.x) * (attackRight ? 1 : -1) > (best.x - body.x) * (attackRight ? 1 : -1) ? mate : best, null);
+      if (target) {
+        const result = passFor(body, ball, { mates: [target], direction: { x: target.x - body.x, y: target.y - body.y }, world, attackRight });
+        return { x: 0, y: 0, speed: config.speed, kick: true, aim: result.aim, power: Math.max(result.power, option ? .6 : .95), pass: true };
+      }
+    }
+    return this.keeper(body, context);
   }
 }

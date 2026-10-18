@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-18 · Claude · Modo Carrera (10 temporadas)
-**Commit:** rama `modo-carrera` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `modo-carrera`, merge 35dcf97). Para deshacerlo: `git revert -m 1 35dcf97`
 **Archivos:** `src/game/CareerMode.js` (nuevo), `src/ui/CareerScreen.js` (nuevo), `src/ui/TrophyArt.js` (nuevo), `src/ui/UI.js`, `src/game/Game.js`, `index.html`, `src/styles.css`, `tests/CareerMode.test.js` (nuevo)
 **Qué y por qué:** Ale pidió un modo carrera con estas reglas:
 - 10 temporadas. Eliges país y te ofrecen 5 clubes al azar, con más probabilidad cuanto más baja es la división.

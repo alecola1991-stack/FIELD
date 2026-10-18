@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-18 · Claude · Web bloqueada en móviles y tablets con aviso de app en desarrollo
-**Commit:** rama `bloqueo-movil` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `bloqueo-movil`, merge 0f07a59). Para deshacerlo: `git revert -m 1 0f07a59`
 **Archivos:** `src/main.js` (ahora solo decide), `src/app.js` (el antiguo `main.js`, sin cambios), `src/mobileGate.js` (nuevo), `src/styles.css`, `tests/MobileGate.test.js` (nuevo)
 **Qué y por qué:** Ale pidió desactivar la web en dispositivos móviles. En su lugar se muestra una pantalla propia que dice que estamos creando una app para teléfonos, para mejorar la experiencia de los jugadores.
 **Cómo:**

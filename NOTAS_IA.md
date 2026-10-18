@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-18 · Claude · Jugabilidad «Táctico» (estilo FIFA): posesión pegada, tiros a puerta, pases y pases filtrados
-**Commit:** rama `jugabilidad-tactica` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `jugabilidad-tactica`, merge 9b13a6c). Para deshacerlo: `git revert -m 1 9b13a6c`
 **Archivos:** `src/game/Tactical.js` (nuevo), `src/game/Game.js`, `src/game/Physics.js`, `src/game/Input.js`, `src/game/GamepadController.js`, `src/game/SquadAI.js`, `src/game/Renderer.js`, `src/ui/UI.js`, `index.html`, `src/styles.css`, `tests/TacticalGameplay.test.js` (nuevo)
 **Qué y por qué:** Ale pidió una tercera jugabilidad, «Táctico», que imite los controles básicos de FIFA:
 - El balón es un 10 % más pequeño que en Arcade.

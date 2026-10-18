@@ -12,18 +12,18 @@ import { WORLD } from '../config/settings.js';
 //    with nobody there, a push of the ball in that direction.
 
 export const TACTICAL = Object.freeze({
-  ballScale: .9, shotPower: 1.2, turnRate: 13, gap: 1, stealCooldown: .45, releaseCooldown: .3,
-  hardShot: 560, passCone: Math.PI / 6, pushPower: .5,
+  ballScale: .9, shotPower: 1.2, turnRate: 13, gap: 1, stealCooldown: .9, releaseCooldown: .3,
+  hardShot: 560, passCone: Math.PI / 6, pushPower: .5, stealGuard: .55, swing: .3,
 });
 const unit = (x, y) => { const length = Math.hypot(x, y) || 1; return { x: x / length, y: y / length }; };
 const angleDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 
 export class Possession {
-  constructor() { this.holder = null; this.angle = 0; this.cooldowns = new Map(); this.ghosts = new Map(); this.lastKicker = null; this.lastKickSpeed = 0; }
-  reset() { this.holder = null; this.cooldowns.clear(); this.ghosts.clear(); this.lastKicker = null; this.lastKickSpeed = 0; }
+  constructor() { this.holder = null; this.angle = 0; this.cooldowns = new Map(); this.ghosts = new Map(); this.lastKicker = null; this.lastKickSpeed = 0; this.guard = 0; this.swing = null; }
+  reset() { this.holder = null; this.cooldowns.clear(); this.ghosts.clear(); this.lastKicker = null; this.lastKickSpeed = 0; this.guard = 0; this.swing = null; }
   // The ball was kicked by `body` (any kick): it is free, and the kicker cannot pick it up at once.
   kicked(body, ball) {
-    this.holder = null;
+    this.holder = null; this.guard = 0; this.swing = null;
     // The kicker cannot pick the ball up again for a moment, and only for a very short moment does it
     // not collide with it (so the ball leaves cleanly but never passes through anyone).
     if (body) { this.cooldowns.set(body, TACTICAL.releaseCooldown); this.ghosts.set(body, .1); }
@@ -34,9 +34,18 @@ export class Possession {
   step(bodies, ball, dt, sameTeam) {
     for (const map of [this.cooldowns, this.ghosts]) for (const [body, time] of map) { if (time - dt <= 0) map.delete(body); else map.set(body, time - dt); }
     const touching = bodies.filter(body => body && !this.cooldowns.has(body) && Math.hypot(ball.x - body.x, ball.y - body.y) <= body.radius + ball.radius + 1.5);
+    this.guard = Math.max(0, this.guard - dt);
+    if (this.swing && (this.swing.time -= dt) <= 0) this.swing = null;
     if (this.holder) {
-      const thief = touching.find(body => body !== this.holder && !sameTeam(body, this.holder));
-      if (thief) { this.cooldowns.set(this.holder, TACTICAL.stealCooldown); this.take(thief, ball); }
+      // Disputes: right after a steal the new holder is protected for a moment (no instant steal-back
+      // ping-pong) and the ball swings round to their side away from the player who lost it.
+      const thief = this.guard > 0 ? null : touching.find(body => body !== this.holder && !sameTeam(body, this.holder));
+      if (thief) {
+        const victim = this.holder;
+        this.cooldowns.set(victim, TACTICAL.stealCooldown); this.take(thief, ball);
+        this.guard = TACTICAL.stealGuard;
+        this.swing = { angle: Math.atan2(thief.y - victim.y, thief.x - victim.x), time: TACTICAL.swing };
+      }
     } else if (touching.length) {
       const speed = Math.hypot(ball.vx, ball.vy);
       const candidates = touching.filter(body => !(speed > TACTICAL.hardShot && this.lastKicker && !sameTeam(body, this.lastKicker) && this.lastKickSpeed > TACTICAL.hardShot));
@@ -48,10 +57,10 @@ export class Possession {
   }
   // A body that just kicked (or lost) the ball does not collide with it for a moment: the ball leaves cleanly.
   ignores(body) { return this.ghosts.has(body); }
-  take(body, ball) { this.holder = body; this.angle = Math.atan2(ball.y - body.y, ball.x - body.x); this.lastKicker = null; this.lastKickSpeed = 0; }
+  take(body, ball) { this.holder = body; this.swing = null; this.angle = Math.atan2(ball.y - body.y, ball.x - body.x); this.lastKicker = null; this.lastKickSpeed = 0; }
   // Keep the ball in front of the holder, turning towards where they look.
   carry(body, ball, dt) {
-    const face = Math.atan2(body.faceY || 0, body.faceX ?? 1);
+    const face = this.swing ? this.swing.angle : Math.atan2(body.faceY || 0, body.faceX ?? 1);
     const diff = angleDiff(face, this.angle), turn = TACTICAL.turnRate * dt;
     this.angle += Math.abs(diff) <= turn ? diff : Math.sign(diff) * turn;
     const distance = body.radius + ball.radius + TACTICAL.gap, world = ball.world || WORLD;

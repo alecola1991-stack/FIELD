@@ -12,12 +12,12 @@ import { tacticalShot, tacticalPass, tacticalPass as passFor, curvedPassAim } fr
 // well it dodges and passes.
 
 export const TACTICAL_AI_LEVELS = Object.freeze({
-  easy: { speed: .66, react: .42, range: 250, error: 70, press: .55, dodge: .08, pass: .25, curve: 0 },
-  normal: { speed: .76, react: .3, range: 310, error: 44, press: .7, dodge: .28, pass: .45, curve: .1 },
-  hard: { speed: .86, react: .2, range: 370, error: 26, press: .85, dodge: .42, pass: .65, curve: .2 },
-  pro: { speed: .95, react: .12, range: 430, error: 14, press: .95, dodge: .66, pass: .8, curve: .3 },
-  champions: { speed: 1.03, react: .07, range: 480, error: 6, press: 1, dodge: .88, pass: .9, curve: .35 },
-  legend: { speed: 1.08, react: .05, range: 500, error: 3, press: 1, dodge: .96, pass: .95, curve: .4 },
+  easy: { speed: .66, react: .42, range: 250, error: 70, press: .55, dodge: .08, pass: .25, curve: 0, keeper: { react: .38, speed: .74 } },
+  normal: { speed: .76, react: .3, range: 310, error: 44, press: .7, dodge: .28, pass: .45, curve: .1, keeper: { react: .32, speed: .78 } },
+  hard: { speed: .86, react: .2, range: 370, error: 26, press: .85, dodge: .42, pass: .65, curve: .2, keeper: { react: .27, speed: .81 } },
+  pro: { speed: .95, react: .12, range: 430, error: 14, press: .95, dodge: .66, pass: .8, curve: .3, keeper: { react: .23, speed: .84 } },
+  champions: { speed: 1.03, react: .07, range: 480, error: 6, press: 1, dodge: .88, pass: .9, curve: .35, keeper: { react: .2, speed: .86 } },
+  legend: { speed: 1.08, react: .05, range: 500, error: 3, press: 1, dodge: .96, pass: .95, curve: .4, keeper: { react: .17, speed: .88 } },
 });
 const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -87,6 +87,7 @@ export class TacticalAI {
     if (!context.noTick) brain.timer -= dt;
     const holder = this.possession?.holder || null;
     const team = [body, ...mates];
+    if (holder !== body) brain.heading = null;
     if (holder === body) return this.attack(body, context, brain, world);
     // Our team has the ball: get open ahead of the holder.
     if (holder && team.includes(holder)) return this.support(body, holder, context, world);
@@ -130,7 +131,7 @@ export class TacticalAI {
   }
 
   // With the ball: run at goal, dodge the closest rival, shoot past halfway and in range, or pass.
-  attack(body, { ball, attackRight, mates, rivals, config }, brain, world) {
+  attack(body, { ball, dt, attackRight, mates, rivals, config }, brain, world) {
     const goalX = attackRight ? world.right : world.left, centerY = (world.goalTop + world.goalBottom) / 2;
     const toGoal = Math.abs(goalX - body.x), pastHalf = attackRight ? body.x > world.width / 2 : body.x < world.width / 2;
     const forward = attackRight ? 1 : -1;
@@ -151,28 +152,52 @@ export class TacticalAI {
         return { x: 0, y: 0, speed: config.speed, kick: true, aim: result.aim, power: result.power, pass: true };
       }
     }
-    // Carry: towards the goal, aiming a little away from the rival in front.
-    let target = { x: goalX - forward * 60, y: centerY + clamp(body.y - centerY, -90, 90) * .6 };
+    // Carry: towards the goal, aiming a little away from the rival in front. Decisions (dodge side,
+    // shielding) are kept for a while and the running direction turns gradually, like a real dribbler,
+    // instead of changing every frame.
+    const step = dt || 1 / 60;
+    brain.dodge = Math.max(0, (brain.dodge || 0) - step); brain.shield = Math.max(0, (brain.shield || 0) - step);
+    const target = { x: goalX - forward * 60, y: centerY + clamp(body.y - centerY, -90, 90) * .6 };
     let dir = unit(target.x - body.x, target.y - body.y);
     if (threat && ahead && threatDistance < 150) {
-      if (brain.dodge <= 0) { brain.dodge = .5; brain.dodgeSide = this.random() < config.dodge ? Math.sign(body.y - threat.y || (body.y < world.height / 2 ? -1 : 1)) || 1 : 0; }
-      if (brain.dodgeSide) {
-        const away = { x: 0, y: brain.dodgeSide };
-        const weight = (1 - threatDistance / 150) * 1.4 * config.dodge;
-        dir = unit(dir.x + away.x * weight, dir.y + away.y * weight);
-        // Keep off the touchlines while dodging.
-        if ((dir.y < 0 && body.y < world.top + 50) || (dir.y > 0 && body.y > world.bottom - 50)) { brain.dodgeSide = -brain.dodgeSide; dir = unit(dir.x, -dir.y); }
+      if (brain.dodge <= 0) {
+        brain.dodge = .9;
+        const side = Math.sign(body.y - threat.y) || (body.y < world.height / 2 ? 1 : -1);
+        brain.dodgeSide = this.random() < config.dodge ? (brain.dodgeSide && this.random() < .7 ? brain.dodgeSide : side) : 0;
       }
+      if (brain.dodgeSide) {
+        const weight = (1 - threatDistance / 150) * 1.4 * config.dodge;
+        dir = unit(dir.x, dir.y + brain.dodgeSide * weight);
+        // Near a touchline: dodge to the other side (once, and keep it).
+        if ((dir.y < 0 && body.y < world.top + 60) || (dir.y > 0 && body.y > world.bottom - 60)) { brain.dodgeSide = -brain.dodgeSide; dir = unit(dir.x, -dir.y); }
+      }
+    } else if (!threat || threatDistance > 190) brain.dodgeSide = 0;
+    // Shield: a rival right on top of us — turn away from them while still drifting towards goal.
+    // Decided once and held for a moment. Better levels shield more.
+    if (threat && threatDistance < 75 && brain.shield <= 0 && !brain.shieldChecked) {
+      brain.shieldChecked = true;
+      if (this.random() < .4 + config.dodge * .6) brain.shield = .55;
     }
-    // Shield: a rival right on top of us — turn away from them (the ball swings to the far side) while
-    // still drifting towards goal. Better levels shield more.
-    if (threat && threatDistance < 75 && this.random() < .4 + config.dodge * .6) {
-      const away = unit(body.x - threat.x, body.y - threat.y), goal = unit(goalX - body.x, centerY - body.y);
-      dir = unit(away.x + goal.x * (.35 + (1 - config.dodge) * .4), away.y + goal.y * (.35 + (1 - config.dodge) * .4));
+    if (!threat || threatDistance > 95) brain.shieldChecked = false;
+    if (brain.shield > 0 && threat) {
+      const away = unit(body.x - threat.x, body.y - threat.y), goal = unit(goalX - body.x, centerY - body.y), pull = .35 + (1 - config.dodge) * .4;
+      dir = unit(away.x + goal.x * pull, away.y + goal.y * pull);
       if ((dir.y < 0 && body.y < world.top + 40) || (dir.y > 0 && body.y > world.bottom - 40)) dir = unit(dir.x || goal.x, 0);
     }
-    brain.dodge = Math.max(0, (brain.dodge || 0) - (1 / 60));
+    dir = this.steer(body, brain, dir, step, 2.8 + config.dodge * 1.6);
     return { x: dir.x, y: dir.y, speed: config.speed * .96, kick: false };
+  }
+
+  // Turn the running direction towards `want` at most `rate` rad/s (starts from the current movement).
+  steer(body, brain, want, dt, rate) {
+    const moving = Math.hypot(body.vx || 0, body.vy || 0) > 40;
+    let heading = brain.heading || (moving ? unit(body.vx, body.vy) : want);
+    if (!brain.heading && !moving) heading = want;
+    const current = Math.atan2(heading.y, heading.x), wanted = Math.atan2(want.y, want.x);
+    const diff = Math.atan2(Math.sin(wanted - current), Math.cos(wanted - current)), max = rate * dt;
+    const angle = current + (Math.abs(diff) <= max ? diff : Math.sign(diff) * max);
+    brain.heading = { x: Math.cos(angle), y: Math.sin(angle) };
+    return brain.heading;
   }
 
   shoot(body, ball, { attackRight, rivals, config, world }) {
@@ -220,7 +245,8 @@ export class TeamAI extends TacticalAI {
     const teams = [[bodies[0], bodies[1], bodies[2]], [bodies[3], bodies[4], bodies[5]]];
     for (let seat = 1; seat < 6; seat++) {
       const left = seat < 3, team = teams[left ? 0 : 1], rivals = teams[left ? 1 : 0], body = bodies[seat], role = seat % 3;
-      this.brain(body).timer -= dt;
+      const brain = this.brain(body); brain.timer -= dt;
+      if (this.possession?.holder !== body) brain.heading = null;
       const context = { noTick: true, ball, dt, attackRight: left, mates: team.filter(other => other !== body), rivals, config: left ? mateConfig : rivalConfig, stars: left ? this.mateStars : this.rivalStars, team, humanMate: left ? bodies[0] : null };
       if (seat === 1 && this.humanPass) { const run = this.humanPassRun(body, ball, dt); if (run) { commands[seat] = run; continue; } }
       commands[seat] = role === 2 ? this.keeper(body, context) : role === 1 ? this.midfielder(body, context) : this.forward(body, context);
@@ -242,12 +268,19 @@ export class TeamAI extends TacticalAI {
       }
       return this.moveTo(body, { x: body.x + inward * 40, y: body.y }, config.speed);
     }
+    // Reflexes: the keeper reads the ball only every `keeper.react` seconds (it reacts late to a shot)
+    // and moves slower than the outfield players. Both depend on the difficulty.
+    const reflex = (TACTICAL_AI_LEVELS[attackRight ? this.mateLevel : this.level] || TACTICAL_AI_LEVELS.normal).keeper;
+    const brain = this.brain(body);
+    brain.readIn = (brain.readIn || 0) - context.dt;
+    if (!brain.read || brain.readIn <= 0) { brain.read = { x: ball.x, y: ball.y, vx: ball.vx || 0, vy: ball.vy || 0 }; brain.readIn = reflex.react; }
+    const seen = brain.read, speed = config.speed * reflex.speed;
     // Claim a ball that comes into the area (loose, or a rival dribbling in).
-    const inArea = Math.abs(ball.x - line) < 150 && Math.abs(ball.y - centerY) < 150;
-    if (inArea && (!holder || !context.team.includes(holder))) return this.moveTo(body, { x: ball.x + (ball.vx || 0) * .12, y: ball.y + (ball.vy || 0) * .12 }, config.speed * 1.05, 4);
+    const inArea = Math.abs(seen.x - line) < 150 && Math.abs(seen.y - centerY) < 150;
+    if (inArea && (!holder || !context.team.includes(holder))) return this.moveTo(body, { x: seen.x + seen.vx * .12, y: seen.y + seen.vy * .12 }, speed * 1.05, 4);
     // Stay on the line, covering the angle to the ball.
-    const y = clamp(centerY + (ball.y - centerY) * .45, world.goalTop + 12, world.goalBottom - 12);
-    return this.moveTo(body, { x: line + inward * 30, y }, config.speed);
+    const y = clamp(centerY + (seen.y - centerY) * .45, world.goalTop + 12, world.goalBottom - 12);
+    return this.moveTo(body, { x: line + inward * 30, y }, speed);
   }
 
   midfielder(body, context) {
@@ -270,7 +303,7 @@ export class TeamAI extends TacticalAI {
           return { x: 0, y: 0, speed: config.speed, kick: true, aim, power: result.power, curve, pass: true };
         }
       }
-      return this.attack(body, { ball, attackRight, mates, rivals, config }, this.brain(body), world);
+      return this.attack(body, { ball, dt: context.dt, attackRight, mates, rivals, config }, this.brain(body), world);
     }
     if (holder && team.includes(holder)) {
       // Support behind the forward, a little to the side.

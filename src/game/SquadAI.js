@@ -182,9 +182,28 @@ export class SquadAI {
   }
 
   // ---- Teammate (left team, attacks the right goal) ----------------------------
+  // Táctico gameplay: the human just passed (✕ / △) towards `target`. For a moment the teammate
+  // runs onto the ball's path wherever it is on the pitch (not only in the rival half).
+  expectPass(target) { this.humanPass = { target: target ? { x: target.x, y: target.y } : null, time: 1.8 }; }
+
   teammate(bodies, ball, dt, world) {
     const [human, mate, ...rivals] = bodies, W = world.width, centerY = world.height / 2;
     const speed = this.speedFor(this.mateLevel, mate);
+    if (this.humanPass) {
+      this.humanPass.time -= dt;
+      const ballSpeed = Math.hypot(ball.vx, ball.vy);
+      const rivalTouched = this.lastToucher >= 2 && (this.touchTime || 0) < 1.8 - this.humanPass.time;
+      if (this.humanPass.time <= 0 || canKickBall(mate, ball) || rivalTouched || ballSpeed < 30) this.humanPass = null;
+      else {
+        // Meet the ball where its path passes the teammate (or at the pass target), arriving at speed.
+        const path = { x: ball.vx / ballSpeed, y: ball.vy / ballSpeed };
+        const along = Math.max(30, (mate.x - ball.x) * path.x + (mate.y - ball.y) * path.y);
+        const meet = { x: ball.x + path.x * along, y: ball.y + path.y * along };
+        const goal = this.humanPass.target && dist(this.humanPass.target, meet) < 180 ? this.humanPass.target : meet;
+        const pad = mate.radius + 6;
+        return this.moveTo(mate, { x: clamp(goal.x, world.left + pad, world.right - pad), y: clamp(goal.y, world.top + pad, world.bottom - pad) }, speed, 3);
+      }
+    }
     const humanBall = dist(human, ball), mateBall = dist(mate, ball);
     const rivalBall = Math.min(...rivals.map(rival => dist(rival, ball)));
     const humanHasBall = humanBall < human.radius + ball.radius + 20;

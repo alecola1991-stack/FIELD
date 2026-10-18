@@ -198,5 +198,6 @@ export function kickBall(player, ball, onKick = () => {}, aim = null, powerMulti
   if (!shot) return false;
   ball.vx = shot.vx; ball.vy = shot.vy; ball.curl = curveFor(curve, shot);
   player.shotCooldown = .36; player.kickScale = .22; ball.kickScale = .18;
+  ball.onKicked?.(player); // Táctico gameplay: frees the ball from possession
   onKick(); return true;
 }

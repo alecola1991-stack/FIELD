@@ -1447,6 +1447,7 @@ export class UI {
     options = { ...options, modifiers: mode === 'online' ? DEFAULT_MODIFIERS : normalizeModifiers(snapshot?.modifiers || options.modifiers || this.settings.modifiers) };
     this.currentMatchMode = mode; this.currentMatchOptions = options; this.result_finish.disabled = false; this.hideRankProgress();
     document.querySelector('.game-header').classList.toggle('online-game-header', mode === 'online');
+    document.body.classList.toggle('match-online', mode === 'online');
     this.countdown_banner.classList.add('hidden'); this.goal_banner.classList.add('hidden');
     this.pause_overlay.classList.add('hidden'); this.result_overlay.classList.add('hidden');
     this.result_rematch.classList.add('hidden'); this.result_online_status.classList.add('hidden'); this.hideConnectionStatus();
@@ -1472,7 +1473,7 @@ export class UI {
     let label = mode === 'training' ? baseLabel : /\bA \d+(?: GOLES)?\b/.test(baseLabel) ? baseLabel.replace(/\bA \d+(?: GOLES)?\b/g, target) : `${baseLabel} · ${target}`;
     if (aiMode) label += ` · ${this.settings.customDifficulty ? 'IA' : `RIVAL ${'★'.repeat(Math.max(1, Math.min(5, options.opponentTeam?.stars || 3)))} · IA`} ${difficultyLabel(this.game.botAI.difficulty).toUpperCase()}`;
     const duo = !!options.duo && ['bot', 'tournament', 'league', 'career'].includes(mode);
-    this.mode_label.textContent = (mode !== 'online' && this.game.gameplay === 'classic' ? 'JUGABILIDAD CLÁSICA · ' : '') + (duo ? `2 CONTRA 2 · IA ${difficultyLabel(options.mateDifficulty || 'normal').toUpperCase()} · ` : '') + (modifiersAreDefault(options.modifiers) ? '' : 'REGLAS PERSONALIZADAS · ') + label;
+    this.mode_label.textContent = (mode !== 'online' && this.game.gameplay !== 'arcade' ? `JUGABILIDAD ${this.game.gameplay === 'tactical' ? 'TÁCTICA' : 'CLÁSICA'} · ` : '') + (duo ? `2 CONTRA 2 · IA ${difficultyLabel(options.mateDifficulty || 'normal').toUpperCase()} · ` : '') + (modifiersAreDefault(options.modifiers) ? '' : 'REGLAS PERSONALIZADAS · ') + label;
     if (duo) this.hud_player_name.textContent = `${this.settings.name.toUpperCase()} + IA`;
     this.training_tools.classList.toggle('hidden', mode !== 'training');
     this.pause_overlay.classList.add('hidden'); this.result_overlay.classList.add('hidden'); this.goal_banner.classList.add('hidden');
@@ -2222,9 +2223,10 @@ export class UI {
     return difficultyForStars(team?.stars);
   }
   // Gameplay: "arcade" (default) or "classic" (close control, smaller ball). Online always plays arcade.
-  setGameplay(value) { this.settings.gameplay = value === 'classic' ? 'classic' : 'arcade'; this.persist(); this.renderGameplay(); }
+  setGameplay(value) { this.settings.gameplay = ['classic', 'tactical'].includes(value) ? value : 'arcade'; this.persist(); this.renderGameplay(); }
   renderGameplay() {
-    const value = this.settings.gameplay === 'classic' ? 'classic' : 'arcade';
+    const value = ['classic', 'tactical'].includes(this.settings.gameplay) ? this.settings.gameplay : 'arcade';
+    document.body.classList.toggle('gameplay-tactical', value === 'tactical');
     document.querySelectorAll('[data-gameplay]').forEach(button => { const on = button.dataset.gameplay === value; button.classList.toggle('active', on); button.setAttribute('aria-checked', String(on)); });
   }
   setCustomDifficulty(on) { this.settings.customDifficulty = !!on; this.persist(); this.renderDifficultyMode(); }

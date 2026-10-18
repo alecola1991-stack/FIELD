@@ -1773,3 +1773,7 @@ body.auto-difficulty select.difficulty-select{display:none!important}
 .gameplay-options button.active{background:#e7f1ff;color:#0b1d39}
 .gameplay-options button:not(.active):hover{color:#fff}
 .setting-line>.gameplay-options{flex-direction:row}
+/* Táctico gameplay: its own key hints (in a match, online stays arcade). */
+body:not(.gameplay-tactical) .tactical-hint,body.gameplay-tactical .arcade-hint{display:none!important}
+body.gameplay-tactical.match-online .tactical-hint{display:none!important}
+body.gameplay-tactical.match-online .arcade-hint{display:flex!important}

@@ -37,7 +37,14 @@ export class GamepadController {
     this.ui.game.input.padAxes=running?padAxes(pad):{x:0,y:0};
     // LB/L1 or LT/L2 held: the next shot is curved (and the shot help shows the curve).
     this.ui.game.input.padCurve=running&&(pressed[4]||pressed[6]);
-    if(!changedView && (running || (game && this.ui.game.replay)) && (edge(map.shoot)||edge(5)||edge(7))) { this.ui.game.input.pressed.add('Space'); this.rumble(.25,70); this.ui.sound.unlock?.(); }
+    if(this.ui.game.gameplay==='tactical') {
+      // Táctico: ○ / B shot at goal, ✕ / A pass, △ / Y through pass, L2 / LT + ○ curved shot.
+      if(!changedView && running && edge(1)) { this.ui.game.input.pressed.add('Space'); this.rumble(.25,70); this.ui.sound.unlock?.(); }
+      if(!changedView && running && edge(0)) { this.ui.game.input.pressed.add('KeyE'); this.rumble(.12,40); }
+      if(!changedView && running && edge(3)) { this.ui.game.input.pressed.add('KeyR'); this.rumble(.12,40); }
+      if(!changedView && game && this.ui.game.replay && (edge(0)||edge(1))) this.ui.game.input.pressed.add('Space');
+    }
+    else if(!changedView && (running || (game && this.ui.game.replay)) && (edge(map.shoot)||edge(5)||edge(7))) { this.ui.game.input.pressed.add('Space'); this.rumble(.25,70); this.ui.sound.unlock?.(); }
     if(edge(map.pause) && game && !this.ui.game.state.matchOver) this.ui.pause(!this.ui.game.state.paused);
     else if(!changedView && !running) {
       const axes=padAxes(pad,.35); const direction=Math.abs(axes.x)>Math.abs(axes.y)? axes.x>0?'right':axes.x<0?'left':'':axes.y>0?'down':axes.y<0?'up':'';

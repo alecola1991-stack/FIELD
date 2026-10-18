@@ -4,6 +4,42 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-18 · Claude · Jugabilidad «Táctico» (estilo FIFA): posesión pegada, tiros a puerta, pases y pases filtrados
+**Commit:** rama `jugabilidad-tactica` (pendiente de pasar a main)
+**Archivos:** `src/game/Tactical.js` (nuevo), `src/game/Game.js`, `src/game/Physics.js`, `src/game/Input.js`, `src/game/GamepadController.js`, `src/game/SquadAI.js`, `src/game/Renderer.js`, `src/ui/UI.js`, `index.html`, `src/styles.css`, `tests/TacticalGameplay.test.js` (nuevo)
+**Qué y por qué:** Ale pidió una tercera jugabilidad, «Táctico», que imite los controles básicos de FIFA:
+- El balón es un 10 % más pequeño que en Arcade.
+- Se queda pegado al jugador en la última dirección a la que miró, girando a su alrededor, hasta que lo toca un rival. Esto vale también para la IA.
+- Los tiros van siempre a puerta y son un 20 % más fuertes.
+- Mando (adaptado a teclado):
+  - ○ = tiro. Arriba o abajo eligen palo.
+  - ✕ = pase al compañero en la dirección (±30°) o, si no hay nadie, empujar el balón.
+  - △ = pase filtrado (por delante del compañero) o empujar.
+  - L2 + ○ = tiro con curva, hacia dentro o hacia fuera.
+- Teclado: Espacio tiro, Shift/C + Espacio curva, E pase y R pase filtrado.
+- Un tiro potente del rival no se controla: rebota.
+- El online siempre es Arcade.
+**Cómo:**
+- `Tactical.js`:
+  - `Possession.step()` se llama en cada subpaso de física (1v1 y 2v2):
+    - Captura el balón al tocarlo (salvo un tiro de más de 560 de un rival), el robo es inmediato cuando lo toca un rival y lleva el balón con `carry()`.
+    - En `carry()` el ángulo gira hacia `faceX/faceY` a 13 rad/s; el balón va a la distancia de contacto y desliza por las bandas.
+  - `Physics.kickBall` llama a `ball.onKicked(body)`, que libera la posesión. Quien acaba de chutar (o pierde el balón) no choca con él ni lo recupera durante 0,3–0,45 s (`ignores`).
+  - `tacticalShot`: palo elegido o hueco libre, con potencia ×1,2. La curva se busca simulando el balón (`simulateCross`) y, si no hay ninguna posible, el tiro sale recto.
+  - `tacticalPass`: receptor por ángulo (`passReceiver`); el filtrado apunta 110 por delante en ataque; sin receptor hace un empujón con potencia 0,5.
+- `Game.kickParams()` solo se aplica a los tiros del humano (1v1 local y asiento local del 2v2).
+  - El 20 % extra de potencia es solo para el humano: la IA chuta como siempre.
+  - Con un pase al compañero se avisa a `SquadAI.expectPass()` y la IA compañera corre a recibirlo.
+- `Input.setScheme('tactical')` (se ajusta en `Game.setupGameplay`): Espacio devuelve `shot: 'goal'`, E `'pass'` y R `'through'`.
+  - El mando, con `game.gameplay === 'tactical'`, usa ○→Espacio, ✕→E, △→R y L2 para la curva.
+  - La ayuda de disparo dibuja el tiro apuntado (`tacticalPreview`).
+- UI: tercer botón «Táctico» en Ajustes › Juego.
+  - El partido se etiqueta como «JUGABILIDAD TÁCTICA».
+  - Las teclas del pie y del inicio cambian con `body.gameplay-tactical`; en partidos online se ve la ayuda arcade (`body.match-online`).
+**Para el otro asistente:** los valores están en `TACTICAL` (`Tactical.js`): escala del balón, potencia, giro, tiempos de espera, tiro duro, cono de pase y empujón.
+
+---
+
 ## 2026-10-18 · Claude · Jugabilidad «Clásico» (conducción pegada al pie, balón -5 %) en lugar de los controles clásicos
 **Commit:** fusionado en main (rama `jugabilidad-clasica`, merge be48013). Para deshacerlo: `git revert -m 1 be48013`
 **Archivos:** revierte el merge de `controles-clasico` (43e9f6f): se borran `ClassicAim.js` y su test, y se restauran `Input.js`, `GamepadController.js`, `Game.js`, `Renderer.js`, `OnlineMatch.js`, `SquadAI.js`, `index.html` y `styles.css`. Además: `src/game/Physics.js`, `src/game/Game.js`, `src/config/settings.js`, `src/ui/UI.js`, `index.html`, `src/styles.css`, `tests/ClassicGameplay.test.js` (nuevo)

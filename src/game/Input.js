@@ -46,9 +46,17 @@ export class Input {
     return this.rotated ? { x: -screen.y || 0, y: screen.x || 0 } : screen;
   }
   curveHeld() { return this.enabled && (this.padCurve || CURVE_KEYS.some(code => this.down.has(code))); }
-  // One shot per frame with Space; it is curved when Shift / C is held at that moment.
+  // "tactical" gameplay adds passes: E = pass, R = through pass (Space still shoots, at goal).
+  setScheme(scheme) { this.scheme = scheme === 'tactical' ? 'tactical' : 'arcade'; }
+  // One kick per frame with Space; it is curved when Shift / C is held at that moment.
   consumeKick() {
     const space = this.consume('Space');
+    if (this.scheme === 'tactical') {
+      if (space) return { kick: true, curve: this.curveHeld(), shot: 'goal' };
+      if (this.consume('KeyE')) return { kick: true, curve: false, shot: 'pass' };
+      if (this.consume('KeyR')) return { kick: true, curve: false, shot: 'through' };
+      return { kick: false, curve: false };
+    }
     return { kick: space, curve: space && this.curveHeld() };
   }
   consume(code) { const hit = this.pressed.has(code); this.pressed.delete(code); return hit; }

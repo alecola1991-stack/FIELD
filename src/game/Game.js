@@ -8,7 +8,8 @@ import { SquadAI } from './SquadAI.js';
 import { Renderer } from './Renderer.js';
 import { GameState } from './GameState.js';
 import { getTeamById } from '../config/teams.js';
-import { kickBall, curveSide, dribbleAssist, resolveBallNet, resolveBallWalls, resolvePlayerBall, resolvePlayerPlayers, resolvePlayerWalls, isGoal } from './Physics.js';
+import { Possession, TACTICAL, tacticalShot, tacticalPass } from './Tactical.js';
+import { kickBall, curveSide, dribbleAssist, canKickBall, resolveBallNet, resolveBallWalls, resolvePlayerBall, resolvePlayerPlayers, resolvePlayerWalls, isGoal } from './Physics.js';
 
 const POWER_SHOT_COOLDOWN_SECONDS = 20;
 const ONLINE_PACKET_INTERVAL = 1 / 30;
@@ -34,7 +35,9 @@ export class Game {
     this.state.start(mode); this.matchDifficulty = mode === 'legends' ? 'legend' : difficulty; this.botAI.setDifficulty(this.matchDifficulty);
     this.modifiers = normalizeModifiers(mode === 'online' ? {} : options.modifiers || this.settings.modifiers);
     // Gameplay: "classic" (close control, ball 5 % smaller) or "arcade". Online is always arcade.
-    this.gameplay = mode !== 'online' && (options.gameplay || this.settings.gameplay) === 'classic' ? 'classic' : 'arcade';
+    const chosenGameplay = options.gameplay || this.settings.gameplay;
+    this.gameplay = mode !== 'online' && ['classic', 'tactical'].includes(chosenGameplay) ? chosenGameplay : 'arcade';
+    this.setupGameplay();
     this.world = modifierWorld(this.modifiers);
     // Career matches use the career club or national team instead of the profile team.
     this.playerTeamId = options.playerTeamId || null;
@@ -79,7 +82,7 @@ export class Game {
       body.maxSpeed = (body.isBot ? 280 : 305) * body.speedScale;
       body.shotPower = this.modifiers.shotPower; body.world = this.world;
     }
-    this.ball.radius = BALL_RADIUS * (this.gameplay === 'classic' ? .95 : 1) * this.modifiers.ballSize; this.ball.world = this.world;
+    this.ball.radius = BALL_RADIUS * (this.gameplay === 'classic' ? .95 : this.gameplay === 'tactical' ? TACTICAL.ballScale : 1) * this.modifiers.ballSize; this.ball.world = this.world;
     this.ball.maxSpeed = Ball.MAX_SPEED * Math.max(1, this.modifiers.shotPower);
   }
   updateSettings(settings) {
@@ -131,7 +134,7 @@ export class Game {
     if (this.renderEnabled !== false) {
       const view = this.replayView();
       this.renderer.render(view ? { ...view, trajectory: false, shotPreview: false, goalTimer: 0, goalSide: 0, world: this.world || WORLD, fieldTheme: this.fieldTheme, mode: this.state.mode, competitionRound: this.competitionRound, shotRangeTimer: 0, replay: true }
-        : { player: this.player, bot: this.bot, others: this.others, ball: this.ball, trajectory: this.trajectory, shotPreview: !!this.settings.shotPreview && this.countdown === 0 && this.state.goalTimer <= 0 && !this.state.matchOver && !this.replay, curveAim: curveSide(this.input.curveHeld?.(), this.input.axes().y), goalTimer: this.state.goalTimer, goalSide: this.state.goalSide, world: this.world || WORLD, fieldTheme: this.fieldTheme, mode: this.state.mode, competitionRound: this.competitionRound, shotRangeTimer: this.shotRangeTimer }, this.state.paused ? 0 : dt);
+        : { player: this.player, bot: this.bot, others: this.others, ball: this.ball, trajectory: this.trajectory, shotPreview: !!this.settings.shotPreview && this.countdown === 0 && this.state.goalTimer <= 0 && !this.state.matchOver && !this.replay, curveAim: curveSide(this.input.curveHeld?.(), this.input.axes().y), aimedShot: this.settings.shotPreview ? this.tacticalPreview() : null, goalTimer: this.state.goalTimer, goalSide: this.state.goalSide, world: this.world || WORLD, fieldTheme: this.fieldTheme, mode: this.state.mode, competitionRound: this.competitionRound, shotRangeTimer: this.shotRangeTimer }, this.state.paused ? 0 : dt);
     }
     this.input.endFrame();
   }
@@ -165,13 +168,13 @@ export class Game {
     const shotInput = this.readKick();
     if (shotInput.kick) {
       this.shotRangeTimer = .62;
-      const powered = this.player.powerCooldown <= 0;
+      const kick = this.kickParams(this.player, shotInput, move), powered = kick.powered;
       const kicked = kickBall(this.player, this.ball, () => {
         this.sound.play('kick');
         if (powered) { this.renderer.fireBurst(this.ball.x, this.ball.y); this.player.powerFlash = .48; }
         else this.renderer.burst(this.ball.x, this.ball.y, '#c5f4d8', 7, 100);
-      }, null, powered ? 1.45 : 1, curveSide(shotInput.curve, move.y));
-      if (kicked) this.matchStats.shotsPlayer++;
+      }, kick.aim, kick.power, kick.curve);
+      if (kicked && !kick.pass) this.matchStats.shotsPlayer++;
       if (kicked && powered) { this.player.powerCooldown = (this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS); this.hooks.onPowerCooldown?.(this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS); }
     }
     if (this.bot) {
@@ -207,9 +210,10 @@ export class Game {
     const steps = Math.max(1, Math.ceil(Math.hypot(this.ball.vx, this.ball.vy) * dt / Math.max(5, this.ball.radius)));
     for (let step = 0; step < steps; step++) {
     this.ball.update(dt / steps);
-    if (this.bot) resolvePlayerBall(this.bot, this.ball, strength => { if (strength > 30) this.sound.bump(); });
+    const held = this.possession ? this.possession.step([this.player, this.bot].filter(Boolean), this.ball, dt / steps, (a, b) => a === b) : false;
+    if (!held && this.bot && !this.possession?.ignores(this.bot)) resolvePlayerBall(this.bot, this.ball, strength => { if (strength > 30) this.sound.bump(); });
     const classic = this.gameplay === 'classic';
-    resolvePlayerBall(this.player, this.ball, strength => { if (strength > 30) this.sound.bump(); }, classic);
+    if (!held && !this.possession?.ignores(this.player)) resolvePlayerBall(this.player, this.ball, strength => { if (strength > 30) this.sound.bump(); }, classic);
     if (classic) dribbleAssist(this.player, this.ball, dt / steps);
     resolvePlayerWalls(this.player); if (this.bot) resolvePlayerWalls(this.bot);
     const goalSide = isGoal(this.ball);
@@ -353,6 +357,44 @@ export class Game {
     }
   }
   // Shot input this frame: { kick, curve }. Simple inputs without curve support shoot straight.
+  // ---- Gameplay -----------------------------------------------------------------------------
+  setupGameplay() {
+    this.possession = this.gameplay === 'tactical' ? new Possession() : null;
+    this.ball.onKicked = this.possession ? body => this.possession.kicked(body, this.ball) : null;
+    this.input.setScheme?.(this.gameplay === 'tactical' ? 'tactical' : 'arcade');
+  }
+  attacksRight(body) {
+    if (this.squad) return this.squad.bodies.indexOf(body) < 2;
+    return body === this.player ? this.localSide !== 'right' : this.localSide === 'right';
+  }
+  matesOf(body) { if (!this.squad) return []; const seat = this.squad.bodies.indexOf(body); return this.squad.bodies.filter((other, index) => other !== body && (index < 2) === (seat < 2)); }
+  opponentsOf(body) {
+    if (this.squad) { const seat = this.squad.bodies.indexOf(body); return this.squad.bodies.filter((_, index) => (index < 2) !== (seat < 2)); }
+    return [body === this.player ? this.bot : this.player].filter(Boolean);
+  }
+  // Direction, strength and curve of a human kick. Táctico: shots at goal (+20 %), passes and pushes.
+  kickParams(body, command = {}, axes = { x: 0, y: 0 }) {
+    const powered = body.powerCooldown <= 0;
+    if (this.gameplay !== 'tactical' || !command.shot) return { aim: null, power: powered ? 1.45 : 1, curve: curveSide(command.curve === true, axes.y), powered };
+    const world = this.world || WORLD, attackRight = this.attacksRight(body);
+    if (command.shot === 'pass' || command.shot === 'through') {
+      const result = tacticalPass(body, this.ball, { mates: this.matesOf(body), direction: { x: axes.x || 0, y: axes.y || 0 }, through: command.shot === 'through', world, attackRight });
+      return { aim: result.aim, power: result.power, curve: 0, powered: false, pass: true, receiver: result.receiver, target: result.target };
+    }
+    const power = (powered ? 1.45 : 1) * TACTICAL.shotPower;
+    const result = tacticalShot(body, this.ball, { world, attackRight, opponents: this.opponentsOf(body), axisY: axes.y || 0, curve: command.curve === true, power });
+    return { aim: result.aim, power, curve: result.curve, powered };
+  }
+  // Shot help in Táctico: the path of the aimed shot (recomputed a few times per second).
+  tacticalPreview() {
+    if (this.gameplay !== 'tactical' || !this.player || !canKickBall(this.player, this.ball)) { this.tacticalPreviewCache = null; return null; }
+    const now = performance.now(), curve = !!this.input.curveHeld?.(), axisY = Math.sign(Math.round(this.input.axes().y * 2));
+    const cache = this.tacticalPreviewCache;
+    if (cache && now - cache.at < 120 && cache.curve === curve && cache.axisY === axisY) return cache.value;
+    const kick = this.kickParams(this.player, { shot: 'goal', curve }, this.input.axes());
+    this.tacticalPreviewCache = { at: now, curve, axisY, value: { aim: kick.aim, curve: kick.curve, power: kick.power } };
+    return this.tacticalPreviewCache.value;
+  }
   readKick() { return this.input.consumeKick ? this.input.consumeKick() : { kick: this.input.consume('Space'), curve: false }; }
   recordGoal(side) {
     this.state.goalSide = side;
@@ -389,7 +431,7 @@ export class Game {
   }
   restoreSnapshot(snapshot, notify = true, resetRender = true) {
     if (!snapshot || snapshot.mode !== this.state.mode || !snapshot.player || !snapshot.ball) return false;
-    if (this.state.mode !== 'online' && snapshot.gameplay) this.gameplay = snapshot.gameplay === 'classic' ? 'classic' : 'arcade';
+    if (this.state.mode !== 'online' && snapshot.gameplay) { this.gameplay = ['classic', 'tactical'].includes(snapshot.gameplay) ? snapshot.gameplay : 'arcade'; this.setupGameplay(); this.applyModifiers(); }
     if (snapshot.modifiers && this.state.mode !== 'online') { this.modifiers = normalizeModifiers(snapshot.modifiers); this.applyModifiers(); }
     const restoreBody = (body, saved) => {
       if (!body || !saved) return;
@@ -579,13 +621,15 @@ export class Game {
       resolvePlayerWalls(body);
       if (!command.kick) return;
       if (seat === localSeat) this.shotRangeTimer = .62;
-      const powered = body.powerCooldown <= 0;
+      const kick = seat === localSeat ? this.kickParams(body, command, command) : { aim: null, power: body.powerCooldown <= 0 ? 1.45 : 1, curve: curveSide(command.curve === true, command.y), powered: body.powerCooldown <= 0 };
+      const powered = kick.powered;
       const kicked = kickBall(body, this.ball, () => {
         this.sound.play('kick');
         if (powered) { this.renderer.fireBurst(this.ball.x, this.ball.y); body.powerFlash = .48; }
         else this.renderer.burst(this.ball.x, this.ball.y, '#c5f4d8', 7, 100);
-      }, null, powered ? 1.45 : 1, curveSide(command.curve === true, command.y));
-      if (kicked) { if ((seat < 2) === leftLocal) this.matchStats.shotsPlayer++; else this.matchStats.shotsOpponent++; }
+      }, kick.aim, kick.power, kick.curve);
+      if (kicked && kick.pass && kick.receiver && this.squad.ai) this.squad.ai.expectPass?.(kick.target);
+      if (kicked && !kick.pass) { if ((seat < 2) === leftLocal) this.matchStats.shotsPlayer++; else this.matchStats.shotsOpponent++; }
       if (kicked && powered) { body.powerCooldown = (this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS); if (seat === localSeat) this.hooks.onPowerCooldown?.(body.powerCooldown); }
     });
     // Two passes: with four bodies one push can create a new overlap.
@@ -595,7 +639,8 @@ export class Game {
     for (let step = 0; step < steps; step++) {
       this.ball.update(dt / steps);
       const classic = this.gameplay === 'classic', human = bodies[localSeat];
-      for (const body of bodies) resolvePlayerBall(body, this.ball, strength => { if (strength > 30) this.sound.bump(); }, classic && body === human);
+      const held = this.possession ? this.possession.step(bodies, this.ball, dt / steps, (a, b) => (bodies.indexOf(a) < 2) === (bodies.indexOf(b) < 2)) : false;
+      if (!held) for (const body of bodies) if (!this.possession?.ignores(body)) resolvePlayerBall(body, this.ball, strength => { if (strength > 30) this.sound.bump(); }, classic && body === human);
       if (classic) dribbleAssist(human, this.ball, dt / steps);
       for (const body of bodies) resolvePlayerWalls(body);
       const goalSide = isGoal(this.ball);
@@ -604,6 +649,7 @@ export class Game {
     }
   }
   resetPositions() {
+    this.possession?.reset();
     if (this.squad) { this.squad.bodies.forEach((body, seat) => this.placeSquadBody(body, seat)); this.ball.reset(WORLD.width / 2, WORLD.height / 2); this.ball._rx = this.ball.x; this.ball._ry = this.ball.y; return; }
     this.player.x = WORLD.width * (this.localSide === 'left' ? .31 : .69); this.player.y = WORLD.height / 2; this.player.stop(); this.player._rx = this.player.x; this.player._ry = this.player.y;
     if (this.bot) { this.bot.x = WORLD.width * (this.localSide === 'left' ? .69 : .31); this.bot.y = WORLD.height / 2; this.bot.stop(); this.bot._rx = this.bot.x; this.bot._ry = this.bot.y; }

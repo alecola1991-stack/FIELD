@@ -9,8 +9,12 @@ import { Renderer } from './Renderer.js';
 import { GameState } from './GameState.js';
 import { getTeamById } from '../config/teams.js';
 import { Possession, TACTICAL, tacticalShot, tacticalPass } from './Tactical.js';
-import { TacticalAI, TeamAI } from './TacticalAI.js';
+import { TacticalAI, TeamAI, SevenAI, SEVEN_ROLES, SEVEN_KICKOFF } from './TacticalAI.js';
 import { kickBall, curveSide, dribbleAssist, canKickBall, resolveBallNet, resolveBallWalls, resolvePlayerBall, resolvePlayerPlayers, resolvePlayerWalls, isGoal } from './Physics.js';
+
+// 7 contra 7: pitch 90 % bigger than the 1v1 one (same goals); the view follows the play.
+export const SEVEN_FIELD_SCALE = 1.9;
+const KICKOFF_GRACE = 1.5; // seconds the kicking team cannot be robbed after a 3v3 / 7v7 kick-off
 
 const POWER_SHOT_COOLDOWN_SECONDS = 20;
 const ONLINE_PACKET_INTERVAL = 1 / 30;
@@ -39,9 +43,13 @@ export class Game {
     const chosenGameplay = options.gameplay || this.settings.gameplay;
     this.gameplay = mode !== 'online' && ['classic', 'tactical'].includes(chosenGameplay) ? chosenGameplay : 'arcade';
     this.setupGameplay();
-    // 3 contra 3 (Táctico only): a pitch 30 % bigger with goals of the same size.
-    this.trio = !!options.trio && this.gameplay === 'tactical' && !['online', 'training', 'legends'].includes(mode);
-    this.fieldScale = this.trio ? 1.3 : 1;
+    // 3 contra 3 and 7 contra 7 (Táctico only): bigger pitches (+30 % / +90 %) with goals of the same size.
+    const teamMode = this.gameplay === 'tactical' && !['online', 'training', 'legends'].includes(mode);
+    this.seven = !!options.seven && teamMode;
+    this.trio = !this.seven && !!options.trio && teamMode;
+    this.fieldScale = this.seven ? SEVEN_FIELD_SCALE : this.trio ? 1.3 : 1;
+    // Kick-off: the home team (the human's, on the left) starts; after a goal, the team that conceded.
+    this.kickoffSide = 'left'; this.kickoff = null;
     this.world = modifierWorld(this.modifiers, this.fieldScale);
     // Career matches use the career club or national team instead of the profile team.
     this.playerTeamId = options.playerTeamId || null;
@@ -71,10 +79,12 @@ export class Game {
     if (this.bot && mode === 'online') this.bot.faceX = this.localSide === 'left' ? -1 : 1;
     this.squad = null; this.others = [];
     if (mode === 'online' && options.squad) this.setupSquad(options.squad);
+    else if (this.seven && this.bot) this.setupSeven(team, opponentTeam, difficulty, opponentName, opponentNumber, options.mateDifficulty);
     else if (this.trio && this.bot) this.setupTrio(team, opponentTeam, difficulty, opponentName, opponentNumber, options.mateDifficulty);
     else if (options.duo && this.bot && !['training', 'legends', 'online'].includes(mode)) this.setupDuo(team, opponentTeam, difficulty, opponentName, opponentNumber, options.mateDifficulty);
     this.ball.reset((this.world || WORLD).width / 2, (this.world || WORLD).height / 2); this.goalResetTimer = 0; this.last = 0;
     this.applyModifiers();
+    this.setupKickoff();
     this.beginCountdown();
     if (!this.raf) this.raf = requestAnimationFrame(this.boundLoop);
     this.hooks.onStart?.(mode); this.hooks.onScore?.(0, 0); this.hooks.onTime?.('00:00');
@@ -138,8 +148,8 @@ export class Game {
     }
     if (this.renderEnabled !== false) {
       const view = this.replayView();
-      this.renderer.render(view ? { ...view, trajectory: false, shotPreview: false, goalTimer: 0, goalSide: 0, world: this.world || WORLD, fieldTheme: this.fieldTheme, mode: this.state.mode, competitionRound: this.competitionRound, shotRangeTimer: 0, replay: true }
-        : { player: this.player, bot: this.bot, others: this.others, ball: this.ball, heldBy: this.possession?.holder || null, trajectory: this.trajectory, shotPreview: !!this.settings.shotPreview && this.countdown === 0 && this.state.goalTimer <= 0 && !this.state.matchOver && !this.replay, curveAim: curveSide(this.input.curveHeld?.(), this.input.axes().y), aimedShot: this.settings.shotPreview ? this.tacticalPreview() : null, goalTimer: this.state.goalTimer, goalSide: this.state.goalSide, world: this.world || WORLD, fieldTheme: this.fieldTheme, mode: this.state.mode, competitionRound: this.competitionRound, shotRangeTimer: this.shotRangeTimer }, this.state.paused ? 0 : dt);
+      this.renderer.render(view ? { ...view, trajectory: false, shotPreview: false, goalTimer: 0, goalSide: 0, world: this.world || WORLD, camera: this.seven && view.ball ? { focus: view.ball, keep: view.player || view.ball } : null, fieldTheme: this.fieldTheme, mode: this.state.mode, competitionRound: this.competitionRound, shotRangeTimer: 0, replay: true }
+        : { player: this.player, bot: this.bot, others: this.others, ball: this.ball, heldBy: this.possession?.holder || null, trajectory: this.trajectory, shotPreview: !!this.settings.shotPreview && this.countdown === 0 && this.state.goalTimer <= 0 && !this.state.matchOver && !this.replay, curveAim: curveSide(this.input.curveHeld?.(), this.input.axes().y), aimedShot: this.settings.shotPreview ? this.tacticalPreview() : null, goalTimer: this.state.goalTimer, goalSide: this.state.goalSide, world: this.world || WORLD, camera: this.seven ? { focus: this.ball, keep: this.player } : null, fieldTheme: this.fieldTheme, mode: this.state.mode, competitionRound: this.competitionRound, shotRangeTimer: this.shotRangeTimer }, this.state.paused ? 0 : dt);
     }
     this.input.endFrame();
   }
@@ -412,6 +422,7 @@ export class Game {
   readKick() { return this.input.consumeKick ? this.input.consumeKick() : { kick: this.input.consume('Space'), curve: false }; }
   recordGoal(side) {
     this.state.goalSide = side;
+    this.kickoffSide = side === 1 ? 'right' : 'left';
     const playerScored = this.state.mode === 'training' || (this.state.mode === 'online'
       ? (this.localSide === 'left' ? side === 1 : side === -1)
       : side === 1);
@@ -609,7 +620,15 @@ export class Game {
   leftSeat(seat) { return seat < (this.squad?.teamSize || 2); }
   placeSquadBody(body, seat) {
     const world = this.world || WORLD, left = this.leftSeat(seat);
-    if (this.squad?.teamSize === 3) {
+    if (this.squad?.teamSize === 7) {
+      // 7 contra 7: kick-off formation in our own half (the keeper on its line).
+      const role = (this.squad.roles || [...SEVEN_ROLES, ...SEVEN_ROLES])[seat];
+      if (role === 'keeper') { body.x = left ? world.left + 34 : world.right - 34; body.y = world.height / 2; }
+      else {
+        const [fx, fy] = SEVEN_KICKOFF[role], length = world.right - world.left, width = world.bottom - world.top;
+        body.x = left ? world.left + fx * length : world.right - fx * length; body.y = world.top + fy * width;
+      }
+    } else if (this.squad?.teamSize === 3) {
       // 3 contra 3: forward up front (the human is always the left forward), midfielder, goalkeeper.
       const role = seat % 3, x = role === 0 ? .41 : .27, y = role === 1 ? .62 : .5;
       body.x = role === 2 ? (left ? world.left + 34 : world.right - 34) : world.width * (left ? x : 1 - x);
@@ -638,6 +657,68 @@ export class Game {
     bodies[0].isBot = false;
     this.squad.offline = true; this.squad.roles = ['forward', 'mid', 'keeper', 'forward', 'mid', 'keeper'];
     this.squad.ai = Object.assign(new TeamAI({ difficulty: this.botAI.difficulty || difficulty, rivalStars: opponentTeam?.stars || 3, mateStars: team?.stars || 3, ...(mateLevel ? { mateLevel } : {}) }), { possession: this.possession });
+  }
+  // ---- 7 contra 7 (Táctico) --------------------------------------------------
+  // Seats 0..6 left (0 = human forward), 7..13 right; roles in SEVEN_ROLES order.
+  setupSeven(team, opponentTeam, difficulty, opponentName, opponentNumber, mateLevel) {
+    const ownNumber = Number(this.settings.number) || 10, rivalTeamId = opponentTeam?.id || null, goldKit = !!this.player?.goldKit;
+    const numbersFor = first => { const wanted = [first, 8, 1, 3, 2, 11, 7], used = new Set([first]); return wanted.map((number, index) => { if (!index) return number; let n = number; for (let k = 12; used.has(n); k++) n = k; used.add(n); return n; }); };
+    const names = ['', 'MC', 'POR', 'DFI', 'DFD', 'MI', 'MD'];
+    const own = numbersFor(ownNumber), rival = numbersFor(opponentNumber);
+    this.setupSquad({ localSeat: 0, seats: [
+      ...own.map((number, index) => index ? { name: names[index], number, teamId: team?.id } : { name: this.settings.name, number, teamId: team?.id, goldKit }),
+      ...rival.map(number => ({ name: opponentName, number, teamId: rivalTeamId })),
+    ] }, 7);
+    const bodies = this.squad.bodies;
+    const kit = source => source && { color: source.primary || '#f19676', secondaryColor: source.secondary || null, numberColor: source.numberColor || '#ffffff', kitPattern: source.kitPattern || 'half-vertical', tertiaryColor: source.tertiary || null, kitBands: source.kitBands || null, numberOutline: source.numberOutline !== false };
+    if (opponentTeam) for (const body of bodies.slice(7)) Object.assign(body, kit(opponentTeam));
+    if (team) for (const body of bodies.slice(0, 7)) Object.assign(body, kit(team));
+    for (const body of bodies.slice(1)) { body.isBot = true; body.maxSpeed = 280; }
+    bodies[0].isBot = false;
+    this.squad.offline = true; this.squad.roles = [...SEVEN_ROLES, ...SEVEN_ROLES];
+    bodies.forEach((body, seat) => this.placeSquadBody(body, seat));
+    this.squad.ai = Object.assign(new SevenAI({ difficulty: this.botAI.difficulty || difficulty, rivalStars: opponentTeam?.stars || 3, mateStars: team?.stars || 3, roles: this.squad.roles, ...(mateLevel ? { mateLevel } : {}) }), { possession: this.possession });
+  }
+  // Kick-off (3v3 and 7v7): the kicking team's forward starts on the ball; until the ball leaves the
+  // centre spot (or 4 s pass) the other team stays in its own half and out of the centre circle.
+  setupKickoff() {
+    this.kickoff = null; this.kickoffGrace = null;
+    const squad = this.squad;
+    if (!squad?.offline || (squad.teamSize || 2) < 3) return;
+    const world = this.world || WORLD, left = this.kickoffSide !== 'right', size = squad.teamSize;
+    const kicker = squad.bodies[left ? 0 : size], cx = world.width / 2, cy = world.height / 2, radius = world.centerCircleRadius || 75;
+    for (const [seat, body] of squad.bodies.entries()) {
+      if (this.leftSeat(seat) === left || squad.roles?.[seat] === 'keeper') continue;
+      // The other team's players: outside the circle and in their own half.
+      const side = this.leftSeat(seat) ? -1 : 1, gap = radius + body.radius + 8;
+      if (Math.hypot(body.x - cx, body.y - cy) < gap) body.x = cx + side * Math.sqrt(Math.max(0, gap * gap - (body.y - cy) ** 2));
+      body._rx = body.x;
+    }
+    kicker.x = cx + (left ? -1 : 1) * (kicker.radius + this.ball.radius + 1); kicker.y = cy; kicker.faceX = left ? 1 : -1; kicker.faceY = 0; kicker._rx = kicker.x; kicker._ry = kicker.y;
+    this.kickoff = { left, time: 4 };
+    if (squad.ai && 'kickoff' in squad.ai) squad.ai.kickoff = this.kickoff;
+  }
+  holdKickoff(dt) {
+    // Just after the kick-off the team that took it keeps the ball for a moment (no instant steal).
+    if (this.kickoffGrace) {
+      this.kickoffGrace.time -= dt;
+      const holder = this.possession?.holder, seat = holder ? this.squad.bodies.indexOf(holder) : -1;
+      if (this.kickoffGrace.time <= 0 || (holder && this.leftSeat(seat) !== this.kickoffGrace.left)) this.kickoffGrace = null;
+      else if (holder && this.possession) this.possession.guard = Math.max(this.possession.guard || 0, dt * 2);
+    }
+    const kickoff = this.kickoff; if (!kickoff) return;
+    const world = this.world || WORLD, cx = world.width / 2, cy = world.height / 2, radius = world.centerCircleRadius || 75;
+    kickoff.time -= dt;
+    if (kickoff.time <= 0 || Math.hypot(this.ball.x - cx, this.ball.y - cy) > 12) { this.kickoff = null; this.kickoffGrace = { left: kickoff.left, time: KICKOFF_GRACE }; if (this.squad?.ai && 'kickoff' in this.squad.ai) this.squad.ai.kickoff = null; return; }
+    this.squad.bodies.forEach((body, seat) => {
+      if (this.leftSeat(seat) === kickoff.left) return;
+      const side = this.leftSeat(seat) ? -1 : 1, gap = radius + body.radius;
+      // Own half…
+      if (side < 0 ? body.x > cx - body.radius : body.x < cx + body.radius) { body.x = cx + side * body.radius; body.vx = 0; }
+      // …and out of the centre circle.
+      const dx = body.x - cx, dy = body.y - cy, d = Math.hypot(dx, dy);
+      if (d < gap) { const k = gap / (d || 1); body.x = cx + (d ? dx * k : side * gap); body.y = cy + dy * (d ? k : 0); }
+    });
   }
   replaySkipCount() {
     const replay = this.replay; if (!replay || !this.squad) return 0;
@@ -682,6 +763,7 @@ export class Game {
     // Two passes: with four bodies one push can create a new overlap.
     for (let pass = 0; pass < 2; pass++) for (let i = 0; i < bodies.length; i++) for (let j = i + 1; j < bodies.length; j++) resolvePlayerPlayers(bodies[i], bodies[j], strength => { if (pass === 0 && strength > 22) this.sound.bump(); });
     for (const body of bodies) resolvePlayerWalls(body);
+    this.holdKickoff(dt);
     const steps = Math.max(1, Math.ceil(Math.hypot(this.ball.vx, this.ball.vy) * dt / Math.max(5, this.ball.radius)));
     for (let step = 0; step < steps; step++) {
       this.ball.update(dt / steps);
@@ -697,7 +779,7 @@ export class Game {
   }
   resetPositions() {
     this.possession?.reset();
-    if (this.squad) { this.squad.bodies.forEach((body, seat) => this.placeSquadBody(body, seat)); this.ball.reset((this.world || WORLD).width / 2, (this.world || WORLD).height / 2); this.ball._rx = this.ball.x; this.ball._ry = this.ball.y; return; }
+    if (this.squad) { this.squad.bodies.forEach((body, seat) => this.placeSquadBody(body, seat)); this.ball.reset((this.world || WORLD).width / 2, (this.world || WORLD).height / 2); this.ball._rx = this.ball.x; this.ball._ry = this.ball.y; this.setupKickoff(); return; }
     this.player.x = WORLD.width * (this.localSide === 'left' ? .31 : .69); this.player.y = WORLD.height / 2; this.player.stop(); this.player._rx = this.player.x; this.player._ry = this.player.y;
     if (this.bot) { this.bot.x = WORLD.width * (this.localSide === 'left' ? .69 : .31); this.bot.y = WORLD.height / 2; this.bot.stop(); this.bot._rx = this.bot.x; this.bot._ry = this.bot.y; }
     this.ball.reset(WORLD.width / 2, WORLD.height / 2); this.ball._rx = this.ball.x; this.ball._ry = this.ball.y;

@@ -717,23 +717,32 @@ export class UI {
 
   // 1v1 or 2v2 (with an AI teammate) for matches against the AI. Leagues and cups keep
   // the format they started with; new ones use the current choice.
-  // 3v3 only exists in the Táctico gameplay (goalkeeper, midfielder and the human as forward).
-  soloFormat() { const format = this.settings.soloFormat; return format === '3v3' && this.settings.gameplay === 'tactical' ? '3v3' : format === '2v2' ? '2v2' : '1v1'; }
+  // 3v3 and 7v7 only exist in the Táctico gameplay (the human always plays as the forward).
+  soloFormat() { const format = this.settings.soloFormat; return ['3v3', '7v7'].includes(format) && this.settings.gameplay === 'tactical' ? format : format === '2v2' ? '2v2' : '1v1'; }
   mateDifficulty() {
     const level = this.progression.level, unlocked = id => { const item = DIFFICULTIES.find(entry => entry.id === id); return !!item && level >= item.unlock; };
     return unlocked(this.settings.mateDifficulty) ? this.settings.mateDifficulty : unlocked('normal') ? 'normal' : 'easy';
   }
   setSoloFormat(format) {
-    this.settings.soloFormat = ['2v2', '3v3'].includes(format) ? format : '1v1'; this.persist(); this.renderSoloFormat();
+    this.settings.soloFormat = ['2v2', '3v3', '7v7'].includes(format) ? format : '1v1'; this.persist(); this.renderSoloFormat();
   }
   renderSoloFormat() {
     const current = this.soloFormat(), tactical = this.settings.gameplay === 'tactical';
-    // The 3 contra 3 button is added next to every 1v1 / 2v2 selector and only shown in Táctico.
+    // The 3 contra 3 and 7 contra 7 buttons are added next to every 1v1 / 2v2 selector and only shown in Táctico.
     document.querySelectorAll('.solo-format-options').forEach(group => {
       if (!group.querySelector('[data-solo-format="2v2"]')) return;
-      let trio = group.querySelector('[data-solo-format="3v3"]');
-      if (!trio) { trio = document.createElement('button'); trio.type = 'button'; trio.setAttribute('role', 'radio'); trio.dataset.soloFormat = '3v3'; trio.innerHTML = '3 contra 3 <small>Táctico</small>'; group.append(trio); }
-      trio.hidden = !tactical;
+      for (const [format, label] of [['3v3', '3 contra 3'], ['7v7', '7 contra 7']]) {
+        let button = group.querySelector(`[data-solo-format="${format}"]`);
+        if (!button) { button = document.createElement('button'); button.type = 'button'; button.setAttribute('role', 'radio'); button.dataset.soloFormat = format; button.innerHTML = `${label} <small>Táctico</small>`; group.append(button); }
+        button.hidden = !tactical;
+      }
+      // With four formats the labels are shortened (1v1 · 2v2 · 3v3 · 7v7) so they fit in one row.
+      group.classList.toggle('four-formats', tactical);
+      for (const button of group.querySelectorAll('[data-solo-format]')) {
+        button.dataset.fullLabel ??= button.innerHTML;
+        button.innerHTML = tactical ? button.dataset.soloFormat : button.dataset.fullLabel;
+        button.title = tactical ? button.dataset.fullLabel.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim() : '';
+      }
     });
     document.querySelectorAll('[data-solo-format]').forEach(button => {
       const active = button.dataset.soloFormat === current;
@@ -751,7 +760,7 @@ export class UI {
       select.value = mate;
     });
     document.querySelectorAll('[data-solo-format-hint]').forEach(node => {
-      node.textContent = current === '3v3' ? 'Eres el delantero, con un mediocentro y un portero de la IA, en un campo más grande.' : current === '2v2' ? 'Juegas con una IA compañera que defiende y te busca el pase.' : 'Tú contra la IA, uno contra uno.';
+      node.textContent = current === '7v7' ? 'Eres el delantero de un equipo de siete (portero, dos defensas y tres medios de la IA) en un campo casi el doble de grande; la cámara sigue la jugada.' : current === '3v3' ? 'Eres el delantero, con un mediocentro y un portero de la IA, en un campo más grande.' : current === '2v2' ? 'Juegas con una IA compañera que defiende y te busca el pase.' : 'Tú contra la IA, uno contra uno.';
     });
   }
 
@@ -826,7 +835,7 @@ export class UI {
     const difficulty = choice ? choice.id : 'easy';
     if (this.settings.customDifficulty && choice && this.progression.level < choice.unlock) return;
     this.settings.teamId = player.id; if (this.settings.customDifficulty) this.settings.difficulty = difficulty; this.persist(); this.updateHomeClub();
-    this.start('bot', { opponentTeam: rival, opponentName: rival.name, difficulty, duo: this.soloFormat() === '2v2', trio: this.soloFormat() === '3v3', mateDifficulty: this.mateDifficulty(), label: 'PARTIDO RÁPIDO · A 5 GOLES' });
+    this.start('bot', { opponentTeam: rival, opponentName: rival.name, difficulty, duo: this.soloFormat() === '2v2', trio: this.soloFormat() === '3v3', seven: this.soloFormat() === '7v7', mateDifficulty: this.mateDifficulty(), label: 'PARTIDO RÁPIDO · A 5 GOLES' });
   }
 
   openLegends() { this.renderLegends(); this.show('legends'); }
@@ -1391,7 +1400,7 @@ export class UI {
     const bracketRival = cup.bracket ? bracketOpponent(cup.bracket, cup.round - 1, this.settings.teamId) : null;
     const opponentTeam = (bracketRival && (cup.teams.find(team => team.id === bracketRival) || getTeamById(bracketRival))) || pickChampionsOpponent(cup.teams, cup.round);
     const competition = CUP_COMPETITIONS.find(item => item.id === cup.competitionId) || CUP_COMPETITIONS[0];
-    this.start('tournament', { opponentName: opponentTeam.name, opponentTeam, label: `${competition.name.toUpperCase()} · ${stage} · ${cup.round}/${cup.totalRounds}`, fieldTheme: competition.fieldTheme, competitionRound: cup.round, duo: cup.format === '2v2', trio: cup.format === '3v3', mateDifficulty: this.mateDifficulty() }, true);
+    this.start('tournament', { opponentName: opponentTeam.name, opponentTeam, label: `${competition.name.toUpperCase()} · ${stage} · ${cup.round}/${cup.totalRounds}`, fieldTheme: competition.fieldTheme, competitionRound: cup.round, duo: cup.format === '2v2', trio: cup.format === '3v3', seven: cup.format === '7v7', mateDifficulty: this.mateDifficulty() }, true);
   }
 
   beginLeague() {
@@ -1442,7 +1451,7 @@ export class UI {
     const totalRounds = this.league.opponents?.length || 16;
     const opponentTeam = this.league.opponents[round - 1] || null;
     const opponentName = opponentTeam?.name || 'RIVAL FC';
-    this.start('league', { opponentName, opponentTeam, label: `LIGA NACIONAL · ${competition.label.split(' · ')[0].toUpperCase()} · JORNADA ${round}/${totalRounds} · A ${this.league.goalTarget}`, fieldTheme: `league-${competition.id}`, competitionRound: round, goalTarget: this.league.goalTarget, duo: this.league.format === '2v2', trio: this.league.format === '3v3', mateDifficulty: this.mateDifficulty() }, true);
+    this.start('league', { opponentName, opponentTeam, label: `LIGA NACIONAL · ${competition.label.split(' · ')[0].toUpperCase()} · JORNADA ${round}/${totalRounds} · A ${this.league.goalTarget}`, fieldTheme: `league-${competition.id}`, competitionRound: round, goalTarget: this.league.goalTarget, duo: this.league.format === '2v2', trio: this.league.format === '3v3', seven: this.league.format === '7v7', mateDifficulty: this.mateDifficulty() }, true);
   }
 
   start(mode, options = {}, preserveCompetition = false, snapshot = null) {
@@ -1480,11 +1489,12 @@ export class UI {
     const target = `A ${this.game.goalTarget} ${this.game.goalTarget === 1 ? 'GOL' : 'GOLES'}`;
     let label = mode === 'training' ? baseLabel : /\bA \d+(?: GOLES)?\b/.test(baseLabel) ? baseLabel.replace(/\bA \d+(?: GOLES)?\b/g, target) : `${baseLabel} · ${target}`;
     if (aiMode) label += ` · ${this.settings.customDifficulty ? 'IA' : `RIVAL ${'★'.repeat(Math.max(1, Math.min(5, options.opponentTeam?.stars || 3)))} · IA`} ${difficultyLabel(this.game.botAI.difficulty).toUpperCase()}`;
-    const trio = !!this.game.trio;
-    const duo = !trio && !!options.duo && ['bot', 'tournament', 'league', 'career'].includes(mode);
-    this.mode_label.textContent = (trio ? '3 CONTRA 3 · ' : '') + (mode !== 'online' && this.game.gameplay !== 'arcade' ? `JUGABILIDAD ${this.game.gameplay === 'tactical' ? 'TÁCTICA' : 'CLÁSICA'} · ` : '') + (duo ? `2 CONTRA 2 · IA ${difficultyLabel(options.mateDifficulty || 'normal').toUpperCase()} · ` : '') + (modifiersAreDefault(options.modifiers) ? '' : 'REGLAS PERSONALIZADAS · ') + label;
+    const trio = !!this.game.trio, seven = !!this.game.seven;
+    const duo = !trio && !seven && !!options.duo && ['bot', 'tournament', 'league', 'career'].includes(mode);
+    this.mode_label.textContent = (seven ? '7 CONTRA 7 · ' : trio ? '3 CONTRA 3 · ' : '') + (mode !== 'online' && this.game.gameplay !== 'arcade' ? `JUGABILIDAD ${this.game.gameplay === 'tactical' ? 'TÁCTICA' : 'CLÁSICA'} · ` : '') + (duo ? `2 CONTRA 2 · IA ${difficultyLabel(options.mateDifficulty || 'normal').toUpperCase()} · ` : '') + (modifiersAreDefault(options.modifiers) ? '' : 'REGLAS PERSONALIZADAS · ') + label;
     if (duo) this.hud_player_name.textContent = `${this.settings.name.toUpperCase()} + IA`;
     if (trio) this.hud_player_name.textContent = `${this.settings.name.toUpperCase()} + 2 IA`;
+    if (seven) this.hud_player_name.textContent = `${this.settings.name.toUpperCase()} + 6 IA`;
     this.training_tools.classList.toggle('hidden', mode !== 'training');
     this.pause_overlay.classList.add('hidden'); this.result_overlay.classList.add('hidden'); this.goal_banner.classList.add('hidden');
     document.getElementById('pause-button').textContent = 'Ⅱ';
@@ -2327,7 +2337,7 @@ export class UI {
     const fieldTheme = next.stage.kind === 'league' ? `league-${next.stage.competitionId}` : next.stage.competitionId;
     const difficulty = this.settings.difficulty;
     this.start('career', { playerTeamId: playerTeam.id, playerTeam, opponentTeam, opponentName: opponentTeam.name, difficulty, fieldTheme,
-      goalTarget: CAREER_GOAL_TARGET, competitionRound: next.match.label === 'Final' ? 4 : 3, duo: state.format === '2v2', trio: state.format === '3v3', mateDifficulty: this.mateDifficulty(),
+      goalTarget: CAREER_GOAL_TARGET, competitionRound: next.match.label === 'Final' ? 4 : 3, duo: state.format === '2v2', trio: state.format === '3v3', seven: state.format === '7v7', mateDifficulty: this.mateDifficulty(),
       label: `MODO CARRERA · T${state.season}/${CAREER_SEASONS} · ${next.stage.name.toUpperCase()} · ${next.match.label.toUpperCase()} · A ${CAREER_GOAL_TARGET}` });
   }
 

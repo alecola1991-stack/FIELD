@@ -19,18 +19,20 @@ const unit = (x, y) => { const length = Math.hypot(x, y) || 1; return { x: x / l
 const angleDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 
 export class Possession {
-  constructor() { this.holder = null; this.angle = 0; this.cooldowns = new Map(); this.lastKicker = null; this.lastKickSpeed = 0; }
-  reset() { this.holder = null; this.cooldowns.clear(); this.lastKicker = null; this.lastKickSpeed = 0; }
+  constructor() { this.holder = null; this.angle = 0; this.cooldowns = new Map(); this.ghosts = new Map(); this.lastKicker = null; this.lastKickSpeed = 0; }
+  reset() { this.holder = null; this.cooldowns.clear(); this.ghosts.clear(); this.lastKicker = null; this.lastKickSpeed = 0; }
   // The ball was kicked by `body` (any kick): it is free, and the kicker cannot pick it up at once.
   kicked(body, ball) {
     this.holder = null;
-    if (body) this.cooldowns.set(body, TACTICAL.releaseCooldown);
+    // The kicker cannot pick the ball up again for a moment, and only for a very short moment does it
+    // not collide with it (so the ball leaves cleanly but never passes through anyone).
+    if (body) { this.cooldowns.set(body, TACTICAL.releaseCooldown); this.ghosts.set(body, .1); }
     this.lastKicker = body; this.lastKickSpeed = Math.hypot(ball.vx, ball.vy);
   }
   // One physics step. `bodies`: everyone on the pitch; `sameTeam(a, b)`.
   // Returns true while someone holds the ball (normal player–ball collisions are then skipped).
   step(bodies, ball, dt, sameTeam) {
-    for (const [body, time] of this.cooldowns) { if (time - dt <= 0) this.cooldowns.delete(body); else this.cooldowns.set(body, time - dt); }
+    for (const map of [this.cooldowns, this.ghosts]) for (const [body, time] of map) { if (time - dt <= 0) map.delete(body); else map.set(body, time - dt); }
     const touching = bodies.filter(body => body && !this.cooldowns.has(body) && Math.hypot(ball.x - body.x, ball.y - body.y) <= body.radius + ball.radius + 1.5);
     if (this.holder) {
       const thief = touching.find(body => body !== this.holder && !sameTeam(body, this.holder));
@@ -45,7 +47,7 @@ export class Possession {
     return true;
   }
   // A body that just kicked (or lost) the ball does not collide with it for a moment: the ball leaves cleanly.
-  ignores(body) { return this.cooldowns.has(body); }
+  ignores(body) { return this.ghosts.has(body); }
   take(body, ball) { this.holder = body; this.angle = Math.atan2(ball.y - body.y, ball.x - body.x); this.lastKicker = null; this.lastKickSpeed = 0; }
   // Keep the ball in front of the holder, turning towards where they look.
   carry(body, ball, dt) {
@@ -177,4 +179,27 @@ export function tacticalPass(passer, ball, { mates = [], direction = { x: 0, y: 
   const distance = Math.hypot(target.x - ball.x, target.y - ball.y);
   const power = receiver ? Math.max(.42, Math.min(.95, (distance * .72 + 150) / 400)) : TACTICAL.pushPower;
   return { aim: compensateAim(passer, ball, { x: target.x - ball.x, y: target.y - ball.y }, power), power, target, receiver };
+}
+
+// Curved pass (good midfielders): find a start angle and spin whose path passes closest to `target`
+// (simulated). Returns { aim, curve } or null when a straight pass is better.
+export function curvedPassAim(passer, ball, target, power) {
+  const base = Math.atan2(target.y - ball.y, target.x - ball.x), world = ball.world || WORLD;
+  let best = null;
+  for (const side of [1, -1]) for (let step = 2; step <= 18; step++) {
+    const angle = base - side * step * .045, aim = { x: Math.cos(angle), y: Math.sin(angle) };
+    const shot = predictShot({ ...passer, shotCooldown: 0 }, ball, aim, power); if (!shot) return null;
+    const sim = new Ball(ball.x, ball.y); sim.radius = ball.radius; sim.world = world; sim.vx = shot.vx; sim.vy = shot.vy; sim.curl = curveFor(side, shot);
+    let closest = Infinity;
+    for (let i = 0; i < 240; i++) {
+      sim.update(1 / 120);
+      if (sim.y < world.top || sim.y > world.bottom || sim.x < world.left || sim.x > world.right) break;
+      closest = Math.min(closest, Math.hypot(sim.x - target.x, sim.y - target.y));
+      if (Math.hypot(sim.vx, sim.vy) < 60) break;
+    }
+    // Prefer the gentlest bend that still reaches the target.
+    const score = closest + step * 2.5;
+    if (closest < 45 && (!best || score < best.score)) best = { aim, curve: side, closest, score };
+  }
+  return best;
 }

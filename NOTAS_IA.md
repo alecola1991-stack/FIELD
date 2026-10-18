@@ -4,6 +4,44 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-18 · Claude · Táctico: balón que «atravesaba» al jugador y modo 3 contra 3 (portero, mediocentro y delantero)
+**Commit:** rama `tactico-3v3` (pendiente de pasar a main)
+**Archivos:** `src/game/Tactical.js`, `src/game/TacticalAI.js`, `src/game/Game.js`, `src/game/Renderer.js`, `src/config/modifiers.js`, `src/ui/UI.js`, `src/styles.css`, `tests/Tactical3v3.test.js` (nuevo)
+**Qué y por qué:**
+- Ale vio que, con la IA en posesión, a veces el balón pasaba por encima del jugador, y fallos parecidos al chutar.
+  - Causa 1: el dibujo suaviza las posiciones del balón y del jugador por separado. Al girar rápido, el balón se dibujaba en línea recta a través del cuerpo.
+  - Causa 2: quien chutaba no chocaba con el balón durante 0,3–0,45 s, y el que perdía el balón tampoco, así que los rebotes los atravesaban.
+- Pidió un modo 3 contra 3 solo en Táctico:
+  - Portero, mediocentro y delantero por equipo; el jugador siempre es el delantero y sale adelantado.
+  - Campo un 30 % más grande, con porterías del mismo tamaño.
+  - El mediocentro pasa y, si su equipo tiene muchas estrellas, con curva.
+  - IA para el equipo rival y para los compañeros.
+**Cómo:**
+- Arreglos:
+  - `Renderer.render` recibe `heldBy` (el poseedor). El balón en posesión se dibuja desde la posición suavizada del poseedor más el desfase real, así siempre gira alrededor del cuerpo. `smooth()` solo suaviza una vez por fotograma (`frameId`).
+  - `Possession` separa `cooldowns` (no puede volver a coger el balón) de `ghosts` (no choca con él). Solo el que chuta deja de chocar, y solo 0,1 s.
+- Campo:
+  - `modifierWorld(mods, scale)`: con `scale = 1.3` el campo pasa a 1482×910, con los mismos márgenes y la misma portería (190) y el círculo central más grande.
+  - El `Renderer` encuadra según `this.world` (`resize` y caché del campo al cambiar de tamaño).
+  - `Game.start`: `this.trio` solo con Táctico, fuera del online, el entrenamiento y Leyendas. `fieldScale = 1.3`.
+- Equipos:
+  - `setupSquad(squad, teamSize)` ya admite 3 por equipo; las comprobaciones de equipo usan `leftSeat(seat)`.
+  - `setupTrio`: asientos 0 delantero humano, 1 MC, 2 POR, 3 DEL, 4 MC y 5 POR.
+  - `placeSquadBody` coloca al delantero a 0,41 del ancho, al MC a 0,27 y al portero en su línea.
+- `TeamAI` (en `TacticalAI.js`):
+  - Portero: cubre el ángulo en su línea, sale a por el balón que entra en su área y, con el balón, pasa al libre (MC o delantero) o despeja.
+  - Mediocentro: presiona en su campo y apoya por detrás. Con el balón pasa al delantero (al hueco si está adelantado) usando `curvedPassAim` cuando su equipo tiene 4 estrellas o más, o tira si está cerca.
+  - Delantero rival: ataca como en 2v2, presiona arriba y se desmarca para el pase.
+- Se corrigió que, en 3v3, el reloj de reacción de la IA no avanzaba en la posesión (los MC no pasaban ni tiraban); ahora se descuenta en `TeamAI.update` (`noTick`).
+- `curvedPassAim` simula el balón con los dos efectos y prefiere la curva más suave que llega a menos de 45 del objetivo.
+- UI:
+  - `soloFormat()` admite `'3v3'` solo con jugabilidad Táctico. Se añade un botón «3 contra 3 · Táctico» a cada selector de formato, oculto en las demás jugabilidades.
+  - El partido rápido, la liga y las copas pasan `trio`. El Modo Carrera sigue con 1v1 y 2v2.
+  - Etiqueta «3 CONTRA 3» y marcador «NOMBRE + 2 IA».
+**Para el otro asistente:** las posiciones de salida están en `placeSquadBody`, los roles en `TeamAI.keeper/midfielder/forward` y el tamaño del campo en `fieldScale`.
+
+---
+
 ## 2026-10-18 · Claude · IA adaptada a la jugabilidad Táctico (1v1 y 2v2, rivales y compañera)
 **Commit:** fusionado en main (rama `ia-tactica`, merge 18f9d42). Para deshacerlo: `git revert -m 1 18f9d42`
 **Archivos:** `src/game/TacticalAI.js` (nuevo), `src/game/Game.js`, `tests/TacticalAI.test.js` (nuevo)

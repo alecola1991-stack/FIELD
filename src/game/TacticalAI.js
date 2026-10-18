@@ -1,6 +1,6 @@
 import { WORLD } from '../config/settings.js';
 import { canKickBall } from './Physics.js';
-import { tacticalShot, tacticalPass } from './Tactical.js';
+import { tacticalShot, tacticalPass, tacticalPass as passFor, curvedPassAim } from './Tactical.js';
 
 // AI for the "Táctico" gameplay (sticky possession). Every AI player follows the same plan:
 //  - with the ball: carry it towards the rival goal, dodging whoever comes to steal it, and shoot once past
@@ -84,7 +84,7 @@ export class TacticalAI {
     if (!body) return { x: 0, y: 0, kick: false };
     const { ball, dt, attackRight, mates, rivals, config } = context;
     const world = ball.world || WORLD, brain = this.brain(body);
-    brain.timer -= dt;
+    if (!context.noTick) brain.timer -= dt;
     const holder = this.possession?.holder || null;
     const team = [body, ...mates];
     if (holder === body) return this.attack(body, context, brain, world);
@@ -202,5 +202,101 @@ export class TacticalAI {
     const point = holder || ball;
     const target = { x: ownGoal.x + (point.x - ownGoal.x) * .45, y: ownGoal.y + (point.y - ownGoal.y) * .55 };
     return this.moveTo(body, target, config.speed * .92);
+  }
+}
+
+// 3 contra 3 (Táctico): bodies [human forward, midfielder, goalkeeper, rival forward, rival midfielder,
+// rival goalkeeper]. Commands for seats 1..5.
+//  - Goalkeeper: stays on its line following the ball; comes out to claim a ball in its area; with the
+//    ball, passes to its midfielder (or clears it up the pitch).
+//  - Midfielder: holds the middle; presses a rival in its own half; with the ball, passes to the forward
+//    (a through ball ahead of them, curved if the team has 4+ stars) or shoots if close enough.
+//  - Forward (rival AI): attacks like in 2v2, presses high in the rival half, gets open for passes.
+
+export class TeamAI extends TacticalAI {
+  update(bodies, ball, dt) {
+    const commands = {};
+    const mateConfig = this.config(this.mateStars, this.mateLevel), rivalConfig = this.config(this.rivalStars, this.level);
+    const teams = [[bodies[0], bodies[1], bodies[2]], [bodies[3], bodies[4], bodies[5]]];
+    for (let seat = 1; seat < 6; seat++) {
+      const left = seat < 3, team = teams[left ? 0 : 1], rivals = teams[left ? 1 : 0], body = bodies[seat], role = seat % 3;
+      this.brain(body).timer -= dt;
+      const context = { noTick: true, ball, dt, attackRight: left, mates: team.filter(other => other !== body), rivals, config: left ? mateConfig : rivalConfig, stars: left ? this.mateStars : this.rivalStars, team, humanMate: left ? bodies[0] : null };
+      if (seat === 1 && this.humanPass) { const run = this.humanPassRun(body, ball, dt); if (run) { commands[seat] = run; continue; } }
+      commands[seat] = role === 2 ? this.keeper(body, context) : role === 1 ? this.midfielder(body, context) : this.forward(body, context);
+    }
+    return commands;
+  }
+
+  keeper(body, context) {
+    const { ball, attackRight, mates, config } = context, world = ball.world || WORLD;
+    const holder = this.possession?.holder || null, line = attackRight ? world.left : world.right, inward = attackRight ? 1 : -1;
+    const centerY = (world.goalTop + world.goalBottom) / 2;
+    if (holder === body) {
+      // Distribute: to the midfielder (or the forward if free), otherwise a long clearance up the pitch.
+      const mid = mates.find(mate => mate && mate !== context.humanMate) || mates[0];
+      const target = [context.humanMate, mid].filter(Boolean).find(mate => context.rivals.every(rival => !rival || Math.hypot(rival.x - mate.x, rival.y - mate.y) > 110)) || mid;
+      if (target && canKickBall(body, ball) && body.shotCooldown <= 0) {
+        const result = passFor(body, ball, { mates: [target], direction: { x: target.x - body.x, y: target.y - body.y }, world, attackRight });
+        return { x: 0, y: 0, speed: config.speed, kick: true, aim: result.aim, power: Math.max(result.power, .8), pass: true };
+      }
+      return this.moveTo(body, { x: body.x + inward * 40, y: body.y }, config.speed);
+    }
+    // Claim a ball that comes into the area (loose, or a rival dribbling in).
+    const inArea = Math.abs(ball.x - line) < 150 && Math.abs(ball.y - centerY) < 150;
+    if (inArea && (!holder || !context.team.includes(holder))) return this.moveTo(body, { x: ball.x + (ball.vx || 0) * .12, y: ball.y + (ball.vy || 0) * .12 }, config.speed * 1.05, 4);
+    // Stay on the line, covering the angle to the ball.
+    const y = clamp(centerY + (ball.y - centerY) * .45, world.goalTop + 12, world.goalBottom - 12);
+    return this.moveTo(body, { x: line + inward * 30, y }, config.speed);
+  }
+
+  midfielder(body, context) {
+    const { ball, attackRight, mates, rivals, config, stars, team } = context, world = ball.world || WORLD;
+    const holder = this.possession?.holder || null, forward = attackRight ? 1 : -1, half = world.width / 2;
+    const striker = team[0];
+    if (holder === body) {
+      const brain = this.brain(body);
+      const toGoal = Math.abs((attackRight ? world.right : world.left) - body.x);
+      if (canKickBall(body, ball) && body.shotCooldown <= 0 && brain.timer <= 0) {
+        brain.timer = config.react;
+        const pastHalf = attackRight ? body.x > half : body.x < half;
+        if (pastHalf && toGoal < config.range * .9) return this.shoot(body, ball, { attackRight, rivals, config, world });
+        // Pass to the forward: through ball ahead of them when they are in front, curved with 4+ stars.
+        if (striker && striker !== body && this.random() < .35 + config.pass * .6) {
+          const ahead = (striker.x - body.x) * forward > 30;
+          const result = passFor(body, ball, { mates: [striker], direction: { x: striker.x - body.x, y: striker.y - body.y }, through: ahead, world, attackRight });
+          let aim = result.aim, curve = 0;
+          if (stars >= 4) { const curved = curvedPassAim(body, ball, result.target, result.power); if (curved) { aim = curved.aim; curve = curved.curve; } }
+          return { x: 0, y: 0, speed: config.speed, kick: true, aim, power: result.power, curve, pass: true };
+        }
+      }
+      return this.attack(body, { ball, attackRight, mates, rivals, config }, this.brain(body), world);
+    }
+    if (holder && team.includes(holder)) {
+      // Support behind the forward, a little to the side.
+      const target = { x: clamp(holder.x - forward * 120, world.left + 90, world.right - 90), y: world.height / 2 + (holder.y < world.height / 2 ? 110 : -110) };
+      return this.moveTo(body, target, config.speed * .9);
+    }
+    // Defend: press when the ball is in our half (or loose and closest), otherwise hold the middle.
+    const ownHalf = attackRight ? ball.x < half + 60 : ball.x > half - 60;
+    const closest = team.filter(player => player && player !== team[2]).every(player => player === body || Math.hypot(player.x - ball.x, player.y - ball.y) >= Math.hypot(body.x - ball.x, body.y - ball.y));
+    if (ownHalf || (!holder && closest)) return this.decide(body, { ...context, mates: team.filter(player => player && player !== body && player !== team[2]) });
+    return this.moveTo(body, { x: half - forward * 140, y: clamp(ball.y, world.top + 90, world.bottom - 90) }, config.speed * .9);
+  }
+
+  forward(body, context) {
+    const { ball, attackRight, config, team } = context, world = ball.world || WORLD;
+    const holder = this.possession?.holder || null, forward = attackRight ? 1 : -1, half = world.width / 2;
+    if (holder === body) return this.attack(body, context, this.brain(body), world);
+    if (holder && team.includes(holder)) {
+      // Get open ahead of the ball for the through pass.
+      const base = attackRight ? Math.max(holder.x, half) : Math.min(holder.x, half);
+      const target = { x: clamp(base + forward * 200, world.left + 120, world.right - 120), y: world.height / 2 + (holder.y < world.height / 2 ? 120 : -120) };
+      return this.moveTo(body, target, config.speed);
+    }
+    // High press: the forward chases the ball in the rival half or when it is loose and close.
+    const rivalHalf = attackRight ? ball.x > half - 80 : ball.x < half + 80;
+    if (rivalHalf || !holder) return this.decide(body, { ...context, mates: [] });
+    return this.moveTo(body, { x: half + forward * 60, y: clamp(ball.y, world.top + 100, world.bottom - 100) }, config.speed * .85);
   }
 }

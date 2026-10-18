@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-18 · Claude · Jugadores un 5 % más pequeños y balón un 10 % más pequeño
-**Commit:** rama `tamanos` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `tamanos`, merge 3db286b). Para deshacerlo: `git revert -m 1 3db286b`
 **Archivos:** `src/game/Player.js`, `src/game/Ball.js`, `src/game/Game.js`, `tests/Modifiers.test.js`, `tests/GameStats.test.js`
 **Qué y por qué:** Ale pidió un cambio general en todo el juego: los jugadores, un 5 % más pequeños, y el balón, un 10 % más pequeño.
 **Cómo:**

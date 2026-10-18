@@ -4,6 +4,16 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-19 · Claude · Táctico: porteros con menos reflejos, conducción de la IA sin zigzag y disputas sin ping-pong
+**Commit:** rama `tactico-ajustes-ia` (pendiente de pasar a main)
+**Archivos:** src/game/Tactical.js, src/game/TacticalAI.js, tests/TacticalDisputes.test.js, NOTAS_IA.md
+**Qué y por qué:** Ale pidió (1) bajar los reflejos de los porteros del 3 contra 3, que lo paraban casi todo; (2) que la IA con balón no cambie de dirección tantas veces (se veía poco natural); (3) arreglar las disputas cuando dos jugadores se juntan (el balón cambiaba de dueño una y otra vez).
+**Cómo:**
+- Porteros (`TeamAI.keeper`): nueva clave `keeper: { react, speed }` en cada nivel de `TACTICAL_AI_LEVELS`. El portero solo «lee» el balón cada `react` s (0,38 en fácil → 0,17 en leyenda) y se mueve a `config.speed * keeper.speed` (0,74 → 0,88). Simulación 3v3: de ~7-11 % de tiros convertidos en difícil/campeones a ~20 %.
+- Conducción (`TacticalAI.attack`): nuevo `steer()` que gira la dirección de carrera como máximo `2.8 + dodge·1.6` rad/s desde la dirección actual (`brain.heading`, se borra al perder el balón). El regate se decide cada 0,9 s y mantiene lado; la protección del balón (shield) se decide una vez por acercamiento y dura 0,55 s (antes se sorteaba en cada frame). `attack` recibe `dt`. Giro medio fuera de contacto: ~3 rad/s → 0,6-2 rad/s.
+- Disputas (`Possession`): tras un robo, `guard` (TACTICAL.stealGuard 0,55 s) impide robarle al nuevo dueño y `swing` (0,3 s) lleva el balón al lado del ladrón contrario al que lo perdió. `stealCooldown` sube de 0,45 a 0,9 s. Robos devueltos en menos de 0,6 s: hasta 60 por partido → 0-5.
+**Para el otro asistente:** solo afecta a la jugabilidad Táctico (Arcade/Clásico y online no usan `Possession` ni `TacticalAI`). Si se ajusta la dificultad de los porteros, tocar `keeper` en `TACTICAL_AI_LEVELS` (el test exige que `react` baje con el nivel y `speed` < 1).
+
 ## 2026-10-18 · Claude · Táctico: balón que «atravesaba» al jugador y modo 3 contra 3 (portero, mediocentro y delantero)
 **Commit:** fusionado en main (rama `tactico-3v3`, merge 4bc15f6). Para deshacerlo: `git revert -m 1 4bc15f6`
 **Archivos:** `src/game/Tactical.js`, `src/game/TacticalAI.js`, `src/game/Game.js`, `src/game/Renderer.js`, `src/config/modifiers.js`, `src/ui/UI.js`, `src/styles.css`, `tests/Tactical3v3.test.js` (nuevo)

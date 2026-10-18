@@ -4,6 +4,35 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-18 · Claude · Controles «Clásico» (tiro a puerta, pase y curva con apuntado automático)
+**Commit:** rama `controles-clasico` (pendiente de pasar a main)
+**Archivos:** `src/game/ClassicAim.js` (nuevo), `src/game/Input.js`, `src/game/GamepadController.js`, `src/game/Game.js`, `src/game/Renderer.js`, `src/game/OnlineMatch.js`, `src/game/SquadAI.js`, `src/config/settings.js`, `src/ui/UI.js`, `index.html`, `src/styles.css`, `tests/ClassicControls.test.js` (nuevo)
+**Qué y por qué:** Ale pidió un modo de controles nuevo en Ajustes llamado «Clásico». El actual pasa a llamarse «Arcade».
+- Teclado: flechas para mover, K para disparar a puerta (el juego elige la mejor dirección), L para pasar al compañero dejándosela delante y J + K para el disparo con curva a puerta.
+- Mando: joystick derecho para mover, ○ para disparar, ✕ para pasar y L2 + ○ para el disparo con curva.
+**Cómo:**
+- `settings.controlScheme` puede ser `'arcade'` (por defecto) o `'classic'`. `UI.renderControlScheme()` llama a `input.setScheme()` y pone la clase `body.scheme-classic`, que cambia las ayudas de teclas del pie de partido, del inicio y de Ajustes.
+- `Input.consumeKick()` en clásico devuelve `{ kick, curve, shot: 'goal' | 'pass' }`. Espacio ya no dispara, solo salta repeticiones.
+- `GamepadController` en clásico:
+  - Se mueve con el stick derecho (`classicPadAxes`); la cruceta y el stick izquierdo también valen.
+  - ○ (botón 1) inyecta `KeyK` y ✕ (botón 0) inyecta `KeyL`.
+  - L2 (botón 6) activa la curva.
+- `Game.kickParams(body, command, axisY)` es el punto único de todos los disparos: jugador local, rival online, invitados del 2v2 y anfitrión.
+  - Con `shot` usa `ClassicAim`; sin `shot`, el arcade de siempre.
+  - Ayudantes: `attacksRight`, `mateOf` y `opponentsOf`.
+  - Los pases no gastan el tiro de fuego ni cuentan como tiros.
+- `ClassicAim`:
+  - `goalTarget` elige la altura de la portería más libre de rivales.
+  - `goalShotAim` compensa la velocidad del balón y del jugador.
+  - `curvedShotAim` simula el balón (`simulateCross`) con los dos efectos y un abanico de ángulos, y elige el que entra más cerca del objetivo, de fuera hacia dentro. Si no hay curva posible, tira recto.
+  - `passAim` apunta por delante del compañero, con la fuerza según la distancia. En 1 contra 1 es un toque suave hacia la portería rival.
+- La ayuda de disparo en clásico dibuja la trayectoria apuntada (`classicPreview`, recalculada cada 120 ms).
+- Online: el campo `shot` viaja en la entrada y el anfitrión apunta con su estado. Solo se envía si hay `shot`, así que es compatible con clientes antiguos.
+- IA compañera (2v2): `SquadAI.expectPass(target)`. Tras un pase del humano, el compañero corre a la línea del balón en cualquier zona del campo durante 1,6 s, o hasta que lo toca él o un rival.
+**Para el otro asistente:** los tiros nuevos deben pasar por `kickParams`. El botón «Configurar botones» del mando solo afecta al esquema arcade.
+
+---
+
 ## 2026-10-18 · Claude · Dificultad automática según las estrellas del rival
 **Commit:** fusionado en main (rama `dificultad-estrellas`, merge c97ba6c). Para deshacerlo: `git revert -m 1 c97ba6c`
 **Archivos:** `src/config/settings.js`, `src/game/Game.js`, `src/game/Progression.js`, `src/ui/UI.js`, `src/styles.css`, `tests/StarDifficulty.test.js` (nuevo)

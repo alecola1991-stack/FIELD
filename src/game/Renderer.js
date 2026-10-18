@@ -119,7 +119,7 @@ export class Renderer {
     if (game.trajectory) this.drawTrajectory(c, game.ball);
     if (game.shotRangeTimer > 0) this.drawShotRange(c, game.player, game.ball, game.shotRangeTimer);
     const ballPosition = this.smooth(game.ball);
-    if (game.shotPreview) this.drawShotPreview(c, game.player, game.ball, ballPosition, game.curveAim);
+    if (game.shotPreview) this.drawShotPreview(c, game.player, game.ball, ballPosition, game.classicAim ? game.classicAim.curve : game.curveAim, game.classicAim?.aim || null);
     if (game.bot) this.drawPlayer(c, game.bot, game.bot.color);
     for (const other of game.others || []) this.drawPlayer(c, other, other.color);
     // 2v2: a ring under your own player tells you apart from your teammate.
@@ -342,9 +342,9 @@ export class Renderer {
     for (let i = 0; i <= steps; i++) { const time = t * i / steps, x = ball.x + ball.vx * (1 - Math.exp(-drag * time)) / drag, y = ball.y + ball.vy * (1 - Math.exp(-drag * time)) / drag; if (i === 0) c.moveTo(x, y); else c.lineTo(x, y); }
     c.setLineDash([4, 7]); c.lineWidth = 2; c.strokeStyle = 'rgba(220,245,229,.33)'; c.stroke(); c.setLineDash([]);
   }
-  drawShotPreview(c, player, ball, position, curve = 0) {
+  drawShotPreview(c, player, ball, position, curve = 0, aim = null) {
     const powered = player.powerCooldown <= 0;
-    const shot = predictShot(player, ball, null, powered ? 1.45 : 1);
+    const shot = predictShot(player, ball, aim, powered ? 1.45 : 1);
     if (!shot) return;
     const ghost = new Ball(ball.x, ball.y); ghost.radius = ball.radius; ghost.world = ball.world; ghost.maxSpeed = ball.maxSpeed; ghost.vx = shot.vx; ghost.vy = shot.vy;
     // Holding the curve key (Shift / C): show the bent path of the curved shot.

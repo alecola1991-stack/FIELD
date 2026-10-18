@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-18 · Claude · IA adaptada a la jugabilidad Táctico (1v1 y 2v2, rivales y compañera)
-**Commit:** rama `ia-tactica` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `ia-tactica`, merge 18f9d42). Para deshacerlo: `git revert -m 1 18f9d42`
 **Archivos:** `src/game/TacticalAI.js` (nuevo), `src/game/Game.js`, `tests/TacticalAI.test.js` (nuevo)
 **Qué y por qué:** Ale pidió que, en la jugabilidad Táctico, la IA:
 - Avance con el balón hasta pasado el medio campo para tirar.

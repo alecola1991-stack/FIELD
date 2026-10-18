@@ -4,6 +4,30 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-18 · Claude · Dificultad automática según las estrellas del rival
+**Commit:** rama `dificultad-estrellas` (pendiente de pasar a main)
+**Archivos:** `src/config/settings.js`, `src/game/Game.js`, `src/game/Progression.js`, `src/ui/UI.js`, `src/styles.css`, `tests/StarDifficulty.test.js` (nuevo)
+**Qué y por qué:** Ale pidió que la dificultad de los rivales solo se pueda elegir con un interruptor «Dificultad personalizada». Si está apagado, la IA usa la dificultad que marcan las estrellas del equipo rival. Además decidió:
+- Sin límite por nivel: un 5★ juega en Champions aunque seas nivel 1.
+- La tabla es 1★ Principiante, 2★ Avanzado, 3★ Experto, 4★ Profesional y 5★ Champions.
+- El Modo Carrera también pasa a estrellas.
+- Ganar da +10 % de XP por cada estrella del rival.
+**Cómo:**
+- `settings.js` añade `customDifficulty` (por defecto `false`), `difficultyForStars(stars)` y `starXpMultiplier(stars)`.
+- `UI.rivalDifficulty(team, chosen)`: con el interruptor apagado usa las estrellas; encendido usa la dificultad elegida.
+  - `start()` la aplica a los modos `bot`, `league`, `tournament` y `career` (salvo al restaurar una partida guardada).
+  - La etiqueta del partido muestra «RIVAL ★★★★★ · IA CHAMPIONS».
+- `renderDifficultyMode()` añade el interruptor y una nota junto a los 4 selectores: inicio, Jugar, partido rápido y Ajustes.
+  - El selector se oculta con `body.auto-difficulty`.
+  - En el partido rápido, la nota muestra la IA del rival elegido.
+- `Game.start` ya no sobrescribe `settings.difficulty`: guarda `this.matchDifficulty`, y `updateSettings` respeta la del partido.
+- `Progression.awardMatch(won, multiplier)` aplica el bonus solo a las victorias.
+- Modo Carrera: `startCareerMatch` ya no usa `careerDifficulty` (sigue exportada en CareerMode, aunque ya no se usa).
+- Leyendas, online y la IA compañera del 2v2 no cambian.
+**Para el otro asistente:** para cambiar la tabla de estrellas, toca `STAR_DIFFICULTIES` en `settings.js`.
+
+---
+
 ## 2026-10-18 · Claude · Web bloqueada en móviles y tablets con aviso de app en desarrollo
 **Commit:** fusionado en main (rama `bloqueo-movil`, merge 0f07a59). Para deshacerlo: `git revert -m 1 0f07a59`
 **Archivos:** `src/main.js` (ahora solo decide), `src/app.js` (el antiguo `main.js`, sin cambios), `src/mobileGate.js` (nuevo), `src/styles.css`, `tests/MobileGate.test.js` (nuevo)

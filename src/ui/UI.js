@@ -6,7 +6,7 @@ import { selectionFor, cycleTeamSelection, teamAbbreviation } from './TeamSelect
 import { GamepadController } from '../game/GamepadController.js';
 import { OnlineHub } from './OnlineHub.js';
 import { MODIFIER_OPTIONS, DEFAULT_MODIFIERS, normalizeModifiers, modifiersAreDefault, formatModifier } from '../config/modifiers.js';
-import { loadSettings, saveSettings, setSettingsScope, DIFFICULTIES, difficultyLabel } from '../config/settings.js';
+import { loadSettings, saveSettings, setSettingsScope, DIFFICULTIES, difficultyLabel, difficultyForStars, starXpMultiplier } from '../config/settings.js';
 import { Progression } from '../game/Progression.js';
 import { CareerProfile } from '../game/CareerProfile.js';
 import { TROPHY_CATALOG, formatPlayTime } from '../game/Achievements.js';
@@ -21,7 +21,7 @@ import { TROPHY_ART } from './TrophyArt.js';
 import { CareerScreen } from './CareerScreen.js';
 import { ProgressScreen, isProgressTrophy } from './ProgressScreen.js';
 import { computeProgress, progressId, CAREER_MILESTONES } from '../game/GameProgress.js';
-import { setCareerScope, loadCareer, saveCareer, nextCareerMatch, recordCareerMatch, careerDifficulty, careerLeagueOf, loadCareerBest, CAREER_GOAL_TARGET, CAREER_SEASONS, COMPETITION_NAMES } from '../game/CareerMode.js';
+import { setCareerScope, loadCareer, saveCareer, nextCareerMatch, recordCareerMatch, careerLeagueOf, loadCareerBest, CAREER_GOAL_TARGET, CAREER_SEASONS, COMPETITION_NAMES } from '../game/CareerMode.js';
 import { LEGEND_MATCHES, LEGENDS_UNLOCK_LEVEL, resolveLegendMatch } from '../config/legends.js';
 
 const ROUND_NAMES = ['OCTAVOS DE FINAL', 'CUARTOS DE FINAL', 'SEMIFINAL', 'FINAL'];
@@ -63,7 +63,7 @@ export class UI {
       missions: document.querySelector('#missions-screen'), career: document.querySelector('#career-screen'), progress: document.querySelector('#progress-screen'),
       modifiers: document.querySelector('#modifiers-screen'), quick: document.querySelector('#quick-screen'), legends: document.querySelector('#legends-screen'),
     };
-    this.cacheElements(); this.menuBackdrop = new MenuBackdrop(this.menu_backdrop); this.populateTeamPicker(); this.populateLeagueCompetitions(); this.fillInputs(); this.bind(); this.careerScreen = new CareerScreen(this); this.careerScreen.renderHomeStatus(); this.progressScreen = new ProgressScreen(this); this.backfillProgress(); this.progressScreen.renderHome(); this.renderSoloFormat(); this.updateLeaguePreview(); this.renderProgress(); this.show('home'); this.refreshContinueButton();
+    this.cacheElements(); this.menuBackdrop = new MenuBackdrop(this.menu_backdrop); this.populateTeamPicker(); this.populateLeagueCompetitions(); this.fillInputs(); this.bind(); this.careerScreen = new CareerScreen(this); this.careerScreen.renderHomeStatus(); this.progressScreen = new ProgressScreen(this); this.backfillProgress(); this.progressScreen.renderHome(); this.renderDifficultyMode(); this.renderSoloFormat(); this.updateLeaguePreview(); this.renderProgress(); this.show('home'); this.refreshContinueButton();
   }
 
   cacheElements() {
@@ -750,13 +750,14 @@ export class UI {
     this.quickChoices.player = getTeamById(this.settings.teamId)?.id || 'laliga-barcelona';
     if (!getTeamById(this.quickChoices.rival)) this.quickChoices.rival = 'laliga-real-madrid';
     this.quickDifficulty = this.settings.difficulty;
+    this.renderDifficultyMode();
     this.renderQuickSetup(); this.show('quick');
   }
 
   moveQuickChoice(side, direction, kind = 'team') {
     if (!['player', 'rival'].includes(side)) return;
     this.quickChoices[side] = cycleTeamSelection(this.quickChoices[side], kind, direction);
-    this.renderQuickSetup(); this.sound?.play('click');
+    this.renderQuickSetup(); this.renderDifficultyMode(); this.sound?.play('click');
     this.quick_pickers.querySelector(`[data-side="${side}"][data-kind="${kind}"][data-quick-move="${direction}"]`)?.focus({ preventScroll: true });
   }
 
@@ -814,10 +815,9 @@ export class UI {
     if (!player || !rival) return;
     const choice = DIFFICULTIES.find(item => item.id === this.quick_difficulty.value);
     const difficulty = choice ? choice.id : 'easy';
-    if (choice && this.progression.level < choice.unlock) return;
-    this.settings.teamId = player.id; this.settings.difficulty = difficulty; this.persist(); this.updateHomeClub();
-    const label = difficultyLabel(difficulty).toUpperCase();
-    this.start('bot', { opponentTeam: rival, opponentName: rival.name, difficulty, duo: this.soloFormat() === '2v2', mateDifficulty: this.mateDifficulty(), label: `PARTIDO RÁPIDO · ${label} · A 5 GOLES` });
+    if (this.settings.customDifficulty && choice && this.progression.level < choice.unlock) return;
+    this.settings.teamId = player.id; if (this.settings.customDifficulty) this.settings.difficulty = difficulty; this.persist(); this.updateHomeClub();
+    this.start('bot', { opponentTeam: rival, opponentName: rival.name, difficulty, duo: this.soloFormat() === '2v2', mateDifficulty: this.mateDifficulty(), label: 'PARTIDO RÁPIDO · A 5 GOLES' });
   }
 
   openLegends() { this.renderLegends(); this.show('legends'); }
@@ -1449,6 +1449,10 @@ export class UI {
     this.countdown_banner.classList.add('hidden'); this.goal_banner.classList.add('hidden');
     this.pause_overlay.classList.add('hidden'); this.result_overlay.classList.add('hidden');
     this.result_rematch.classList.add('hidden'); this.result_online_status.classList.add('hidden'); this.hideConnectionStatus();
+    // AI rivals: automatic level from the rival's stars, or the chosen one with "Dificultad personalizada".
+    const aiMode = ['bot', 'league', 'tournament', 'career'].includes(mode);
+    if (aiMode && !snapshot) options = { ...options, difficulty: this.rivalDifficulty(options.opponentTeam, options.difficulty) };
+    this.currentMatchOptions = options;
     this.show('game'); this.game.start(mode, mode === 'legends' ? 'legend' : snapshot?.difficulty || options.difficulty || this.settings.difficulty, options);
     if (snapshot) this.game.restoreSnapshot(snapshot);
     this.trajectory_toggle.checked = this.game.trajectory; this.trajectory_enabled.checked = this.game.trajectory;
@@ -1464,7 +1468,8 @@ export class UI {
     this.hud_opponent_name.classList.toggle('gold-name', mode === 'online' && !!options.opponentGold);
     const baseLabel = options.label || (mode === 'training' ? 'MODO ENTRENAMIENTO' : `PARTIDO · ${difficultyLabel(this.settings.difficulty).toUpperCase()}`);
     const target = `A ${this.game.goalTarget} ${this.game.goalTarget === 1 ? 'GOL' : 'GOLES'}`;
-    const label = mode === 'training' ? baseLabel : /\bA \d+(?: GOLES)?\b/.test(baseLabel) ? baseLabel.replace(/\bA \d+(?: GOLES)?\b/g, target) : `${baseLabel} · ${target}`;
+    let label = mode === 'training' ? baseLabel : /\bA \d+(?: GOLES)?\b/.test(baseLabel) ? baseLabel.replace(/\bA \d+(?: GOLES)?\b/g, target) : `${baseLabel} · ${target}`;
+    if (aiMode) label += ` · ${this.settings.customDifficulty ? 'IA' : `RIVAL ${'★'.repeat(Math.max(1, Math.min(5, options.opponentTeam?.stars || 3)))} · IA`} ${difficultyLabel(this.game.botAI.difficulty).toUpperCase()}`;
     const duo = !!options.duo && ['bot', 'tournament', 'league', 'career'].includes(mode);
     this.mode_label.textContent = (duo ? `2 CONTRA 2 · IA ${difficultyLabel(options.mateDifficulty || 'normal').toUpperCase()} · ` : '') + (modifiersAreDefault(options.modifiers) ? '' : 'REGLAS PERSONALIZADAS · ') + label;
     if (duo) this.hud_player_name.textContent = `${this.settings.name.toUpperCase()} + IA`;
@@ -1940,11 +1945,13 @@ export class UI {
   handleMatchEnd(result) {
     const won = result.winner === 'player';
     if (result.mode !== 'training') this.career.recordMatch(won, { playerScore: result.playerScore, elapsedSeconds: result.elapsedSeconds });
-    const reward = result.mode !== 'training' ? this.progression.awardMatch(won) : null;
+    const rivalStars = ['bot', 'league', 'tournament', 'career'].includes(result.mode) ? (this.currentMatchOptions?.opponentTeam?.stars || 0) : 0;
+    const xpMultiplier = won && rivalStars ? starXpMultiplier(rivalStars) : 1;
+    const reward = result.mode !== 'training' ? this.progression.awardMatch(won, xpMultiplier) : null;
     if (won) this.confetti.play();
     this.sound?.play(won ? 'win' : 'loss');
     this.renderProgress();
-    const rewardText = !reward ? 'Entrenamiento completado.' : reward.gained ? `+${reward.gained} XP por jugar.` : 'Nivel máximo.';
+    const rewardText = !reward ? 'Entrenamiento completado.' : reward.gained ? `+${reward.gained} XP por jugar${xpMultiplier > 1 ? ` (+${Math.round((xpMultiplier - 1) * 100)} % por ganar a un rival de ${rivalStars}★)` : ''}.` : 'Nivel máximo.';
     const levelText = reward?.leveledUp ? ` ¡Has subido al nivel ${reward.level}!` : '';
     this.result_xp.textContent = reward ? (reward.gained ? `+${reward.gained} XP` : 'NIVEL MÁXIMO') : '0 XP';
     this.result_level.textContent = `NIVEL ${this.progression.level}`;
@@ -2206,6 +2213,35 @@ export class UI {
     });
   }
 
+  // ---- Rival difficulty -----------------------------------------------------------
+  // Automatic: the rival's stars set the AI (1★ Principiante … 5★ Champions), with no level limit.
+  // "Dificultad personalizada": the chosen difficulty for every rival.
+  rivalDifficulty(team, chosen) {
+    if (this.settings.customDifficulty) return chosen || this.settings.difficulty;
+    return difficultyForStars(team?.stars);
+  }
+  setCustomDifficulty(on) { this.settings.customDifficulty = !!on; this.persist(); this.renderDifficultyMode(); }
+  // Toggle + note next to every difficulty selector (home, Jugar, quick match and settings).
+  renderDifficultyMode() {
+    const custom = !!this.settings.customDifficulty;
+    document.body.classList.toggle('auto-difficulty', !custom);
+    for (const select of [this.difficulty, this.play_difficulty, this.settings_difficulty, this.quick_difficulty]) {
+      if (!select) continue;
+      let box = select.parentElement.querySelector(':scope > .difficulty-mode');
+      if (!box) {
+        box = document.createElement('span'); box.className = 'difficulty-mode';
+        box.innerHTML = '<button type="button" class="difficulty-toggle" role="switch"><i></i><span>Dificultad personalizada</span></button><small class="auto-difficulty-note"></small>';
+        box.querySelector('button').addEventListener('click', () => { this.sound?.play('click'); this.setCustomDifficulty(!this.settings.customDifficulty); });
+        select.before(box); select.classList.add('difficulty-select');
+      }
+      const button = box.querySelector('button'); button.classList.toggle('on', custom); button.setAttribute('aria-checked', String(custom));
+      const rival = select === this.quick_difficulty ? getTeamById(this.quickChoices?.rival) : null;
+      box.querySelector('small').textContent = rival
+        ? `${rival.name} ${'★'.repeat(Math.max(1, Math.min(5, rival.stars || 3)))} → IA ${difficultyLabel(difficultyForStars(rival.stars))}`
+        : 'Según las estrellas del rival: 1★ Principiante … 5★ Champions';
+    }
+  }
+
   // ---- Progress (Progreso) ---------------------------------------------------
   progressData() { return computeProgress({ trophyIds: this.career.trophies.map(item => item.id), level: this.progression.level }); }
   goldUnlocked() { return this.progressData().complete; }
@@ -2270,7 +2306,7 @@ export class UI {
     const state = loadCareer(), next = nextCareerMatch(state); if (!next) { this.careerScreen.returnFromMatch(); return; }
     const playerTeam = getTeamById(next.stage.teamId), opponentTeam = getTeamById(next.match.opponentId);
     const fieldTheme = next.stage.kind === 'league' ? `league-${next.stage.competitionId}` : next.stage.competitionId;
-    const difficulty = careerDifficulty(next.match.difficulty, this.progression.level);
+    const difficulty = this.settings.difficulty;
     this.start('career', { playerTeamId: playerTeam.id, playerTeam, opponentTeam, opponentName: opponentTeam.name, difficulty, fieldTheme,
       goalTarget: CAREER_GOAL_TARGET, competitionRound: next.match.label === 'Final' ? 4 : 3, duo: state.format === '2v2', mateDifficulty: this.mateDifficulty(),
       label: `MODO CARRERA · T${state.season}/${CAREER_SEASONS} · ${next.stage.name.toUpperCase()} · ${next.match.label.toUpperCase()} · A ${CAREER_GOAL_TARGET}` });

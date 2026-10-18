@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-18 · Claude · Jugabilidad «Clásico» (conducción pegada al pie, balón -5 %) en lugar de los controles clásicos
-**Commit:** rama `jugabilidad-clasica` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `jugabilidad-clasica`, merge be48013). Para deshacerlo: `git revert -m 1 be48013`
 **Archivos:** revierte el merge de `controles-clasico` (43e9f6f): se borran `ClassicAim.js` y su test, y se restauran `Input.js`, `GamepadController.js`, `Game.js`, `Renderer.js`, `OnlineMatch.js`, `SquadAI.js`, `index.html` y `styles.css`. Además: `src/game/Physics.js`, `src/game/Game.js`, `src/config/settings.js`, `src/ui/UI.js`, `index.html`, `src/styles.css`, `tests/ClassicGameplay.test.js` (nuevo)
 **Qué y por qué:** Ale cambió la idea:
 - Ya no son controles, sino una «Jugabilidad» en la pestaña Juego de Ajustes.

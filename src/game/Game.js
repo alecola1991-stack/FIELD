@@ -9,6 +9,7 @@ import { Renderer } from './Renderer.js';
 import { GameState } from './GameState.js';
 import { getTeamById } from '../config/teams.js';
 import { Possession, TACTICAL, tacticalShot, tacticalPass } from './Tactical.js';
+import { TacticalAI } from './TacticalAI.js';
 import { kickBall, curveSide, dribbleAssist, canKickBall, resolveBallNet, resolveBallWalls, resolvePlayerBall, resolvePlayerPlayers, resolvePlayerWalls, isGoal } from './Physics.js';
 
 const POWER_SHOT_COOLDOWN_SECONDS = 20;
@@ -195,6 +196,13 @@ export class Game {
           if (kicked) this.matchStats.shotsOpponent++;
           if (kicked && powered) this.bot.powerCooldown = (this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS);
         }
+      } else if (this.possession) {
+        // Táctico: carry the ball forward, shoot past halfway, press the human to steal it.
+        this.tacticalAI ||= Object.assign(new TacticalAI({ difficulty: this.botAI.difficulty, rivalStars: this.botAI.teamStars }), { possession: this.possession });
+        const command = this.tacticalAI.single(this.bot, this.ball, this.player, dt, this.attacksRight(this.bot));
+        this.bot.move(command.x, command.y, dt, command.speed ?? 1);
+        resolvePlayerWalls(this.bot);
+        if (command.kick && kickBall(this.bot, this.ball, () => { this.sound.play('kick'); this.renderer.burst(this.ball.x, this.ball.y, '#ffd1bf', 5, 78); }, command.aim || null, command.power ?? 1, command.curve || 0) && !command.pass) this.matchStats.shotsOpponent++;
       } else {
         const decision = this.botAI.update(this.bot, this.ball, this.player, dt); this.bot.move(decision.x, decision.y, dt, decision.speedMultiplier);
         resolvePlayerWalls(this.bot);
@@ -359,9 +367,11 @@ export class Game {
   // Shot input this frame: { kick, curve }. Simple inputs without curve support shoot straight.
   // ---- Gameplay -----------------------------------------------------------------------------
   setupGameplay() {
+    this.tacticalAI = null;
     this.possession = this.gameplay === 'tactical' ? new Possession() : null;
     this.ball.onKicked = this.possession ? body => this.possession.kicked(body, this.ball) : null;
     this.input.setScheme?.(this.gameplay === 'tactical' ? 'tactical' : 'arcade');
+    if (this.squad?.ai && 'possession' in this.squad.ai) this.squad.ai.possession = this.possession;
   }
   attacksRight(body) {
     if (this.squad) return this.squad.bodies.indexOf(body) < 2;
@@ -586,7 +596,9 @@ export class Game {
     for (const body of [mate, rivalA, rivalB]) { body.isBot = true; body.maxSpeed = 280; }
     human.isBot = false;
     this.squad.offline = true;
-    this.squad.ai = new SquadAI({ difficulty: this.botAI.difficulty || difficulty, rivalStars: opponentTeam?.stars || 3, mateStars: team?.stars || 3, ...(mateLevel ? { mateLevel } : {}) });
+    const aiOptions = { difficulty: this.botAI.difficulty || difficulty, rivalStars: opponentTeam?.stars || 3, mateStars: team?.stars || 3, ...(mateLevel ? { mateLevel } : {}) };
+    // Táctico gameplay: rivals and teammate play with sticky possession (carry, press, shoot past halfway).
+    this.squad.ai = this.possession ? Object.assign(new TacticalAI(aiOptions), { possession: this.possession }) : new SquadAI(aiOptions);
   }
   placeSquadBody(body, seat) {
     body.x = WORLD.width * (seat < 2 ? .3 : .7); body.y = WORLD.height * (seat % 2 === 0 ? .38 : .62);
@@ -608,7 +620,7 @@ export class Game {
         command = aiCommands[seat] || { x: 0, y: 0 };
         body.move(Number(command.x) || 0, Number(command.y) || 0, dt, command.speed ?? 1);
         resolvePlayerWalls(body);
-        if (command.kick && kickBall(body, this.ball, () => { this.sound.play('kick'); this.renderer.burst(this.ball.x, this.ball.y, seat < 2 ? '#c5f4d8' : '#ffd1bf', 5, 78); }, command.aim || null, command.power ?? 1)) {
+        if (command.kick && kickBall(body, this.ball, () => { this.sound.play('kick'); this.renderer.burst(this.ball.x, this.ball.y, seat < 2 ? '#c5f4d8' : '#ffd1bf', 5, 78); }, command.aim || null, command.power ?? 1, command.curve || 0) && !command.pass) {
           if ((seat < 2) === leftLocal) this.matchStats.shotsPlayer++; else this.matchStats.shotsOpponent++;
         }
         return;

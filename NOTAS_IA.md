@@ -4,6 +4,44 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-18 · Claude · IA adaptada a la jugabilidad Táctico (1v1 y 2v2, rivales y compañera)
+**Commit:** rama `ia-tactica` (pendiente de pasar a main)
+**Archivos:** `src/game/TacticalAI.js` (nuevo), `src/game/Game.js`, `tests/TacticalAI.test.js` (nuevo)
+**Qué y por qué:** Ale pidió que, en la jugabilidad Táctico, la IA:
+- Avance con el balón hasta pasado el medio campo para tirar.
+- Intente tocar el balón del jugador para robarlo.
+- Tenga un comportamiento distinto por dificultad.
+- En el 2v2, la compañera haga lo mismo: robar en su campo y marcar en el rival.
+**Cómo:**
+- `TacticalAI` sustituye a `BotAI` (1v1, `single()`) y a `SquadAI` (2v2, `update()` para los asientos 1-3) cuando `game.possession` existe, es decir, en Táctico. Lee `possession.holder`.
+- Con el balón (`attack`):
+  - Conduce hacia la portería rival y regatea en lateral al rival que tiene delante.
+  - Protege el balón: si el rival está a menos de 75, se gira de espaldas a él y el balón pasa al otro lado.
+  - Tira con `tacticalShot` (con error de puntería según el nivel) solo pasado el medio campo y dentro de `range`, o si le presionan cerca de la portería.
+  - En 2v2 pasa a un compañero libre adelantado cuando le aprietan.
+- Rival con el balón:
+  - El más cercano presiona e intercepta, apuntando a donde estará el balón según la distancia.
+  - Si el que lleva el balón está entre él y su portería, primero hace una carrera de recuperación al carril de tiro y luego entra al balón.
+  - Si llega por detrás, rodea al jugador.
+  - El otro defensor cubre entre el balón y su portería.
+- Balón suelto: va el más cercano y el resto se desmarca por delante.
+- La compañera sigue corriendo hacia los pases del humano (`expectPass`).
+- `TACTICAL_AI_LEVELS` fija por dificultad: velocidad, reacción, distancia de tiro, error, presión, regate/protección, pase y curva. Las estrellas del equipo suman o restan un poco.
+- Con un humano simulado que presiona sin parar y tira al llegar al área (90 s):
+
+  | Dificultad | Goles humano–IA |
+  |---|---|
+  | Principiante | 26–1 |
+  | Avanzado | 12–10 |
+  | Experto | 5–22 |
+  | Profesional | 3–26 |
+  | Champions | 1–24 |
+
+  La media de la posición de tiro siempre queda pasada la mitad del campo.
+**Para el otro asistente:** para cambiar la dificultad, ajusta `TACTICAL_AI_LEVELS`. Arcade y Clásico siguen con `BotAI` y `SquadAI`, sin cambios.
+
+---
+
 ## 2026-10-18 · Claude · Jugabilidad «Táctico» (estilo FIFA): posesión pegada, tiros a puerta, pases y pases filtrados
 **Commit:** fusionado en main (rama `jugabilidad-tactica`, merge 9b13a6c). Para deshacerlo: `git revert -m 1 9b13a6c`
 **Archivos:** `src/game/Tactical.js` (nuevo), `src/game/Game.js`, `src/game/Physics.js`, `src/game/Input.js`, `src/game/GamepadController.js`, `src/game/SquadAI.js`, `src/game/Renderer.js`, `src/ui/UI.js`, `index.html`, `src/styles.css`, `tests/TacticalGameplay.test.js` (nuevo)

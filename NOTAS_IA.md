@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-20 · Claude · Online: bots más naturales (presión en su campo, paredes con la banda) y comportamiento humano (abandonos, revancha, repeticiones)
-**Commit:** rama `online-bots-naturales` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `online-bots-naturales`, merge b74f32a). Para deshacerlo: `git revert -m 1 b74f32a`
 **Archivos:** supabase/online-bots-2.sql (nuevo), supabase/online-bots-2-test.sql (nuevo), supabase/online-bots-test.sql, src/game/OnlineBotAI.js, src/game/Game.js, src/ui/OnlineHub.js, src/app.js, tests/OnlineBots.test.js, tools/e2e-online/e2e.cjs, tools/e2e-online/README.md, README.md, NOTAS_IA.md
 **Qué y por qué:** Ale pidió que los bots del online se comporten de forma más natural: salir a presionar en su campo tapando la línea del balón a la portería e intentar regatear rebotando el balón en la pared en el centro del campo y en las esquinas. También pidió probabilidades: abandonar tras recibir un gol (1/20) o tras marcar (1/50), aceptar la revancha (1/3), saltar la repetición si recibe un gol (2/3) y dejarla correr si marca (2/3).
 **Cómo:**

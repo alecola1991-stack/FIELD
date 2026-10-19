@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-19 · Claude · Online: bots que completan las salas públicas tras 16 s de búsqueda
-**Commit:** rama `online-bots` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `online-bots`, merge 74a0a95). Para deshacerlo: `git revert -m 1 74a0a95`
 **Archivos:** supabase/online-bots.sql (nuevo), supabase/online-bots-test.sql (nuevo), supabase/online-profiles-test.sql, src/game/OnlineBotAI.js (nuevo), src/game/Game.js, src/game/OnlineMatch.js, src/ui/OnlineHub.js, src/ui/UI.js, tests/OnlineBots.test.js (nuevo), tools/e2e-online/e2e.cjs, tools/e2e-online/README.md, README.md, NOTAS_IA.md
 **Qué y por qué:** Ale pidió bots en todos los modos online (rápido, Ranked y torneos; 1v1 y 2v2) cuando se lleva más de 16 s buscando partida. Decisiones de Ale: los bots cuentan ELO normal en Ranked, parecen jugadores reales (nada en el juego los distingue) y en 2v2 y torneos rellenan los huecos que falten. Tienen un ELO algo menor que el del jugador y nombres aleatorios (juan_3542, xx_messi11, PabloPedri7…), con equipos sobre todo de LaLiga. Juegan de forma más agresiva y menos predecible.
 **Cómo:**

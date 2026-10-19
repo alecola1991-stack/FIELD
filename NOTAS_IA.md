@@ -4,6 +4,38 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-20 · Claude · Escudos propios para todos los equipos (plantillas combinables)
+**Commit:** rama `escudos` (pendiente de pasar a main)
+**Archivos:** src/config/crests.js (nuevo), src/ui/UI.js, src/ui/CareerScreen.js, src/ui/OnlineHub.js, src/styles.css, tests/Crests.test.js (nuevo), NOTAS_IA.md
+**Qué y por qué:** Ale pidió escudos propios para cada equipo con un sistema de plantillas combinables: formas, colores y patrones, sin letras, números, logos ni imágenes de escudos oficiales. Los de primera división y las selecciones, elegidos con criterio según su identidad; los de divisiones menores, al azar con sus colores. Deben verse en todas las selecciones de equipo.
+**Cómo:**
+- `src/config/crests.js`:
+  - `crestDesign(team)` devuelve `{ shape, pattern, stripes, border, crown, detail, stars, colors: [campo, acento, ribete, ribeteSobreAcento] }`.
+  - `crestSVG(team, { className, title })` devuelve el SVG en línea, con viewBox `0 -4 100 124` y un id de clipPath único por instancia.
+  - Plantillas:
+    - Formas (7): circle, oval, square, rect, shield-round, shield-point, shield-curve.
+    - Patrones (17): liso, rayas horizontales y verticales, diagonal simple y doble, cruz, aspa, cuadros, partido vertical y horizontal, cuartelado, chevrón, tricolor vertical y horizontal, jefe, palo y faja.
+    - Bordes: thin, thick, double. Corona opcional.
+    - Detalles: estrella, disco, anillo, rombo. Estrellas de Mundial encima del escudo.
+  - Criterio para primera división (tier 1 de `TEAM_LEAGUES`) y selecciones:
+    - El patrón sale del `kitPattern` de la camiseta.
+    - La forma se elige por estilo del país (`SHAPE_STYLE`).
+    - Llevan corona los clubes «Real» o reales (`ROYAL`, `ROYAL_IDS`).
+    - Las selecciones usan patrones de bandera (`NATIONAL_PATTERN`: cruces nórdicas, aspa escocesa, cuadros croatas, tricolores…) y estrellas por Mundiales (`WORLD_CUPS`).
+    - `CURATED` tiene diseños elegidos a mano para unos 40 equipos conocidos: todo LaLiga y los grandes de Inglaterra, Italia, Alemania y Francia. Están inspirados en sus colores e identidad, no en sus escudos.
+  - Divisiones menores: combinación aleatoria con semilla del id (siempre la misma) en sus colores. Los clubes «Real» llevan corona.
+  - Legibilidad: `standout()` garantiza contraste entre campo, acento y ribete. Además se dibuja un contorno oscuro fino, como mucho 4 cuadros y 3 o 5 rayas.
+- Dónde se ven:
+  - Fichas de selección de equipo (`UI.teamEmblem`): partido rápido, perfil/equipo y todas las que usan `fillTeamSelectionCard`.
+  - Club en la portada (`#home-club-colors`).
+  - Clasificación de liga (`.league-team-chip`) y cuadros de copa (`.bracket-chip`).
+  - Carrera: `kit()` pasa a dibujar escudos (`.career-kit.crest`), y las tarjetas de ofertas llevan una insignia `.career-offer-crest`.
+  - Salas online (`.room-crest.crest`).
+  - La miniatura de la equipación (`paintPlayerPreview`) no cambia.
+- CSS al final de styles.css: tamaños que respetan la proporción 100×124 en cada sitio, con versión móvil.
+- Tests (`Crests.test.js`): todos los equipos tienen un diseño válido y sin texto ni imágenes, más del 97 % son distintos, hay contraste, se cumplen los criterios (corona, banderas, estrellas, rayas) y los ids de clip son únicos.
+**Para el otro asistente:** para dibujar un escudo usa `crestSVG(team)` dentro de un contenedor con proporción 100:124 (`.team-crest` ocupa el 100 %). Para cambiar el diseño de un equipo, añádelo a `CURATED` en crests.js. `teamAbbreviation` sigue existiendo, pero ya no se usa en los escudos.
+
 ## 2026-10-20 · Claude · Online: bots más naturales (presión en su campo, paredes con la banda) y comportamiento humano (abandonos, revancha, repeticiones)
 **Commit:** fusionado en main (rama `online-bots-naturales`, merge b74f32a). Para deshacerlo: `git revert -m 1 b74f32a`
 **Archivos:** supabase/online-bots-2.sql (nuevo), supabase/online-bots-2-test.sql (nuevo), supabase/online-bots-test.sql, src/game/OnlineBotAI.js, src/game/Game.js, src/ui/OnlineHub.js, src/app.js, tests/OnlineBots.test.js, tools/e2e-online/e2e.cjs, tools/e2e-online/README.md, README.md, NOTAS_IA.md

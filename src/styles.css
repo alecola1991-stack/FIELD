@@ -1781,3 +1781,18 @@ body.gameplay-tactical.match-online .arcade-hint{display:flex!important}
 .solo-format-options.four-formats{grid-template-columns:repeat(4,1fr)}
 .solo-format-options button[hidden]{display:none}
 .solo-format-options.four-formats button{padding:6px 8px;font-size:13px}
+
+/* Team crests (config/crests.js): SVGs that keep their proportions (100 × 124) wherever a team is shown. */
+.team-crest{display:block;width:100%;height:100%;overflow:visible}
+.selection-crest,#quick-screen .selection-crest,#customize-screen .single-team-card .selection-crest{width:100px;height:124px;aspect-ratio:auto;border:0;border-radius:0;clip-path:none;background:none!important;box-shadow:none;overflow:visible;filter:drop-shadow(0 7px 14px #0008)}
+@media(max-width:600px){.selection-crest,#quick-screen .selection-crest,#customize-screen .menu-team-picker .selection-crest{width:66px;height:82px}}
+#home-club-colors{width:18px;height:22px;border:0;border-radius:0;background:none!important;filter:drop-shadow(0 1px 3px #0008)}
+#home-club-colors.has-team{box-shadow:none}
+.league-team-chip,.bracket-chip{display:inline-block;width:16px;height:20px;border-radius:0;box-shadow:none;background:none!important;filter:drop-shadow(0 1px 2px #0009)}
+.bracket-chip{width:14px;height:17px}
+.career-kit.crest{border:0;border-radius:0;box-shadow:none;background:none!important;height:auto!important;aspect-ratio:100/124;filter:drop-shadow(0 3px 6px #0007)}
+.room-crest.crest{background:none!important;box-shadow:none;border-radius:0;width:36px;height:45px;filter:drop-shadow(0 2px 5px #0008)}
+.online-lobby-roster.grid .room-crest.crest,.room-team .room-crest.crest,.online-lobby-roster.quad .room-crest.crest{width:30px;height:37px}
+.career-offer{position:relative}
+.career-offer-crest{position:absolute;top:10px;right:10px;width:34px;height:42px;pointer-events:none;filter:drop-shadow(0 2px 5px #0008)}
+.career-market .career-offer-crest{top:8px;right:8px;width:26px;height:32px}

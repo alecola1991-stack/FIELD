@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-20 · Claude · Escudos propios para todos los equipos (plantillas combinables)
-**Commit:** rama `escudos` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `escudos`, merge 512e72b). Para deshacerlo: `git revert -m 1 512e72b`
 **Archivos:** src/config/crests.js (nuevo), src/ui/UI.js, src/ui/CareerScreen.js, src/ui/OnlineHub.js, src/styles.css, tests/Crests.test.js (nuevo), NOTAS_IA.md
 **Qué y por qué:** Ale pidió escudos propios para cada equipo con un sistema de plantillas combinables: formas, colores y patrones, sin letras, números, logos ni imágenes de escudos oficiales. Los de primera división y las selecciones, elegidos con criterio según su identidad; los de divisiones menores, al azar con sus colores. Deben verse en todas las selecciones de equipo.
 **Cómo:**

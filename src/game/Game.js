@@ -10,6 +10,7 @@ import { GameState } from './GameState.js';
 import { getTeamById } from '../config/teams.js';
 import { Possession, TACTICAL, tacticalShot, tacticalPass } from './Tactical.js';
 import { TacticalAI } from './TacticalAI.js';
+import { OnlineBotAI, OnlineSquadBots } from './OnlineBotAI.js';
 import { DuoAI, TeamAI, SevenAI, SEVEN_ROLES, SEVEN_KICKOFF, TRIO_ROLES, DUO_ROLES } from './TeamTactics.js';
 import { kickBall, curveSide, dribbleAssist, canKickBall, resolveBallNet, resolveBallWalls, resolvePlayerBall, resolvePlayerPlayers, resolvePlayerWalls, isGoal } from './Physics.js';
 
@@ -86,6 +87,7 @@ export class Game {
     this.ball.reset((this.world || WORLD).width / 2, (this.world || WORLD).height / 2); this.goalResetTimer = 0; this.last = 0;
     this.applyModifiers();
     this.setupKickoff();
+    this.setupOnlineBots(mode, options);
     this.beginCountdown();
     if (!this.raf) this.raf = requestAnimationFrame(this.boundLoop);
     this.hooks.onStart?.(mode); this.hooks.onScore?.(0, 0); this.hooks.onTime?.('00:00');
@@ -194,7 +196,23 @@ export class Game {
       if (kicked && powered) { this.player.powerCooldown = (this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS); this.hooks.onPowerCooldown?.(this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS); }
     }
     if (this.bot) {
-      if (this.state.mode === 'online') {
+      if (this.state.mode === 'online' && this.onlineBot) {
+        // Online bot (run by the host): aggressive arcade AI.
+        const bot = this.bot, decision = this.onlineBot.update(bot, this.ball, this.player, dt);
+        bot.powerCooldown = Math.max(0, bot.powerCooldown - dt); bot.powerFlash = Math.max(0, bot.powerFlash - dt);
+        bot.move(decision.x, decision.y, dt, decision.speedMultiplier);
+        resolvePlayerWalls(bot);
+        if (decision.kick) {
+          const powered = !!decision.powered && bot.powerCooldown <= 0;
+          const kicked = kickBall(bot, this.ball, () => {
+            this.sound.play('kick');
+            if (powered) { this.renderer.fireBurst(this.ball.x, this.ball.y); bot.powerFlash = .48; }
+            else this.renderer.burst(this.ball.x, this.ball.y, '#ffd1bf', 5, 78);
+          }, decision.kickDirection, powered ? 1.45 : 1);
+          if (kicked) this.matchStats.shotsOpponent++;
+          if (kicked && powered) bot.powerCooldown = (this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS);
+        }
+      } else if (this.state.mode === 'online') {
         const command = this.hooks.getRemoteInput?.() || this.remoteInput;
         this.remoteInput = command;
         this.bot.powerCooldown = Math.max(0, this.bot.powerCooldown - dt);
@@ -276,6 +294,11 @@ export class Game {
     const clip = this.replayClip || (this.replayTail > 0 ? (this.replayFrames || []).slice() : null);
     if (!this.replaysEnabled() || !clip || clip.length < REPLAY_MIN_FRAMES) return false;
     this.replay = { frames: clip, time: 0, duration: Math.min(REPLAY_SECONDS, clip.at(-1).t - clip[0].t), localSkip: false, remoteSkip: false };
+    // Online bots skip at once: only the people in the match decide.
+    if (this.state.mode === 'online' && this.onlineAuthority) {
+      if (this.onlineBot) this.replay.remoteSkip = true;
+      else if (this.squad?.botSeats?.size) { this.replay.remoteSeats = new Set(this.squad.botSeats); if (this.replay.remoteSeats.size >= 3) this.replay.remoteSkip = true; }
+    }
     this.notifyReplay();
     return true;
   }
@@ -723,6 +746,20 @@ export class Game {
       if (d < gap) { const k = gap / (d || 1); body.x = cx + (d ? dx * k : side * gap); body.y = cy + dy * (d ? k : 0); }
     });
   }
+  // ---- Online bots ------------------------------------------------------------------------------
+  // Bots fill online rooms; the host (always a human) moves them. 1v1: `options.opponentBot`
+  // ({ elo }). 2v2: the squad seats marked `bot`.
+  setupOnlineBots(mode, options) {
+    this.onlineBot = null;
+    if (mode !== 'online' || !this.onlineAuthority) return;
+    if (this.squad) {
+      const seats = (options.squad?.seats || []).map((seat, index) => seat?.bot ? index : -1).filter(index => index > 0);
+      if (!seats.length) return;
+      this.squad.botSeats = new Set(seats);
+      this.squad.ai = new OnlineSquadBots({ seats, elos: Object.fromEntries(seats.map(seat => [seat, options.squad.seats[seat].elo])) });
+      for (const seat of seats) this.squad.bodies[seat].isBot = true;
+    } else if (options.opponentBot && this.bot) this.onlineBot = new OnlineBotAI(options.opponentBot.elo);
+  }
   // ---- Player switching (Táctico, offline squads) -----------------------------------------------
   // The human controls one body of the left team: their own player at kick-off, the teammate who wins
   // the ball, or the one chosen with the pass button while not on the ball.
@@ -776,7 +813,7 @@ export class Game {
         // Pass button (E / ✕) without the ball: switch to the teammate best placed to get it (as in FIFA).
         if (command.kick && command.shot === 'pass' && this.canSwitch() && this.possession.holder !== body && !canKickBall(body, this.ball)) { this.switchToBest(); command = { x: axes.x, y: axes.y, kick: false }; }
       }
-      else if (aiCommands) {
+      else if (aiCommands && (!this.squad.botSeats || this.squad.botSeats.has(seat))) {
         command = aiCommands[seat] || { x: 0, y: 0 };
         body.move(Number(command.x) || 0, Number(command.y) || 0, dt, command.speed ?? 1);
         resolvePlayerWalls(body);

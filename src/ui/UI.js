@@ -1648,6 +1648,7 @@ export class UI {
     this.start('online', {
       modifiers: DEFAULT_MODIFIERS, localSide: info.localSide, opponentName: other.name || 'RIVAL', opponentNumber: other.number, opponentLevel: other.level || 1,
       opponentTeam: team, opponentUsername: other.username, opponentElo: other.elo, opponentGold: !!other.gold, opponentGoldKit: !!other.goldKit, roomCode: info.roomCode, label, ...teamExtras,
+      ...(other.bot && !squad ? { opponentBot: { elo: other.elo } } : {}),
     });
     // Names with rank badges: both teammates in 2v2.
     const people = seats => seats.map(seat => ({ name: squad.seats[seat]?.username || squad.seats[seat]?.name || 'jugador', elo: squad.seats[seat]?.elo }));

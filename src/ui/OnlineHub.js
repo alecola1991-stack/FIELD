@@ -5,6 +5,7 @@ import { rankBadge } from './RankIcon.js';
 
 const element = (tag, text, className = '') => { const node = document.createElement(tag); node.textContent = text; node.className = className; return node; };
 const FORMATS_KEY = 'field-online-formats';
+const BOT_WAIT_MS = 16000; // search time before bots fill a public room
 // Chosen room size per mode (1v1/2v2, 4/6/8 players), remembered per browser.
 function loadFormats() {
   const formats = { ranked: 2, quick: 2, tournament: 4 };
@@ -137,7 +138,7 @@ export class OnlineHub {
   }
   async consume(data) {
     this.identity = data?.identity || null; this.friends = data?.friends || []; this.invites = data?.invites || []; this.lobby = data?.lobby || null;
-    if (data) { this.supportsTeams = Number(data.version) >= 2; this.supportsSwap = Number(data.version) >= 3; this.supportsProfiles = Number(data.version) >= 4; }
+    if (data) { this.supportsTeams = Number(data.version) >= 2; this.supportsSwap = Number(data.version) >= 3; this.supportsProfiles = Number(data.version) >= 4; this.supportsBots = Number(data.version) >= 5; }
     if (this.ui.currentView === 'profile') { this.ui.social?.render(); this.ui.renderProfileOnline?.(); }
     this.render(); this.ui.trackOnlineRank?.(this.identity); this.ui.applyGoldName?.();
     if (this.lobby?.state === 'cancelled') {
@@ -159,16 +160,31 @@ export class OnlineHub {
         this.message(current.state === 'disputed' ? 'El partido no se ha podido confirmar.' : wonMatch(current, this.identity?.id) ? 'El partido ha terminado: el rival ha abandonado o se ha desconectado. ¡Victoria!' : 'El partido ha terminado por abandono o desconexión.', current.state !== 'finished' || !wonMatch(current, this.identity?.id));
       } else if (!this.ui.currentMatchMode && this.ui.onlineMatch?.assignment?.matchId === current.id) await this.ui.onlineMatch.leave(false);
     }
+    this.askForBots();
     const match = assignedMatch(this.lobby, this.identity?.id);
     // A rematch starts straight from the result screen; otherwise matches start from the online screen.
     if (match && match.id !== this.connectedMatchId && (this.ui.currentView === 'online' || this.rematchRequested)) await this.connect(match);
     this.updateResultStatus();
   }
+  // Public room still waiting after 16 s of search: bots take the empty seats (the server checks
+  // the wait too). The match then starts like any other.
+  askForBots() {
+    const lobby = this.lobby;
+    if (!this.supportsBots || !lobby || lobby.state !== 'waiting' || !lobby.public || !this.identity) { this.botWait = null; return; }
+    if (this.botWait?.id !== lobby.id) { this.botWait = { id: lobby.id, since: Date.now() }; return; }
+    if (Date.now() - this.botWait.since < BOT_WAIT_MS || this.askingBots) return;
+    this.askingBots = true;
+    const userId = this.ui.user?.id;
+    this.rpc('bots', { lobbyId: lobby.id })
+      .then(data => { if (this.ui.user?.id === userId && this.lobby?.id === lobby.id) return this.consume(data); })
+      .catch(() => { /* still searching: try again on the next poll */ })
+      .finally(() => { this.askingBots = false; });
+  }
   async connect(match) {
     if (!this.identity || this.connectedMatchId === match.id) return;
     const other = this.lobby.players.find(player => player.id === opponentId(match, this.identity.id));
     if (!other) return;
-    const profileOf = player => ({ ...player.profile, userId: player.id, username: player.username, elo: player.elo, modifiers: ONLINE_RULES });
+    const profileOf = player => ({ ...player.profile, userId: player.id, username: player.username, elo: player.elo, modifiers: ONLINE_RULES, ...(player.bot ? { bot: true } : {}) });
     // 2v2: four seats in host order (p1, p3, p2, p4); seat 0 hosts the match.
     let squad = null;
     if (match.p3 && match.p4) {

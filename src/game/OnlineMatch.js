@@ -111,9 +111,26 @@ export class OnlineMatch {
   }
 
   async connectAssigned(match, profile, opponent, squad = null) {
-    if (squad) return this.connect(match.id, squad.localSeat === 0 ? 'host' : 'guest', profile, { matchId: match.id, opponent, squad });
+    if (squad) {
+      // Bot seats never say hello: the host (always a human) starts without them and moves them.
+      const botSeats = squad.seats.map((seat, index) => seat?.bot ? index : -1).filter(index => index > 0);
+      const code = await this.connect(match.id, squad.localSeat === 0 ? 'host' : 'guest', profile, { matchId: match.id, opponent, squad, botSeats });
+      if (squad.localSeat === 0 && botSeats.length === 3) this.startSquad();
+      return code;
+    }
+    if (opponent?.bot && match.p1 === profile.userId) return this.startBotMatch(match, profile, opponent);
     return this.connect(match.id, match.p1 === profile.userId ? 'host' : 'guest', profile, { matchId: match.id, opponent });
   }
+  // 1v1 against a bot: no peer to wait for; this client hosts and moves the bot.
+  async startBotMatch(match, profile, opponent) {
+    await this.leave(false);
+    this.assignment = { matchId: match.id, opponent, bot: true };
+    this.code = match.id; this.role = 'host'; this.profile = safeProfile(profile); this.closedByUser = false;
+    this.matched = true; this.matchId = match.id; this.opponent = { ...safeProfile(opponent), clientId: 'bot' };
+    this.handlers.onMatchStart?.({ role: 'host', localSide: 'left', modifiers: normalizeModifiers({}), opponent: { ...this.opponent, bot: true }, roomCode: this.code });
+    return this.code;
+  }
+  squadHumanSeats() { const bots = this.assignment?.botSeats || []; return [1, 2, 3].filter(seat => !bots.includes(seat)); }
 
   // ---- 2v2 (four peers, seat 0 hosts) ----------------------------------------
   squadSeatOf(userId) { return this.assignment?.squad?.seats.findIndex(seat => seat.userId === userId) ?? -1; }
@@ -134,7 +151,7 @@ export class OnlineMatch {
       if (this.role === 'host' && seat > 0) {
         if (message.resume?.matchId === this.assignment.matchId && !this.pendingResume) this.pendingResume = message.resume;
         if (this.matched) { this.sendStart(); return; }
-        if ([1, 2, 3].every(index => this.squadPeers.has(index))) this.startSquad();
+        if (this.squadHumanSeats().every(index => this.squadPeers.has(index))) this.startSquad();
       } else if (this.role === 'guest' && seat === 0) {
         this.opponent = { ...safeProfile(squad.seats[0]), clientId: message.clientId };
         this.markPeerReconnected();

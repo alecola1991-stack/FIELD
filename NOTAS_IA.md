@@ -4,6 +4,45 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-19 · Claude · Online: bots que completan las salas públicas tras 16 s de búsqueda
+**Commit:** rama `online-bots` (pendiente de pasar a main)
+**Archivos:** supabase/online-bots.sql (nuevo), supabase/online-bots-test.sql (nuevo), supabase/online-profiles-test.sql, src/game/OnlineBotAI.js (nuevo), src/game/Game.js, src/game/OnlineMatch.js, src/ui/OnlineHub.js, src/ui/UI.js, tests/OnlineBots.test.js (nuevo), tools/e2e-online/e2e.cjs, tools/e2e-online/README.md, README.md, NOTAS_IA.md
+**Qué y por qué:** Ale pidió bots en todos los modos online (rápido, Ranked y torneos; 1v1 y 2v2) cuando se lleva más de 16 s buscando partida. Decisiones de Ale: los bots cuentan ELO normal en Ranked, parecen jugadores reales (nada en el juego los distingue) y en 2v2 y torneos rellenan los huecos que falten. Tienen un ELO algo menor que el del jugador y nombres aleatorios (juan_3542, xx_messi11, PabloPedri7…), con equipos sobre todo de LaLiga. Juegan de forma más agresiva y menos predecible.
+**Cómo:**
+- SQL (`online-bots.sql`, versión 5 del RPC; se ejecuta DESPUÉS de `online-profiles.sql`):
+  - Tabla `players`:
+    - Nuevas columnas `is_bot` y `bot_profile`.
+    - Se quita la FK de `user_id` a `auth.users`, porque los bots no tienen cuenta. El trigger `players_auth_check` sigue exigiendo cuenta a los humanos, y `field_player_cleanup` (en `auth.users`) borra el jugador al borrar la cuenta.
+    - Los usernames de bots admiten mayúsculas y la unicidad ignora mayúsculas (`players_username_lower_idx`).
+  - Bots:
+    - `bot_name()` devuelve `{username, nombre corto}`.
+    - `bot_profile()` asigna dorsal y equipo: ~78 % LaLiga, el resto de Segunda o grandes europeos.
+    - `pick_bot(target)` reutiliza un bot libre a ±35 de ELO o crea uno con un historial Ranked creíble.
+    - `fill_with_bots(room)` usa como objetivo el ELO medio de los humanos menos 10–80, con un nivel parecido al del jugador.
+  - Comando `bots {lobbyId}`: solo en salas públicas en espera con al menos 15 s; las completa y llama a `launch_room`.
+  - `launch_room`: el anfitrión siempre es humano. En 1v1 los humanos van primero; en 2v2 el equipo izquierdo tiene un humano; los torneos con bots se sortean al azar.
+  - `advance_bracket`: humano contra bot pone al humano como p1; bot contra bot se resuelve al momento, con más probabilidad para el de mejor ELO.
+  - `report`: si un lado no tiene humanos, basta el informe del otro (en Ranked el ELO se mueve para todos, también para los bots).
+  - `poll`: un equipo con bot no pierde por inactividad.
+  - Revancha: los bots aceptan siempre.
+  - Ranking: los bots no aparecen. Búsqueda y perfiles: sí, sin distinguir mayúsculas.
+  - `room_data`: añade `bot` por jugador; lo usa el anfitrión para mover los bots.
+- Cliente:
+  - `OnlineHub.askForBots()` pide bots cuando la sala pública lleva 16 s esperando (`BOT_WAIT_MS`), solo si el RPC devuelve versión ≥ 5 (`supportsBots`).
+  - `OnlineMatch.connectAssigned`: contra un bot en 1v1 arranca al momento sin canal (`startBotMatch`). En 2v2 el anfitrión solo espera a los asientos humanos (`squadHumanSeats`, `assignment.botSeats`).
+  - `Game.setupOnlineBots()`: el anfitrión mueve los bots. En 1v1 usa `OnlineBotAI` (opción `opponentBot: {elo}`); en 2v2 usa `squad.botSeats` + `OnlineSquadBots`. Los bots saltan las repeticiones al momento.
+  - `OnlineBotAI.js` (nuevo): nivel según el ELO del bot (`botLevelFor`) y velocidad cercana a la humana (`botSpeedFor`). Cambia de actitud cada pocos segundos (presión alta, normal o esperar y saltar), con reacciones irregulares, cambios de ritmo y regates en zigzag. Varía los tiros: palos, disparos lejanos y tiros de fuego.
+- Probado:
+  - En Postgres 16 local, pasan todos los tests SQL (incluido el nuevo); la migración se puede ejecutar dos veces.
+  - Antes de escribirla comprobé que las 7 funciones de producción coinciden en md5 con las del repositorio.
+  - End-to-end con navegadores reales (escenarios nuevos `bots1v1`, `botsDuo`, `botsDuoMixed`, `botsTournament`): todo OK.
+  - Los escenarios 2v2 entre personas fallan solo en «todos ven la repetición», también con el código de main: es un fallo anterior.
+**Para el otro asistente:**
+- **HAY QUE EJECUTAR `supabase/online-bots.sql` en el SQL Editor de Supabase** (después de `online-profiles.sql`, que ya está en producción). Hasta entonces el cliente no pide bots y todo funciona como antes.
+- Si tocas `field_private.action`, parte de `online-bots.sql`, que pasa a ser la versión vigente.
+- Los bots son filas de `field_private.players` con `is_bot`: no los borres a mano si tienen partidos (`matches` los referencia).
+- El fallo de la repetición en los escenarios 2v2 del e2e queda pendiente de revisar.
+
 ## 2026-10-19 · Claude · Táctico: IA de equipo más natural (desmarques, apoyos, paredes, marcajes) y cambio de jugador estilo FIFA
 **Commit:** fusionado en main (rama `tactico-ia-equipo`, merge 04e8d73). Para deshacerlo: `git revert -m 1 04e8d73`
 **Archivos:** src/game/TeamTactics.js (nuevo), src/game/TacticalAI.js, src/game/Tactical.js, src/game/Game.js, index.html, tests/TacticalSwitch.test.js (nuevo), tests/Tactical3v3.test.js, tests/Tactical7v7.test.js, tests/TacticalDisputes.test.js, NOTAS_IA.md

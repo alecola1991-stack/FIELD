@@ -67,7 +67,7 @@ const state = player => evalIn(player, () => {
     score: [game.state.scorePlayer, game.state.scoreBot], countdown: game.countdown, replay: !!game.replay, authority: game.onlineAuthority,
     squad: game.squad ? game.squad.localSeat : null, lobby: hub.lobby && { id: hub.lobby.id, state: hub.lobby.state, kind: hub.lobby.kind, size: hub.lobby.size, champion: hub.lobby.champion, matches: hub.lobby.matches.map(m => ({ id: m.id, state: m.state, round: m.round, winner: m.winner })) },
     connected: hub.connectedMatchId, result: visible(ui.result_overlay), finishDisabled: ui.result_finish.disabled, finishText: ui.result_finish.textContent,
-    resultScore: ui.result_score?.textContent, onlineStatus: ui.result_online_status?.textContent, hubMessage: document.getElementById('online-hub-message')?.textContent,
+    resultScore: ui.result_score?.textContent, rematchStatus: ui.result_rematch_status?.textContent, onlineStatus: ui.result_online_status?.textContent, hubMessage: document.getElementById('online-hub-message')?.textContent,
     roomStatus: ui.online_status?.textContent, matched: window.__field.onlineMatch.matched, elo: hub.identity?.elo, connection: visible(ui.connection_banner) ? ui.connection_banner.textContent : '',
   };
 });
@@ -310,9 +310,28 @@ const scenarios = {
     check(await playOut(players, true), 'resultado visible');
     const done = await until(players, s => s.lobby?.state === 'finished' && !s.finishDisabled, 15000, 'confirmation');
     check(done && /Resultado confirmado · \d+ ELO · Victoria/.test(done[0].onlineStatus) && done[0].elo > before, `confirmado solo con tu informe y sube el ELO (${done?.[0].onlineStatus})`);
-    // Rematch: the bot accepts.
+    // Rematch: the bot accepts one time in three; otherwise it leaves the room.
     await evalIn(players[0], () => window.__field.ui.result_rematch.click());
-    check(await until(players, s => inGame(s) && s.connected !== done?.[0].connected, 20000, 'bot rematch'), 'el bot acepta la revancha');
+    const answer = await until(players, s => (inGame(s) && s.connected !== done?.[0].connected) || /ha salido de la sala/.test(s.rematchStatus || ''), 20000, 'bot rematch answer');
+    check(answer, `el bot contesta a la revancha (${answer && inGame(answer[0]) ? 'acepta' : 'se va'})`);
+    await leaveAll(players);
+    check(!errorsOf(players).length, `sin errores de página ${errorsOf(players).join(' | ')}`);
+    await closePlayers(players);
+  },
+
+  async botsQuit() {
+    note('▶ Bots: el bot abandona tras recibir un gol');
+    const players = await makePlayers(1, 'qq');
+    await openOnline(players[0]);
+    const before = (await state(players[0])).elo;
+    await action(players[0], 'queue', { kind: 'ranked', size: 2 });
+    check(await until(players, inGame, 40000, 'bot match'), 'partido contra un bot');
+    // Force the 1/20: the next goal against the bot makes it quit.
+    await evalIn(players[0], () => { const g = window.__field.game; g.botRandom = () => 0; g.countdown = 0; g.recordGoal(1); });
+    const after = await until(players, s => s.view === 'online' && s.lobby?.matches?.[0]?.state === 'finished', 20000, 'bot quit');
+    check(after && /abandonado/.test(after[0].hubMessage) && after[0].elo > before, `el partido acaba por abandono del bot y sube el ELO (${after?.[0].hubMessage}; ${before} → ${after?.[0].elo})`);
+    const gone = await evalIn(players[0], () => window.__field.ui.hub.lobby?.players.some(p => p.bot && p.active === false));
+    check(gone, 'el bot sale de la sala');
     await leaveAll(players);
     check(!errorsOf(players).length, `sin errores de página ${errorsOf(players).join(' | ')}`);
     await closePlayers(players);
@@ -513,7 +532,7 @@ const plans = {
   duoQuickPublic: () => scenarios.duo('quick', true), duoQuickPrivate: () => scenarios.duo('quick', false), duoRanked: () => scenarios.duo('ranked', true),
   tour4: () => scenarios.tournament(4, true), tour6: () => scenarios.tournament(6, true), tour8: () => scenarios.tournament(8, false),
   reconnect: () => scenarios.reconnect(), duoReconnect: () => scenarios.duoReconnect(),
-  bots1v1: () => scenarios.bots1v1(), botsDuo: () => scenarios.botsDuo(1), botsDuoMixed: () => scenarios.botsDuo(2), botsTournament: () => scenarios.botsTournament(),
+  bots1v1: () => scenarios.bots1v1(), botsQuit: () => scenarios.botsQuit(), botsDuo: () => scenarios.botsDuo(1), botsDuoMixed: () => scenarios.botsDuo(2), botsTournament: () => scenarios.botsTournament(),
 };
 
 (async () => {

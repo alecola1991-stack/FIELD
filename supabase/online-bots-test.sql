@@ -38,10 +38,13 @@ begin
  if r->'lobby'->>'state'<>'finished' or r->'lobby'->'matches'->0->>'state'<>'finished' then raise exception 'Report did not settle: %',r->'lobby'; end if;
  execute 'reset role'; select elo into human_elo from field_private.players where user_id=ids[1];
  if human_elo<=500 or (select elo from field_private.players where user_id=bot)>=bot_elo then raise exception 'ELO did not move'; end if; execute 'set local role authenticated';
- -- Rematch: the bot accepts at once.
+ -- Rematch: the bot accepts at once (version 5) or answers once, accepting or leaving (version 6).
  r:=public.field_online('rematch',jsonb_build_object('lobbyId',room));
- if r->'lobby'->>'state'<>'playing' or r->'lobby'->>'id'=room::text or (r->'lobby'->'matches'->0->>'p1')::uuid<>ids[1] then raise exception 'Bot rematch failed: %',r->'lobby'; end if;
- perform public.field_online('leave',jsonb_build_object('lobbyId',(r->'lobby'->>'id')::uuid));
+ if r->'lobby'->>'id'<>room::text then
+  if r->'lobby'->>'state'<>'playing' or (r->'lobby'->'matches'->0->>'p1')::uuid<>ids[1] then raise exception 'Bot rematch failed: %',r->'lobby'; end if;
+  perform public.field_online('leave',jsonb_build_object('lobbyId',(r->'lobby'->>'id')::uuid));
+ elsif (r->>'version')::int<6 or not exists(select 1 from jsonb_array_elements(r->'lobby'->'players') x where (x->>'bot')::boolean and not (x->>'active')::boolean) then raise exception 'Bot neither accepted nor left: %',r->'lobby';
+ end if;
 
  -- Names: unique ignoring case; search finds bots, the leaderboard does not list them.
  perform set_config('request.jwt.claim.sub',ids[4]::text,true);

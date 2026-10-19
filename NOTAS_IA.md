@@ -4,6 +4,32 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-20 · Claude · Online: bots más naturales (presión en su campo, paredes con la banda) y comportamiento humano (abandonos, revancha, repeticiones)
+**Commit:** rama `online-bots-naturales` (pendiente de pasar a main)
+**Archivos:** supabase/online-bots-2.sql (nuevo), supabase/online-bots-2-test.sql (nuevo), supabase/online-bots-test.sql, src/game/OnlineBotAI.js, src/game/Game.js, src/ui/OnlineHub.js, src/app.js, tests/OnlineBots.test.js, tools/e2e-online/e2e.cjs, tools/e2e-online/README.md, README.md, NOTAS_IA.md
+**Qué y por qué:** Ale pidió que los bots del online se comporten de forma más natural: salir a presionar en su campo tapando la línea del balón a la portería e intentar regatear rebotando el balón en la pared en el centro del campo y en las esquinas. También pidió probabilidades: abandonar tras recibir un gol (1/20) o tras marcar (1/50), aceptar la revancha (1/3), saltar la repetición si recibe un gol (2/3) y dejarla correr si marca (2/3).
+**Cómo:**
+- `OnlineBotAI` (1v1), reescrito:
+  - Defensa: con el balón del humano en su campo (o retenido parado más de 1,6 s) se coloca en la línea balón–portería, cerca del balón, y entra a por él a ratos. Con el balón en el campo del humano espera cerca del medio, en esa misma línea.
+  - Ataque: si el humano le tapa en el centro del campo o en una esquina, juega el balón contra la banda del lado contrario al defensor (`behavior: 'wall'`, `power` < 1) y corre a por el rebote (`chase`).
+  - Estados de ánimo: `eager`, `calm` y `pounce` (antes había presión alta).
+  - Game respeta `decision.power` en las patadas del bot.
+- `OnlineSquadBots` (2v2): presionan solo en su campo y tapando la línea a su portería.
+- `Game.maybeBotQuits(side)` decide el abandono tras cada gol (1/20 si encaja, 1/50 si marca), solo si todo el lado rival son bots y somos el anfitrión. Si toca, llama al hook `onBotQuit`, que pasa a `hub.botQuit()` → RPC `bot_leave`. El partido acaba como cualquier abandono («el rival ha abandonado… ¡Victoria!»).
+- Repeticiones: `startReplay` crea `replay.botSkips`: cada bot salta con probabilidad 2/3 si su equipo encajó y 1/3 si marcó, tras 0,4–2 s. `updateReplay` aplica esos saltos. El azar sale de `game.botRandom`, que los tests sustituyen.
+- SQL `online-bots-2.sql` (versión 6; solo cambia `field_private.action`, partiendo de `online-bots.sql`):
+  - Revancha: los bots de la sala contestan una vez; aceptan con probabilidad 1/3 y, si no, salen de la sala (`active=false`), así que el cliente muestra «@x ha salido de la sala».
+  - Nuevo comando `bot_leave {lobbyId, matchId}`: solo lo puede usar el anfitrión (equipo izquierdo) y solo si el lado rival no tiene personas. Ese lado pierde 5-0 (el ELO Ranked se mueve como en cualquier abandono) y sus bots salen de la sala.
+  - El cliente solo hace abandonar a los bots con versión ≥ 6 (`supportsBotQuit`). Con la 5, la revancha sigue aceptándose siempre.
+- Probado:
+  - Tests SQL en local: todos en verde, incluido `online-bots-2-test.sql`, que comprueba que unas 15 de 45 revanchas se aceptan.
+  - 215 tests del juego.
+  - End-to-end con navegadores reales: `bots1v1`, `botsQuit` (nuevo), `botsDuo` y `botsTournament` OK.
+  - Simulación: el bot se coloca entre el balón y su portería el 84–93 % del tiempo que defiende y hace varias paredes con la banda cada 3 minutos.
+**Para el otro asistente:**
+- **HAY QUE EJECUTAR `supabase/online-bots-2.sql` en el SQL Editor** (después de `online-bots.sql`, ya aplicado). Hasta entonces los bots no abandonan y aceptan siempre la revancha.
+- Si tocas `field_private.action`, parte de `online-bots-2.sql`.
+
 ## 2026-10-19 · Claude · Online: bots que completan las salas públicas tras 16 s de búsqueda
 **Commit:** fusionado en main (rama `online-bots`, merge 74a0a95). Para deshacerlo: `git revert -m 1 74a0a95`
 **Archivos:** supabase/online-bots.sql (nuevo), supabase/online-bots-test.sql (nuevo), supabase/online-profiles-test.sql, src/game/OnlineBotAI.js (nuevo), src/game/Game.js, src/game/OnlineMatch.js, src/ui/OnlineHub.js, src/ui/UI.js, tests/OnlineBots.test.js (nuevo), tools/e2e-online/e2e.cjs, tools/e2e-online/README.md, README.md, NOTAS_IA.md

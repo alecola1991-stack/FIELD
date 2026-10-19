@@ -24,6 +24,7 @@ const game = new Game(document.querySelector('#game-canvas'), ui.settings, sound
   onOnlineSnapshot: snapshot => onlineMatch.sendSnapshot(snapshot),
   onReplay: info => ui.updateReplay(info),
   onReplaySkip: () => onlineMatch.sendReplaySkip(),
+  onBotQuit: () => ui.hub?.botQuit(),
 });
 ui.attach(game, sound, accountService, onlineMatch);
 // Development only (stripped from production builds): lets end-to-end tests drive the game.

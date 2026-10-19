@@ -4,7 +4,8 @@ import { WORLD } from '../src/config/settings.js';
 import { Ball } from '../src/game/Ball.js';
 import { Player } from '../src/game/Player.js';
 import { Possession, TACTICAL } from '../src/game/Tactical.js';
-import { TacticalAI, TeamAI, TACTICAL_AI_LEVELS } from '../src/game/TacticalAI.js';
+import { TacticalAI, TACTICAL_AI_LEVELS } from '../src/game/TacticalAI.js';
+import { TeamAI } from '../src/game/TeamTactics.js';
 
 const same = (a, b) => a === b;
 

@@ -4,6 +4,21 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-19 · Claude · Táctico: IA de equipo más natural (desmarques, apoyos, paredes, marcajes) y cambio de jugador estilo FIFA
+**Commit:** rama `tactico-ia-equipo` (pendiente de pasar a main)
+**Archivos:** src/game/TeamTactics.js (nuevo), src/game/TacticalAI.js, src/game/Tactical.js, src/game/Game.js, index.html, tests/TacticalSwitch.test.js (nuevo), tests/Tactical3v3.test.js, tests/Tactical7v7.test.js, tests/TacticalDisputes.test.js, NOTAS_IA.md
+**Qué y por qué:** Ale veía el movimiento de las IAs muy artificial y coordinado, y quería que se pasaran el balón para superar rivales y marcar. También pidió controlar al compañero que tiene el balón y cambiar de jugador con el botón de pase sin balón, como en FIFA.
+**Cómo:**
+- Nuevo `src/game/TeamTactics.js` con `SquadTactics extends TacticalAI`, la IA común de 2v2, 3v3 y 7v7 Táctico. `DuoAI`, `TeamAI` y `SevenAI` son la misma IA con distinta formación. **TeamAI, SevenAI, SEVEN_ROLES, SEVEN_SPOTS y SEVEN_KICKOFF se han movido aquí desde TacticalAI.js**, que ahora solo tiene la IA del 1v1 y las utilidades (`decide`, `attack`, `shoot`, `passLane`…).
+- Cada jugador tiene su carácter (`persona`: reacción, ritmo, hábitos de anchura y profundidad, atrevimiento, ganas de desmarcarse) y su reloj para repensar la posición. Nota los cambios de posesión con retraso y gira en curva (`smooth`).
+- Organización por equipo (`organise`): un presionador con histéresis, un jugador de cobertura y marcajes asignados cada ~0,8 s. La cobertura entra al balón cerca del área o si el presionador ya está superado.
+- Ataque sin balón (`supportPoint`): desmarques hacia el espacio, apoyos en ángulo con línea de pase limpia cuando presionan al conductor y separación entre compañeros. Con balón (`carry`/`bestOption`/`pass`): compara cada pase con seguir conduciendo; pasa para superar la presión, hace paredes (el que pasa corre a por la devolución), filtra a los que corren y chuta con línea de tiro despejada. Los receptores van a por el pase (`incoming`).
+- `tacticalPass` admite `firm`: la IA pasa más tenso (el pase humano no cambia). En modos de equipo la velocidad de la IA se acerca a la del jugador (`SquadTactics.config`).
+- Cambio de jugador (Game.js): `canSwitch()`, `switchControl(seat)`, `autoSwitch()` y `switchToBest()`. Pasas a manejar al compañero que gana el balón. E / ✕ sin balón cambia al compañero más cercano al balón (al portero solo si el balón está cerca de nuestra portería). En cada saque vuelves a tu jugador (asiento 0). El enfriamiento del tiro de fuego va con el humano. `squad.ai.update(bodies, ball, dt, controlled)` omite el asiento controlado. `squad.autopilot = true` hace que la IA lleve también ese asiento (lo usan las simulaciones y los tests).
+- La protección tras el saque solo cuenta mientras el equipo que sacó tiene el balón, con un máximo de 4 s.
+- Ayudas de controles: «E pase · cambiar» y la nota de jugabilidad en Ajustes.
+**Para el otro asistente:** importa las IAs de equipo desde `TeamTactics.js`, no desde `TacticalAI.js`. Online y Arcade no cambian. En simulación, un humano que presiona todo y corre recto a portería sigue ganando con claridad, porque el jugador controlado va a 305 y la IA a ~250-300. Si en partidos reales se nota fácil, ajustar `SquadTactics.config` o los porteros.
+
 ## 2026-10-19 · Claude · Táctico: modo 7 contra 7 con cámara y saque de centro en 3v3 / 7v7
 **Commit:** fusionado en main (rama `tactico-7v7`, merge 9b521b0). Para deshacerlo: `git revert -m 1 9b521b0`
 **Archivos:** src/game/Game.js, src/game/TacticalAI.js, src/game/Renderer.js, src/ui/UI.js, src/styles.css, tests/Tactical7v7.test.js, NOTAS_IA.md

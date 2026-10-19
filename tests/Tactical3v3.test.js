@@ -7,7 +7,7 @@ import { Player } from '../src/game/Player.js';
 import { Game } from '../src/game/Game.js';
 import { GameState } from '../src/game/GameState.js';
 import { BotAI } from '../src/game/BotAI.js';
-import { TeamAI } from '../src/game/TacticalAI.js';
+import { TeamAI } from '../src/game/TeamTactics.js';
 import { curvedPassAim } from '../src/game/Tactical.js';
 
 function fixture(gameplay = 'tactical') {

@@ -4,6 +4,17 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-20 · Claude · Escudos en el marcador y en la presentación previa al partido
+**Commit:** rama `escudos-partido` (pendiente de pasar a main)
+**Archivos:** src/ui/UI.js, src/styles.css, NOTAS_IA.md
+**Qué y por qué:** Ale pidió que los escudos aparezcan también en los avisos antes de los partidos y en el marcador.
+**Cómo:**
+- Marcador: los puntos de color `#player-dot` y `#opponent-dot` dibujan el escudo con el nuevo `UI.setScoreCrest(node, team, fallback)`. Sin equipo, por ejemplo el rival en entrenamiento, se mantiene el punto de color. En 2v2 online se usa el equipo del capitán.
+- Presentación (`renderMatchPresentation`): cada lado muestra el escudo (`.intro-crest`) junto a la miniatura de la equipación, dentro de `.intro-badges`.
+- CSS al final de styles.css: `.score-team i.has-crest` (24×30, 18×22 en móvil), `.intro-crest` (78×97, 52×64 en móvil).
+- Revisado en el navegador a 1366×768 y 390×844.
+**Para el otro asistente:** nada especial; usa `crestSVG` como en el resto de escudos.
+
 ## 2026-10-20 · Claude · Escudos propios para todos los equipos (plantillas combinables)
 **Commit:** fusionado en main (rama `escudos`, merge 512e72b). Para deshacerlo: `git revert -m 1 512e72b`
 **Archivos:** src/config/crests.js (nuevo), src/ui/UI.js, src/ui/CareerScreen.js, src/ui/OnlineHub.js, src/styles.css, tests/Crests.test.js (nuevo), NOTAS_IA.md

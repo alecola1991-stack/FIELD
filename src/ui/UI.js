@@ -1476,8 +1476,10 @@ export class UI {
     if (snapshot) this.game.restoreSnapshot(snapshot);
     this.trajectory_toggle.checked = this.game.trajectory; this.trajectory_enabled.checked = this.game.trajectory;
     this.hud_player_name.classList.remove('ranked-stack'); this.hud_opponent_name.classList.remove('ranked-stack');
-    this.hud_player_name.textContent = this.settings.name.toUpperCase(); this.player_dot.style.background = (options.playerTeam || getTeamById(this.settings.teamId))?.primary || '#68746e';
-    this.opponent_dot.style.background = options.opponentTeam?.primary || '#f19676';
+    this.hud_player_name.textContent = this.settings.name.toUpperCase();
+    // Scoreboard: each side shows its team crest (a colour dot when there is no team, e.g. training).
+    this.setScoreCrest(this.player_dot, options.playerTeam || getTeamById(this.settings.teamId), '#68746e');
+    this.setScoreCrest(this.opponent_dot, mode === 'training' ? null : options.opponentTeam, '#f19676');
     this.hud_opponent_name.textContent = mode === 'training' ? 'PRÁCTICA' : (options.opponentName || 'BOT');
     // 100 % reward: golden name online and golden name/number on the kit with any team.
     const gold = this.goldUnlocked();
@@ -1503,6 +1505,13 @@ export class UI {
     this.updatePowerCooldown(this.game.player?.powerCooldown || 0); this.saveCurrentCompetition();
   }
 
+  setScoreCrest(node, team, fallback) {
+    if (!node) return;
+    node.classList.toggle('has-crest', !!team);
+    node.innerHTML = team ? crestSVG(team) : '';
+    node.style.background = team ? '' : fallback;
+  }
+
   renderMatchPresentation(mode, options, animate = true) {
     const profiles = [
       { team: options.playerTeam || getTeamById(this.settings.teamId), player: this.game.player, level: this.progression.level },
@@ -1524,9 +1533,13 @@ export class UI {
       const card = document.createElement('div'); card.className = 'intro-team';
       const circle = document.createElement('span'); circle.className = 'match-team-preview';
       this.paintPlayerPreview(circle, profile.team, { name: profile.player?.name || 'RIVAL', number: profile.player?.number ?? 10 });
+      // Crest and kit side by side.
+      const badges = document.createElement('div'); badges.className = 'intro-badges';
+      if (profile.team) { const crest = document.createElement('span'); crest.className = 'intro-crest'; crest.innerHTML = crestSVG(profile.team); badges.append(crest); }
+      badges.append(circle);
       const team = document.createElement('b'); team.textContent = profile.team?.name || 'RIVAL';
       const name = document.createElement('span'); name.textContent = `${profile.player?.name || 'RIVAL'} · #${profile.player?.number ?? 10}`;
-      card.append(circle, team, name);
+      card.append(badges, team, name);
       if (mode === 'online') { const level = document.createElement('small'); level.textContent = `NIVEL ${profile.level}`; card.append(level); }
       row.append(card);
     });
@@ -1656,7 +1669,7 @@ export class UI {
     const rivals = squad ? people(squad.localSeat < 2 ? [2, 3] : [0, 1]) : [{ name: other.username || other.name || 'rival', elo: other.elo }];
     this.setRankedNames(this.hud_player_name, mine, ''); this.setRankedNames(this.hud_opponent_name, rivals, '');
     this.currentMatchOptions.rankedNames = { player: mine, opponent: rivals };
-    if (teamExtras.playerTeam) this.player_dot.style.background = teamExtras.playerTeam.primary;
+    if (teamExtras.playerTeam) this.setScoreCrest(this.player_dot, teamExtras.playerTeam, '#68746e');
     // Reconnected or reloaded host: continue from the last known score and time.
     const resume = info.resume || (info.role === 'host' && this.lastOnlineResume?.matchId === this.onlineMatch?.assignment?.matchId ? this.lastOnlineResume : null);
     if (info.role === 'host' && resume && this.game.applyResume(resume)) this.hub?.message('Partido reanudado.');

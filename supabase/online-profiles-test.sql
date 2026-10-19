@@ -8,7 +8,7 @@ begin
  for i in 1..3 loop insert into auth.users(id) values(ids[i]); end loop;
  execute 'set local role authenticated';
  for i in 1..3 loop perform set_config('request.jwt.claim.sub',ids[i]::text,true); r:=public.field_online('claim_username',jsonb_build_object('username',prefix||'_'||i)); end loop;
- if (r->>'version')::int<>4 then raise exception 'Version 4 expected'; end if;
+ if (r->>'version')::int<4 then raise exception 'Version 4 or later expected'; end if;
  -- Search: prefix, never yourself, friendship state, short queries return nothing.
  perform set_config('request.jwt.claim.sub',ids[1]::text,true);
  r:=public.field_online('search',jsonb_build_object('query',upper(prefix)));

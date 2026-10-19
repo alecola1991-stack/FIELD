@@ -38,7 +38,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
   - End-to-end con navegadores reales (escenarios nuevos `bots1v1`, `botsDuo`, `botsDuoMixed`, `botsTournament`): todo OK.
   - Los escenarios 2v2 entre personas fallan solo en «todos ven la repetición», también con el código de main: es un fallo anterior.
 **Para el otro asistente:**
-- **HAY QUE EJECUTAR `supabase/online-bots.sql` en el SQL Editor de Supabase** (después de `online-profiles.sql`, que ya está en producción). Hasta entonces el cliente no pide bots y todo funciona como antes.
+- **`supabase/online-bots.sql` YA ESTÁ APLICADO en producción.** Ale lo ejecutó el 2026-10-20. Claude lo verificó con consultas de solo lectura: las 14 funciones de `field_private` coinciden en md5 con las de la migración probada en local, y las columnas, restricciones, índices, triggers y permisos son correctos. No hay que volver a ejecutarlo.
 - Si tocas `field_private.action`, parte de `online-bots.sql`, que pasa a ser la versión vigente.
 - Los bots son filas de `field_private.players` con `is_bot`: no los borres a mano si tienen partidos (`matches` los referencia).
 - El fallo de la repetición en los escenarios 2v2 del e2e queda pendiente de revisar.

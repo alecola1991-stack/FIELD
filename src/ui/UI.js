@@ -3,7 +3,7 @@ import { rankBadge, rankIconSvg } from './RankIcon.js';
 import { ProfileSocial } from './ProfileSocial.js';
 import { rankFor, rankJourney, rankProgress, rankIndex, RANKS } from '../config/ranks.js';
 import { selectionFor, cycleTeamSelection, teamAbbreviation } from './TeamSelection.js';
-import { crestSVG } from '../config/crests.js';
+import { crestSVG, contrast } from '../config/crests.js';
 import { GamepadController } from '../game/GamepadController.js';
 import { OnlineHub } from './OnlineHub.js';
 import { MODIFIER_OPTIONS, DEFAULT_MODIFIERS, normalizeModifiers, modifiersAreDefault, formatModifier } from '../config/modifiers.js';
@@ -71,7 +71,7 @@ export class UI {
   cacheElements() {
     const ids = [
       'player-name','player-number','preview-name','preview-number','preview-ball','preview-team','saved-note','save-player',
-      'difficulty','play-difficulty','settings-difficulty','sound-enabled','volume','volume-value','score','timer','hud-player-name','hud-opponent-name','player-dot','opponent-dot',
+      'difficulty','play-difficulty','settings-difficulty','sound-enabled','volume','volume-value','score','timer','hud-player-name','hud-opponent-name','player-dot','opponent-dot','score-bug','hud-player-code','hud-opponent-code',
       'goal-banner','countdown-banner','pause-overlay','result-overlay','rank-overlay','result-eyebrow','result-title','result-copy','result-xp','result-level','result-xp-fill',
       'result-next','result-finish','result-rematch-status','result-scoreboard','result-home-crest','result-home-team','result-home-player','result-home-goals','result-away-crest','result-away-team','result-away-player','result-away-goals','result-score','result-duration','result-timeline','tournament-bracket-panel','tournament-bracket-title','tournament-bracket','result-rematch','result-online-status','result-stats','result-stat-duration','result-stat-goals','result-stat-shots','result-trophy','result-season-summary','league-standings-panel','league-standings-title','league-standings-body','connection-banner','replay-banner','replay-status','replay-skip','leaderboard-message','leaderboard-list','leaderboard-refresh','training-tools','trajectory-toggle','mode-label','game-canvas','level-value','xp-label','wins-label','xp-fill','missions-list',
       'team-position','league-competition','league-competition-summary','country-tabs','countries-prev','countries-next','country-position','league-tabs','team-grid','teams-prev','teams-next','chosen-team-label','tournament-roster',
@@ -1478,8 +1478,9 @@ export class UI {
     this.hud_player_name.classList.remove('ranked-stack'); this.hud_opponent_name.classList.remove('ranked-stack');
     this.hud_player_name.textContent = this.settings.name.toUpperCase();
     // Scoreboard: each side shows its team crest (a colour dot when there is no team, e.g. training).
-    this.setScoreCrest(this.player_dot, options.playerTeam || getTeamById(this.settings.teamId), '#68746e');
-    this.setScoreCrest(this.opponent_dot, mode === 'training' ? null : options.opponentTeam, '#f19676');
+    this.setBugTeam('home', options.playerTeam || getTeamById(this.settings.teamId), '#68746e', 'LOC');
+    this.setBugTeam('away', mode === 'training' ? null : options.opponentTeam, '#f19676', mode === 'training' ? 'ENT' : 'VIS');
+    this.lastScore = null; this.score_bug.classList.remove('enter'); void this.score_bug.offsetWidth; this.score_bug.classList.add('enter');
     this.hud_opponent_name.textContent = mode === 'training' ? 'PRÁCTICA' : (options.opponentName || 'BOT');
     // 100 % reward: golden name online and golden name/number on the kit with any team.
     const gold = this.goldUnlocked();
@@ -1505,6 +1506,15 @@ export class UI {
     this.updatePowerCooldown(this.game.player?.powerCooldown || 0); this.saveCurrentCompetition();
   }
 
+  // Broadcast-style scoreboard: crest and three-letter code on the team colour for each side.
+  setBugTeam(side, team, fallback, code) {
+    const home = side === 'home';
+    this.setScoreCrest(home ? this.player_dot : this.opponent_dot, team, fallback);
+    (home ? this.hud_player_code : this.hud_opponent_code).textContent = team ? scoreCode(team.name) : code;
+    const color = team?.primary || fallback, ink = contrast(color, '#FFFFFF') >= 2.2 ? '#FFFFFF' : '#0B1220';
+    this.score_bug.style.setProperty(`--${side}-color`, color); this.score_bug.style.setProperty(`--${side}-ink`, ink);
+    this.score_bug.style.setProperty(`--${side}-accent`, team?.secondary || team?.tertiary || '#FFFFFF');
+  }
   setScoreCrest(node, team, fallback) {
     if (!node) return;
     node.classList.toggle('has-crest', !!team);
@@ -1593,7 +1603,21 @@ export class UI {
     this.modifierResume = false;
   }
 
-  updateScore(player, bot) { this.score.innerHTML = `${player} <small>:</small> ${bot}`; }
+  // Score: a goal makes the scorer's number pop and their side of the scoreboard flash.
+  updateScore(player, bot) {
+    const goals = this.score.querySelectorAll('.bug-goals');
+    if (goals.length < 2) { this.score.innerHTML = '<span class="bug-goals home"></span><span class="bug-sep">-</span><span class="bug-goals away"></span>'; return this.updateScore(player, bot); }
+    goals[0].textContent = player; goals[1].textContent = bot;
+    this.score.setAttribute('aria-label', `${player} a ${bot}`);
+    const previous = this.lastScore; this.lastScore = [player, bot];
+    if (!previous || (player <= previous[0] && bot <= previous[1])) return;
+    const side = player > previous[0] ? 'home' : 'away', bug = this.score_bug;
+    clearTimeout(this.goalFlashTimer);
+    bug.classList.remove('goal-home', 'goal-away'); goals.forEach(node => node.classList.remove('pop'));
+    void bug.offsetWidth;
+    bug.classList.add(`goal-${side}`); goals[side === 'home' ? 0 : 1].classList.add('pop');
+    this.goalFlashTimer = setTimeout(() => { bug.classList.remove('goal-home', 'goal-away'); goals.forEach(node => node.classList.remove('pop')); }, 2400);
+  }
   updateTime(time) { if (this.timer.textContent !== time) this.timer.textContent = time; }
   updatePowerCooldown(seconds) {
     const total = this.game?.modifiers?.powerCooldown || 20;
@@ -1669,7 +1693,7 @@ export class UI {
     const rivals = squad ? people(squad.localSeat < 2 ? [2, 3] : [0, 1]) : [{ name: other.username || other.name || 'rival', elo: other.elo }];
     this.setRankedNames(this.hud_player_name, mine, ''); this.setRankedNames(this.hud_opponent_name, rivals, '');
     this.currentMatchOptions.rankedNames = { player: mine, opponent: rivals };
-    if (teamExtras.playerTeam) this.setScoreCrest(this.player_dot, teamExtras.playerTeam, '#68746e');
+    if (teamExtras.playerTeam) this.setBugTeam('home', teamExtras.playerTeam, '#68746e', 'LOC');
     // Reconnected or reloaded host: continue from the last known score and time.
     const resume = info.resume || (info.role === 'host' && this.lastOnlineResume?.matchId === this.onlineMatch?.assignment?.matchId ? this.lastOnlineResume : null);
     if (info.role === 'host' && resume && this.game.applyResume(resume)) this.hub?.message('Partido reanudado.');
@@ -2415,4 +2439,13 @@ function leagueTierLabel(id) {
 function formatMatchDuration(seconds) {
   const value = Math.max(0, Math.floor(Number(seconds) || 0));
   return `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
+}
+
+// Three-letter broadcast code: "Real Madrid" → RMA, "Barcelona" → BAR, "Manchester City" → MCI,
+// "Paris Saint-Germain" → PSG (accents removed).
+function scoreCode(name) {
+  const plain = String(name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+(CF|FC|SC|AC|CD|SD|UD)$/i, '');
+  const words = (plain.match(/[A-Za-z0-9]+/g) || []).filter(word => !/^(de|del|la|las|los|el|the|and|of|fc|cf|ac|sc|cd|club)$/i.test(word));
+  const code = words.length === 2 ? words[0][0] + words[1].slice(0, 2) : words.length > 2 ? words.map(word => word[0]).join('').slice(0, 3) : (words[0] || 'EQU').slice(0, 3);
+  return code.toUpperCase().padEnd(3, code.slice(-1).toUpperCase() || 'X');
 }

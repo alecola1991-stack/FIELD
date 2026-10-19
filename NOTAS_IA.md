@@ -4,6 +4,33 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-20 · Claude · Marcador estilo retransmisión (grandes ligas) con efectos y nombres a los lados
+**Commit:** rama `escudos-partido` (pendiente de pasar a main)
+**Archivos:** index.html, src/ui/UI.js, src/styles.css, NOTAS_IA.md
+**Qué y por qué:** Ale pidió mejorar el marcador con el formato de las grandes ligas, añadirle efectos y sacar los nombres de los jugadores a la izquierda y a la derecha, fuera del marcador.
+**Cómo:**
+- HTML del encabezado de partido: `.scoreboard` pasa a ser [nombre local] [`#score-bug`] [nombre visitante]. `#score-bug` contiene:
+  - `.bug-side.home`: `#player-dot` con el escudo y `#hud-player-code`.
+  - `#score.bug-score`: `.bug-goals` local - visitante.
+  - `.bug-side.away`: `#hud-opponent-code` y `#opponent-dot`.
+  - `.bug-clock`: punto de «en directo» y `#timer`, que se mueve aquí desde `.game-tools`, donde ahora solo queda pausa.
+  - Se mantienen todos los ids anteriores (`score`, `timer`, `player-dot`, `opponent-dot`, `hud-player-name`, `hud-opponent-name`, `online-*-details`).
+- UI.js:
+  - `setBugTeam(side, team, fallback, code)` pone el escudo, el código de tres letras (`scoreCode()`, p. ej. RMA, BAR, MCI, PSG) y las variables CSS `--home/away-color`, `-ink` y `-accent`.
+  - `updateScore` rellena `.bug-goals`. Si un número sube, añade `goal-home`/`goal-away` al marcador y `pop` al número durante 2,4 s.
+  - Al empezar un partido se reinicia `lastScore` y se repite la animación `enter`.
+- Efectos en CSS (al final de styles.css):
+  - Entrada del marcador (cae y se abren los lados).
+  - Brillo que recorre el marcador cada 9 s.
+  - Punto «en directo» que late.
+  - Gol: el lado que marca destella 4 veces, el brillo pasa dos veces y el número salta.
+  - Se respeta `prefers-reduced-motion`.
+- Responsive:
+  - ≤ 700 px: marcador más compacto.
+  - ≤ 420 px: se ocultan los códigos y el punto.
+  - Escritorio: el centro del encabezado es más ancho para que los nombres quepan enteros.
+**Para el otro asistente:** el resultado ya no es texto plano en `#score`: usa `ui.updateScore(local, visitante)`. Los nombres van en `.score-team .hud-identity` (el local alineado a la derecha y el visitante a la izquierda, junto al marcador).
+
 ## 2026-10-20 · Claude · Escudos en el marcador y en la presentación previa al partido
 **Commit:** rama `escudos-partido` (pendiente de pasar a main)
 **Archivos:** src/ui/UI.js, src/styles.css, NOTAS_IA.md

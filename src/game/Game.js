@@ -9,7 +9,8 @@ import { Renderer } from './Renderer.js';
 import { GameState } from './GameState.js';
 import { getTeamById } from '../config/teams.js';
 import { Possession, TACTICAL, tacticalShot, tacticalPass } from './Tactical.js';
-import { TacticalAI, TeamAI, SevenAI, SEVEN_ROLES, SEVEN_KICKOFF } from './TacticalAI.js';
+import { TacticalAI } from './TacticalAI.js';
+import { DuoAI, TeamAI, SevenAI, SEVEN_ROLES, SEVEN_KICKOFF, TRIO_ROLES, DUO_ROLES } from './TeamTactics.js';
 import { kickBall, curveSide, dribbleAssist, canKickBall, resolveBallNet, resolveBallWalls, resolvePlayerBall, resolvePlayerPlayers, resolvePlayerWalls, isGoal } from './Physics.js';
 
 // 7 contra 7: pitch 90 % bigger than the 1v1 one (same goals); the view follows the play.
@@ -613,8 +614,9 @@ export class Game {
     human.isBot = false;
     this.squad.offline = true;
     const aiOptions = { difficulty: this.botAI.difficulty || difficulty, rivalStars: opponentTeam?.stars || 3, mateStars: team?.stars || 3, ...(mateLevel ? { mateLevel } : {}) };
-    // Táctico gameplay: rivals and teammate play with sticky possession (carry, press, shoot past halfway).
-    this.squad.ai = this.possession ? Object.assign(new TacticalAI(aiOptions), { possession: this.possession }) : new SquadAI(aiOptions);
+    // Táctico gameplay: rivals and teammate play with sticky possession (team AI shared with 3v3 / 7v7).
+    if (this.possession) this.squad.roles = [...DUO_ROLES, ...DUO_ROLES];
+    this.squad.ai = this.possession ? Object.assign(new DuoAI(aiOptions), { possession: this.possession }) : new SquadAI(aiOptions);
   }
   // Is this seat on the left team (attacking the right goal)?
   leftSeat(seat) { return seat < (this.squad?.teamSize || 2); }
@@ -655,7 +657,7 @@ export class Game {
     if (team) for (const body of bodies.slice(0, 3)) Object.assign(body, kit(team));
     for (const body of bodies.slice(1)) { body.isBot = true; body.maxSpeed = 280; }
     bodies[0].isBot = false;
-    this.squad.offline = true; this.squad.roles = ['forward', 'mid', 'keeper', 'forward', 'mid', 'keeper'];
+    this.squad.offline = true; this.squad.roles = [...TRIO_ROLES, ...TRIO_ROLES];
     this.squad.ai = Object.assign(new TeamAI({ difficulty: this.botAI.difficulty || difficulty, rivalStars: opponentTeam?.stars || 3, mateStars: team?.stars || 3, ...(mateLevel ? { mateLevel } : {}) }), { possession: this.possession });
   }
   // ---- 7 contra 7 (Táctico) --------------------------------------------------
@@ -700,16 +702,17 @@ export class Game {
   }
   holdKickoff(dt) {
     // Just after the kick-off the team that took it keeps the ball for a moment (no instant steal).
+    // The time only runs while one of them holds it (the receiver of the first pass is covered too).
     if (this.kickoffGrace) {
-      this.kickoffGrace.time -= dt;
       const holder = this.possession?.holder, seat = holder ? this.squad.bodies.indexOf(holder) : -1;
-      if (this.kickoffGrace.time <= 0 || (holder && this.leftSeat(seat) !== this.kickoffGrace.left)) this.kickoffGrace = null;
+      this.kickoffGrace.window -= dt; if (holder) this.kickoffGrace.time -= dt;
+      if (this.kickoffGrace.time <= 0 || this.kickoffGrace.window <= 0 || (holder && this.leftSeat(seat) !== this.kickoffGrace.left)) this.kickoffGrace = null;
       else if (holder && this.possession) this.possession.guard = Math.max(this.possession.guard || 0, dt * 2);
     }
     const kickoff = this.kickoff; if (!kickoff) return;
     const world = this.world || WORLD, cx = world.width / 2, cy = world.height / 2, radius = world.centerCircleRadius || 75;
     kickoff.time -= dt;
-    if (kickoff.time <= 0 || Math.hypot(this.ball.x - cx, this.ball.y - cy) > 12) { this.kickoff = null; this.kickoffGrace = { left: kickoff.left, time: KICKOFF_GRACE }; if (this.squad?.ai && 'kickoff' in this.squad.ai) this.squad.ai.kickoff = null; return; }
+    if (kickoff.time <= 0 || Math.hypot(this.ball.x - cx, this.ball.y - cy) > 12) { this.kickoff = null; this.kickoffGrace = { left: kickoff.left, time: KICKOFF_GRACE, window: 4 }; if (this.squad?.ai && 'kickoff' in this.squad.ai) this.squad.ai.kickoff = null; return; }
     this.squad.bodies.forEach((body, seat) => {
       if (this.leftSeat(seat) === kickoff.left) return;
       const side = this.leftSeat(seat) ? -1 : 1, gap = radius + body.radius;
@@ -720,6 +723,41 @@ export class Game {
       if (d < gap) { const k = gap / (d || 1); body.x = cx + (d ? dx * k : side * gap); body.y = cy + dy * (d ? k : 0); }
     });
   }
+  // ---- Player switching (Táctico, offline squads) -----------------------------------------------
+  // The human controls one body of the left team: their own player at kick-off, the teammate who wins
+  // the ball, or the one chosen with the pass button while not on the ball.
+  canSwitch() { return !!(this.possession && this.squad?.offline && !this.squad.autopilot && this.squad.bodies.length > 2); }
+  switchControl(seat) {
+    const squad = this.squad, next = squad.bodies[seat], previous = this.player;
+    if (!next || next === previous || !this.leftSeat(seat)) return false;
+    // The fire shot cooldown belongs to the human, not to the body.
+    next.powerCooldown = previous.powerCooldown; next.powerFlash = 0;
+    previous.isBot = true; next.isBot = false;
+    previous.maxSpeed = 280 * (previous.speedScale || 1); next.maxSpeed = 305 * (next.speedScale || 1);
+    squad.localSeat = seat; this.player = next;
+    squad.otherSeats = squad.bodies.map((_, index) => index).filter(index => index !== seat && index !== squad.botSeat);
+    this.others = squad.otherSeats.map(index => squad.bodies[index]);
+    squad.ai?.release?.(previous);
+    this.hooks.onSwitch?.(next);
+    return true;
+  }
+  autoSwitch() {
+    if (!this.canSwitch()) return;
+    const holder = this.possession.holder, seat = holder ? this.squad.bodies.indexOf(holder) : -1;
+    if (holder && holder !== this.player && seat >= 0 && this.leftSeat(seat)) this.switchControl(seat);
+  }
+  // Teammate closest to the ball (the keeper only when the ball is near our goal); never the current one.
+  switchToBest() {
+    const { bodies, roles } = this.squad, world = this.world || WORLD;
+    let best = -1, bestDistance = Infinity;
+    bodies.forEach((body, seat) => {
+      if (!this.leftSeat(seat) || body === this.player) return;
+      if (roles?.[seat] === 'keeper' && this.ball.x - world.left > 320) return;
+      const d = Math.hypot(body.x - this.ball.x, body.y - this.ball.y);
+      if (d < bestDistance) { best = seat; bestDistance = d; }
+    });
+    if (best >= 0) { this.switchControl(best); this.sound.play?.('click'); }
+  }
   replaySkipCount() {
     const replay = this.replay; if (!replay || !this.squad) return 0;
     if (this.onlineAuthority) return (replay.localSkip ? 1 : 0) + (replay.remoteSkip ? 3 : (replay.remoteSeats?.size || 0));
@@ -727,11 +765,17 @@ export class Game {
   }
   // Host simulation of the four bodies; guest seats move with their last input.
   updateSquad(dt) {
-    const { bodies, localSeat } = this.squad, leftLocal = this.localSide === 'left';
-    const aiCommands = this.squad.ai ? this.squad.ai.update(bodies, this.ball, dt) : null;
+    // Táctico (offline): the human takes over the teammate who wins the ball.
+    this.autoSwitch();
+    const { bodies, localSeat } = this.squad, leftLocal = this.localSide === 'left', autopilot = !!this.squad.autopilot;
+    const aiCommands = this.squad.ai ? this.squad.ai.update(bodies, this.ball, dt, autopilot ? -1 : localSeat) : null;
     bodies.forEach((body, seat) => {
       let command;
-      if (seat === localSeat) { const axes = this.input.axes(); command = { x: axes.x, y: axes.y, ...this.readKick() }; }
+      if (seat === localSeat && !autopilot) {
+        const axes = this.input.axes(); command = { x: axes.x, y: axes.y, ...this.readKick() };
+        // Pass button (E / ✕) without the ball: switch to the teammate best placed to get it (as in FIFA).
+        if (command.kick && command.shot === 'pass' && this.canSwitch() && this.possession.holder !== body && !canKickBall(body, this.ball)) { this.switchToBest(); command = { x: axes.x, y: axes.y, kick: false }; }
+      }
       else if (aiCommands) {
         command = aiCommands[seat] || { x: 0, y: 0 };
         body.move(Number(command.x) || 0, Number(command.y) || 0, dt, command.speed ?? 1);
@@ -756,7 +800,7 @@ export class Game {
         if (powered) { this.renderer.fireBurst(this.ball.x, this.ball.y); body.powerFlash = .48; }
         else this.renderer.burst(this.ball.x, this.ball.y, '#c5f4d8', 7, 100);
       }, kick.aim, kick.power, kick.curve);
-      if (kicked && kick.pass && kick.receiver && this.squad.ai) this.squad.ai.expectPass?.(kick.target);
+      if (kicked && kick.pass && kick.receiver && this.squad.ai) this.squad.ai.expectPass?.(kick.target, kick.receiver);
       if (kicked && !kick.pass) { if (this.leftSeat(seat) === leftLocal) this.matchStats.shotsPlayer++; else this.matchStats.shotsOpponent++; }
       if (kicked && powered) { body.powerCooldown = (this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS); if (seat === localSeat) this.hooks.onPowerCooldown?.(body.powerCooldown); }
     });
@@ -779,7 +823,7 @@ export class Game {
   }
   resetPositions() {
     this.possession?.reset();
-    if (this.squad) { this.squad.bodies.forEach((body, seat) => this.placeSquadBody(body, seat)); this.ball.reset((this.world || WORLD).width / 2, (this.world || WORLD).height / 2); this.ball._rx = this.ball.x; this.ball._ry = this.ball.y; this.setupKickoff(); return; }
+    if (this.squad) { if (this.canSwitch() && this.squad.localSeat !== 0) this.switchControl(0); this.squad.bodies.forEach((body, seat) => this.placeSquadBody(body, seat)); this.ball.reset((this.world || WORLD).width / 2, (this.world || WORLD).height / 2); this.ball._rx = this.ball.x; this.ball._ry = this.ball.y; this.setupKickoff(); return; }
     this.player.x = WORLD.width * (this.localSide === 'left' ? .31 : .69); this.player.y = WORLD.height / 2; this.player.stop(); this.player._rx = this.player.x; this.player._ry = this.player.y;
     if (this.bot) { this.bot.x = WORLD.width * (this.localSide === 'left' ? .69 : .31); this.bot.y = WORLD.height / 2; this.bot.stop(); this.bot._rx = this.bot.x; this.bot._ry = this.bot.y; }
     this.ball.reset(WORLD.width / 2, WORLD.height / 2); this.ball._rx = this.ball.x; this.ball._ry = this.ball.y;

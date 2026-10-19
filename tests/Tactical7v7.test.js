@@ -5,7 +5,7 @@ import { Ball } from '../src/game/Ball.js';
 import { Game, SEVEN_FIELD_SCALE } from '../src/game/Game.js';
 import { GameState } from '../src/game/GameState.js';
 import { BotAI } from '../src/game/BotAI.js';
-import { SevenAI, SEVEN_ROLES } from '../src/game/TacticalAI.js';
+import { SevenAI, SEVEN_ROLES } from '../src/game/TeamTactics.js';
 
 function fixture(options = { seven: true }, gameplay = 'tactical') {
   const game = Object.create(Game.prototype);

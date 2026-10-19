@@ -172,7 +172,8 @@ export function passReceiver(passer, mates, direction) {
 }
 
 // Pass (✕) or through pass (△): { aim, power, target, receiver }. With nobody in that direction, a push.
-export function tacticalPass(passer, ball, { mates = [], direction = { x: 0, y: 0 }, through = false, world = ball.world || WORLD, attackRight = true } = {}) {
+// `firm` (AI): extra power so a pass gets there before a defender can step in.
+export function tacticalPass(passer, ball, { mates = [], direction = { x: 0, y: 0 }, through = false, world = ball.world || WORLD, attackRight = true, firm = 0 } = {}) {
   const dir = Math.hypot(direction.x, direction.y) > .2 ? unit(direction.x, direction.y) : unit(passer.faceX ?? 1, passer.faceY || 0);
   const receiver = passReceiver(passer, mates, dir);
   let target;
@@ -186,7 +187,7 @@ export function tacticalPass(passer, ball, { mates = [], direction = { x: 0, y: 
   target.x = Math.max(world.left + pad, Math.min(world.right - pad, target.x));
   target.y = Math.max(world.top + pad, Math.min(world.bottom - pad, target.y));
   const distance = Math.hypot(target.x - ball.x, target.y - ball.y);
-  const power = receiver ? Math.max(.42, Math.min(.95, (distance * .72 + 150) / 400)) : TACTICAL.pushPower;
+  const power = receiver ? Math.max(.42 + firm, Math.min(.95 + firm * .4, (distance * .72 + 150) / 400 + firm)) : TACTICAL.pushPower;
   return { aim: compensateAim(passer, ball, { x: target.x - ball.x, y: target.y - ball.y }, power), power, target, receiver };
 }
 

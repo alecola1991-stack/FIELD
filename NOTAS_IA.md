@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-19 · Claude · Táctico: IA de equipo más natural (desmarques, apoyos, paredes, marcajes) y cambio de jugador estilo FIFA
-**Commit:** rama `tactico-ia-equipo` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `tactico-ia-equipo`, merge 04e8d73). Para deshacerlo: `git revert -m 1 04e8d73`
 **Archivos:** src/game/TeamTactics.js (nuevo), src/game/TacticalAI.js, src/game/Tactical.js, src/game/Game.js, index.html, tests/TacticalSwitch.test.js (nuevo), tests/Tactical3v3.test.js, tests/Tactical7v7.test.js, tests/TacticalDisputes.test.js, NOTAS_IA.md
 **Qué y por qué:** Ale veía el movimiento de las IAs muy artificial y coordinado, y quería que se pasaran el balón para superar rivales y marcar. También pidió controlar al compañero que tiene el balón y cambiar de jugador con el botón de pase sin balón, como en FIFA.
 **Cómo:**

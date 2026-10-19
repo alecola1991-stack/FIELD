@@ -27,7 +27,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
   - End-to-end con navegadores reales: `bots1v1`, `botsQuit` (nuevo), `botsDuo` y `botsTournament` OK.
   - Simulación: el bot se coloca entre el balón y su portería el 84–93 % del tiempo que defiende y hace varias paredes con la banda cada 3 minutos.
 **Para el otro asistente:**
-- **HAY QUE EJECUTAR `supabase/online-bots-2.sql` en el SQL Editor** (después de `online-bots.sql`, ya aplicado). Hasta entonces los bots no abandonan y aceptan siempre la revancha.
+- **`supabase/online-bots-2.sql` YA ESTÁ APLICADO en producción.** Ale lo ejecutó el 2026-10-20. Claude lo verificó con consultas de solo lectura: `action` coincide en md5 con la versión probada en local y los permisos son correctos. No hay que volver a ejecutarlo.
 - Si tocas `field_private.action`, parte de `online-bots-2.sql`.
 
 ## 2026-10-19 · Claude · Online: bots que completan las salas públicas tras 16 s de búsqueda

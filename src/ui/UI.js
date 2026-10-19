@@ -3,6 +3,7 @@ import { rankBadge, rankIconSvg } from './RankIcon.js';
 import { ProfileSocial } from './ProfileSocial.js';
 import { rankFor, rankJourney, rankProgress, rankIndex, RANKS } from '../config/ranks.js';
 import { selectionFor, cycleTeamSelection, teamAbbreviation } from './TeamSelection.js';
+import { crestSVG } from '../config/crests.js';
 import { GamepadController } from '../game/GamepadController.js';
 import { OnlineHub } from './OnlineHub.js';
 import { MODIFIER_OPTIONS, DEFAULT_MODIFIERS, normalizeModifiers, modifiersAreDefault, formatModifier } from '../config/modifiers.js';
@@ -786,11 +787,10 @@ export class UI {
     return rating;
   }
 
+  // Team crest (our own design in the team's colours; see config/crests.js).
   teamEmblem(team) {
     const crest = document.createElement('span'); crest.className = 'selection-crest';
-    crest.style.background = getKitBackground(team);
-    const label = document.createElement('b'); label.textContent = teamAbbreviation(team.name);
-    crest.append(label); crest.setAttribute('aria-hidden', 'true'); return crest;
+    crest.innerHTML = crestSVG(team); crest.setAttribute('aria-hidden', 'true'); return crest;
   }
 
   fillTeamSelectionCard(card, team, player = {}) {
@@ -1107,7 +1107,7 @@ export class UI {
   updateHomeClub() {
     const team = getTeamById(this.settings.teamId);
     this.home_club_name.textContent = team ? `${team.name.toUpperCase()} · ${team.type === 'national' ? 'SELECCIÓN' : team.type === 'honorary' ? 'HONORÍFICO' : 'CLUB'}` : 'SELECCIONA TU EQUIPO AL JUGAR';
-    this.home_club_colors.style.background = team ? getKitBackground(team) : 'transparent';
+    this.home_club_colors.innerHTML = team ? crestSVG(team) : '';
     this.home_club_colors.classList.toggle('has-team', !!team);
   }
 
@@ -1363,7 +1363,7 @@ export class UI {
         const id = match[side], team = teamOf(id), row = document.createElement('div'); row.className = 'bracket-team';
         row.classList.toggle('winner', !!match.winner && match.winner === id); row.classList.toggle('loser', !!match.winner && !!id && match.winner !== id);
         row.classList.toggle('you', id === this.settings.teamId);
-        const chip = document.createElement('i'); chip.className = 'bracket-chip'; chip.style.background = team ? getKitBackground(team) : 'transparent';
+        const chip = document.createElement('i'); chip.className = 'bracket-chip'; chip.innerHTML = team ? crestSVG(team) : '';
         const name = document.createElement('span'); name.textContent = team ? team.name.replace(/\s+CF$/i, '') : mirror ? '—' : 'Por decidir'; name.title = team?.name || '';
         const goals = document.createElement('b'); goals.textContent = match[`${side}Goals`] ?? '';
         row.append(chip, name, goals); card.append(row);
@@ -2218,7 +2218,7 @@ export class UI {
       const before = previousRanks?.get(entry.teamId);
       if (before && before !== position) { const arrow = document.createElement('i'); arrow.className = before > position ? 'rank-up' : 'rank-down'; arrow.textContent = before > position ? '▲' : '▼'; arrow.title = `${before > position ? 'Sube' : 'Baja'} ${Math.abs(before - position)}`; pos.append(arrow); }
       const name = document.createElement('th'); name.scope = 'row'; name.className = 'col-team';
-      const chip = document.createElement('span'); chip.className = 'league-team-chip'; chip.style.background = getKitBackground(team);
+      const chip = document.createElement('span'); chip.className = 'league-team-chip'; chip.innerHTML = crestSVG(team);
       const label = document.createElement('span'); label.className = 'league-team-name'; label.textContent = team?.name || entry.teamId;
       name.append(chip, label);
       if (entry.teamId === season.playerTeamId) { const tag = document.createElement('b'); tag.className = 'league-tag mine'; tag.textContent = 'TÚ'; name.append(tag); }

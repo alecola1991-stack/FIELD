@@ -1,6 +1,6 @@
 import { ONLINE_RULES, ONLINE_MODES, ONLINE_SIZES, normalizeUsername, validUsername, assignedMatch, opponentId, roomSize, isTeamRoom, matchSeats, matchPlayers, onLeftTeam, wonMatch, roundName } from '../game/OnlineRules.js';
-import { getTeamById, getKitBackground } from '../config/teams.js';
-import { teamAbbreviation } from './TeamSelection.js';
+import { getTeamById } from '../config/teams.js';
+import { crestSVG } from '../config/crests.js';
 import { rankBadge } from './RankIcon.js';
 
 const element = (tag, text, className = '') => { const node = document.createElement(tag); node.textContent = text; node.className = className; return node; };
@@ -461,7 +461,7 @@ export class OnlineHub {
   seatCard(player) {
     const profile = player.profile || {}, team = getTeamById(profile.teamId), mine = player.id === this.identity?.id;
     const card = element('div', '', 'room-seat'); card.classList.toggle('you', mine); card.classList.toggle('left', player.active === false);
-    const crest = element('span', team ? teamAbbreviation(team.name) : '?', 'room-crest'); crest.style.background = team ? getKitBackground(team) : '#1b2b48';
+    const crest = element('span', team ? '' : '?', team ? 'room-crest crest' : 'room-crest'); if (team) crest.innerHTML = crestSVG(team); else crest.style.background = '#1b2b48';
     const info = element('div', '', 'room-seat-info');
     const name = element('b', `@${player.username}`); name.prepend(rankBadge(player.elo)); if (player.profile?.gold) name.classList.add('gold-name'); if (mine) name.append(element('i', 'TÚ', 'room-you'));
     info.append(name, element('small', `${player.elo} ELO · NIVEL ${profile.level || 1}`), element('small', player.active === false ? 'Ha salido de la sala' : team?.name || 'Equipo sin elegir'));

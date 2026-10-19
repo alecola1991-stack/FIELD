@@ -1,4 +1,5 @@
-import { getTeamById, getKitBackground } from '../config/teams.js';
+import { getTeamById } from '../config/teams.js';
+import { crestSVG } from '../config/crests.js';
 import { TROPHY_ART } from './TrophyArt.js';
 import {
   CAREER_SEASONS, CAREER_POINTS, COMPETITION_NAMES, careerCountries, createStartingOffers, createCareer, nextCareerMatch,
@@ -44,7 +45,7 @@ const OUTCOMES = {
 const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 const fmt = value => Number(value || 0).toLocaleString('es-ES');
 const stars = count => '★'.repeat(Math.max(1, Math.min(5, count || 3)));
-const kit = (team, size = '') => `<i class="career-kit ${size}" style="background:${esc(getKitBackground(team))}" aria-hidden="true"></i>`;
+const kit = (team, size = '') => `<i class="career-kit crest ${size}" aria-hidden="true">${crestSVG(team)}</i>`;
 function trophyArt(kind) { return kind === 'promotion' ? PROMOTION_ART : kind === 'club-world-cup' ? TROPHY_ART['world-cup'] : TROPHY_ART[kind] || TROPHY_ART.league; }
 function trophyIcon(kind, extra = '') { return `<span class="career-trophy-icon ${extra}" style="--trophy:${TROPHY_COLORS[kind] || '#8dc3ff'}">${trophyArt(kind)}</span>`; }
 
@@ -200,7 +201,7 @@ export class CareerScreen {
         const team = getTeamById(id), tier = leagueTier(team.league);
         return `<button type="button" class="career-offer" data-career="pick-club" data-value="${id}" style="--delay:${index * 70}ms">
           <span class="career-tier-badge tier-${tier}">${TIER_LABELS[tier] || tier} DIVISIÓN</span>
-          <span class="match-team-preview career-offer-kit" data-preview-team="${id}"></span>
+          <span class="match-team-preview career-offer-kit" data-preview-team="${id}"></span><i class="career-offer-crest" aria-hidden="true">${crestSVG(getTeamById(id))}</i>
           <strong>${esc(team.name)}</strong><small>${esc(leagueName(team.league))}</small>
           <span class="career-stars">${stars(team.stars)}</span>
           <span class="career-offer-goal">${tier === 1 ? 'Ya en primera: ¡a por la Champions!' : `${tier - 1} ${tier - 1 === 1 ? 'ascenso' : 'ascensos'} hasta primera`}</span>
@@ -316,9 +317,9 @@ export class CareerScreen {
         ${lastSeason ? `<div class="career-next"><div class="career-versus"><span><small>FIN DE LA CARRERA</small><strong>Diez temporadas jugadas</strong></span></div><button type="button" class="primary-button career-play" data-career="finish" data-career-space>Ver vitrina final <span>ESPACIO ↗</span></button></div>`
         : `<section class="career-market"><div class="career-season-head"><div><p class="card-kicker">MERCADO DE FICHAJES · TEMPORADA ${state.season + 1}</p><h3>¿Sigues o cambias de aires?</h3></div></div>
           <div class="career-market-grid">
-            <button type="button" class="career-offer stay" data-career="stay" data-career-space><span class="career-tier-badge tier-${leagueTier(nextLeague)}">${TIER_LABELS[leagueTier(nextLeague)]} DIVISIÓN</span><span class="match-team-preview career-offer-kit" data-preview-team="${state.clubId}"></span><strong>Quedarme en ${esc(club?.name)}</strong><small>${esc(leagueName(nextLeague))}</small><span class="career-offer-goal">${state.clubId === state.startClubId ? `Fiel a tu primer club: +${CAREER_POINTS.loyalty} al final` : 'Sigues con el mismo equipo'}${state.qualified?.continental || state.qualified?.clubWorldCup ? ' · juegas la copa' : ''}</span><b class="career-pick">Seguir · ESPACIO</b></button>
+            <button type="button" class="career-offer stay" data-career="stay" data-career-space><span class="career-tier-badge tier-${leagueTier(nextLeague)}">${TIER_LABELS[leagueTier(nextLeague)]} DIVISIÓN</span><span class="match-team-preview career-offer-kit" data-preview-team="${state.clubId}"></span><i class="career-offer-crest" aria-hidden="true">${crestSVG(club)}</i><strong>Quedarme en ${esc(club?.name)}</strong><small>${esc(leagueName(nextLeague))}</small><span class="career-offer-goal">${state.clubId === state.startClubId ? `Fiel a tu primer club: +${CAREER_POINTS.loyalty} al final` : 'Sigues con el mismo equipo'}${state.qualified?.continental || state.qualified?.clubWorldCup ? ' · juegas la copa' : ''}</span><b class="career-pick">Seguir · ESPACIO</b></button>
             ${offers.map(offer => { const team = getTeamById(offer.teamId), tier = leagueTier(team.league), losesCup = state.qualified?.continental || state.qualified?.clubWorldCup;
-              return `<button type="button" class="career-offer" data-career="sign" data-value="${team.id}"><span class="career-tier-badge tier-${tier}">${TIER_LABELS[tier]} DIVISIÓN${tier < leagueTier(nextLeague) ? ' ↑' : ''}</span><span class="match-team-preview career-offer-kit" data-preview-team="${team.id}"></span><strong>${esc(team.name)}</strong><small>${esc(leagueName(team.league))} · ${stars(team.stars)}</small><span class="career-offer-goal">${esc(offer.reason)}${losesCup ? ' · pierdes la plaza en la copa' : ''}</span><b class="career-pick">Fichar ↗</b></button>`; }).join('')}
+              return `<button type="button" class="career-offer" data-career="sign" data-value="${team.id}"><span class="career-tier-badge tier-${tier}">${TIER_LABELS[tier]} DIVISIÓN${tier < leagueTier(nextLeague) ? ' ↑' : ''}</span><span class="match-team-preview career-offer-kit" data-preview-team="${team.id}"></span><i class="career-offer-crest" aria-hidden="true">${crestSVG(team)}</i><strong>${esc(team.name)}</strong><small>${esc(leagueName(team.league))} · ${stars(team.stars)}</small><span class="career-offer-goal">${esc(offer.reason)}${losesCup ? ' · pierdes la plaza en la copa' : ''}</span><b class="career-pick">Fichar ↗</b></button>`; }).join('')}
           </div></section>`}
       </div>`;
   }

@@ -138,7 +138,7 @@ export class OnlineHub {
   }
   async consume(data) {
     this.identity = data?.identity || null; this.friends = data?.friends || []; this.invites = data?.invites || []; this.lobby = data?.lobby || null;
-    if (data) { this.supportsTeams = Number(data.version) >= 2; this.supportsSwap = Number(data.version) >= 3; this.supportsProfiles = Number(data.version) >= 4; this.supportsBots = Number(data.version) >= 5; }
+    if (data) { this.supportsTeams = Number(data.version) >= 2; this.supportsSwap = Number(data.version) >= 3; this.supportsProfiles = Number(data.version) >= 4; this.supportsBots = Number(data.version) >= 5; this.supportsBotQuit = Number(data.version) >= 6; }
     if (this.ui.currentView === 'profile') { this.ui.social?.render(); this.ui.renderProfileOnline?.(); }
     this.render(); this.ui.trackOnlineRank?.(this.identity); this.ui.applyGoldName?.();
     if (this.lobby?.state === 'cancelled') {
@@ -179,6 +179,15 @@ export class OnlineHub {
       .then(data => { if (this.ui.user?.id === userId && this.lobby?.id === lobby.id) return this.consume(data); })
       .catch(() => { /* still searching: try again on the next poll */ })
       .finally(() => { this.askingBots = false; });
+  }
+  // The rival bots quit after a goal (decided by the game): the server settles the match as a
+  // forfeit and the usual "the rival left" ending follows on this poll.
+  async botQuit() {
+    if (!this.supportsBotQuit || !this.lobby || !this.connectedMatchId) return;
+    const userId = this.ui.user?.id, lobbyId = this.lobby.id, matchId = this.connectedMatchId;
+    await new Promise(resolve => setTimeout(resolve, 600 + Math.random() * 1400));
+    try { const data = await this.rpc('bot_leave', { lobbyId, matchId }); if (this.ui.user?.id === userId && this.lobby?.id === lobbyId) await this.consume(data); }
+    catch { /* the match goes on */ }
   }
   async connect(match) {
     if (!this.identity || this.connectedMatchId === match.id) return;

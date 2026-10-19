@@ -208,7 +208,7 @@ export class Game {
             this.sound.play('kick');
             if (powered) { this.renderer.fireBurst(this.ball.x, this.ball.y); bot.powerFlash = .48; }
             else this.renderer.burst(this.ball.x, this.ball.y, '#ffd1bf', 5, 78);
-          }, decision.kickDirection, powered ? 1.45 : 1);
+          }, decision.kickDirection, powered ? 1.45 : (decision.power ?? 1));
           if (kicked) this.matchStats.shotsOpponent++;
           if (kicked && powered) bot.powerCooldown = (this.modifiers?.powerCooldown ?? POWER_SHOT_COOLDOWN_SECONDS);
         }
@@ -294,10 +294,12 @@ export class Game {
     const clip = this.replayClip || (this.replayTail > 0 ? (this.replayFrames || []).slice() : null);
     if (!this.replaysEnabled() || !clip || clip.length < REPLAY_MIN_FRAMES) return false;
     this.replay = { frames: clip, time: 0, duration: Math.min(REPLAY_SECONDS, clip.at(-1).t - clip[0].t), localSkip: false, remoteSkip: false };
-    // Online bots skip at once: only the people in the match decide.
+    // Online bots: a bot that conceded skips the replay two times in three; one that scored lets it
+    // play two times in three. They skip after a short, random moment, like a person.
     if (this.state.mode === 'online' && this.onlineAuthority) {
-      if (this.onlineBot) this.replay.remoteSkip = true;
-      else if (this.squad?.botSeats?.size) { this.replay.remoteSeats = new Set(this.squad.botSeats); if (this.replay.remoteSeats.size >= 3) this.replay.remoteSkip = true; }
+      const leftScored = this.state.goalSide === 1, random = this.botRandom || Math.random;
+      const seats = this.onlineBot ? [1] : [...(this.squad?.botSeats || [])];
+      this.replay.botSkips = seats.filter(seat => random() < ((seat < 2 && !this.onlineBot) === leftScored ? 1 / 3 : 2 / 3)).map(seat => ({ seat, at: .4 + random() * 1.6 }));
     }
     this.notifyReplay();
     return true;
@@ -306,6 +308,11 @@ export class Game {
     const replay = this.replay;
     if (this.input.consume('Space')) this.skipReplay();
     replay.time += dt;
+    for (const skip of replay.botSkips || []) {
+      if (skip.done || replay.time < skip.at) continue;
+      skip.done = true;
+      if (this.onlineBot) { replay.remoteSkip = true; this.notifyReplay(); } else this.setRemoteReplaySkip(skip.seat);
+    }
     const bothSkipped = replay.localSkip && (this.state.mode !== 'online' || replay.remoteSkip);
     if (replay.time >= replay.duration || bothSkipped) { this.hooks.onReplay?.(null); this.finishGoalSequence(); }
   }
@@ -459,6 +466,7 @@ export class Game {
     if (this.state.mode !== 'training' && Math.max(this.state.scorePlayer, this.state.scoreBot) >= target) this.state.matchOver = true;
     this.sound.play('goal'); this.renderer.burst(this.ball.x, this.ball.y, '#b8f4ce', 24, 190);
     this.hooks.onScore?.(this.state.scorePlayer, this.state.scoreBot); this.hooks.onGoal?.(side);
+    this.maybeBotQuits(side);
   }
   matchSummary() { return { shotsPlayer: this.matchStats.shotsPlayer, shotsOpponent: this.matchStats.shotsOpponent, goals: this.matchStats.goals.map(goal => ({ ...goal })) }; }
   beginCountdown() { this.countdown = 5; this.countdownClock = 1; this.hooks.onCountdown?.(5); }
@@ -759,6 +767,17 @@ export class Game {
       this.squad.ai = new OnlineSquadBots({ seats, elos: Object.fromEntries(seats.map(seat => [seat, options.squad.seats[seat].elo])) });
       for (const seat of seats) this.squad.bodies[seat].isBot = true;
     } else if (options.opponentBot && this.bot) this.onlineBot = new OnlineBotAI(options.opponentBot.elo);
+  }
+  // A rival bot may quit after a goal: 1 in 20 after conceding, 1 in 50 after scoring (only when the
+  // whole rival side is bots). The UI tells the server, which settles the match as a forfeit.
+  maybeBotQuits(side) {
+    if (this.state.mode !== 'online' || !this.onlineAuthority || this.state.matchOver) return false;
+    const rivalsAreBots = this.onlineBot || (this.squad?.botSeats?.has(2) && this.squad.botSeats.has(3));
+    if (!rivalsAreBots) return false;
+    const conceded = side === 1, random = this.botRandom || Math.random;
+    if (random() >= (conceded ? 1 / 20 : 1 / 50)) return false;
+    this.hooks.onBotQuit?.();
+    return true;
   }
   // ---- Player switching (Táctico, offline squads) -----------------------------------------------
   // The human controls one body of the left team: their own player at kick-off, the teammate who wins

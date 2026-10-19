@@ -90,11 +90,57 @@ test('the bot is hard to read: different moods give different runs', () => {
     return path.join(',');
   };
   assert.notEqual(run(3), run(11));
-  // Pressing: with the human on the ball in its own half, the bot goes for it.
-  const ai = new OnlineBotAI(700, () => .1), bot = new Player({ x: 800, y: 350, isBot: true }), human = new Player({ x: 420, y: 350 }), ball = new Ball(445, 350);
-  ai.mood = 'press'; ai.moodTime = 10;
+});
+
+test('the bot presses in its own half covering the way to goal, and waits near halfway otherwise', () => {
+  const setup = (humanX, humanY, frames = 150) => {
+    const ai = new OnlineBotAI(700, () => .9), bot = new Player({ x: 950, y: 200, isBot: true }), human = new Player({ x: humanX, y: humanY }), ball = new Ball(humanX + 25, humanY);
+    ai.mood = 'calm'; ai.moodTime = 10; ball.world = human.world = bot.world = undefined;
+    for (let i = 0; i < frames; i++) { const d = ai.update(bot, ball, human, 1 / 60); bot.move(d.x, d.y, 1 / 60, d.speedMultiplier); human.vx = human.vy = 0; }
+    return { bot, ball };
+  };
+  // Human on the ball in the bot's half: the bot ends up goal-side, on the ball–goal line, close.
+  const near = setup(760, 300), goalY = 350;
+  const t = (near.bot.x - near.ball.x) / (1074 - near.ball.x), lineY = near.ball.y + (goalY - near.ball.y) * t;
+  assert.ok(near.bot.x > near.ball.x && Math.abs(near.bot.y - lineY) < 40 && Math.hypot(near.bot.x - near.ball.x, near.bot.y - near.ball.y) < 110, `goal-side cover (${Math.round(near.bot.x)},${Math.round(near.bot.y)})`);
+  // Human on the ball in their own half: the bot waits around halfway (it does not chase up the pitch).
+  const far = setup(300, 350, 80);
+  assert.ok(far.bot.x > 600, `waits near halfway (${Math.round(far.bot.x)})`);
+});
+
+test('blocked in midfield, the bot plays the ball off the side wall and runs onto it', () => {
+  const ai = new OnlineBotAI(900, () => .1), bot = new Player({ x: 620, y: 470, isBot: true }), human = new Player({ x: 540, y: 455 }), ball = new Ball(593, 470);
+  bot.faceX = -1; ai.mood = 'eager'; ai.moodTime = 10; ai.thinkTimer = 1;
   const decision = ai.update(bot, ball, human, 1 / 60);
-  assert.ok(decision.x < -.7, 'runs at the ball');
+  assert.equal(decision.behavior, 'wall'); assert.equal(decision.kick, true);
+  assert.ok(decision.kickDirection.x < 0 && decision.kickDirection.y > 0, 'towards goal, off the bottom wall (away from the human)');
+  assert.ok(decision.power < 1 && ai.chase > 0);
+});
+
+test('bots may quit after a goal (1/20 conceding, 1/50 scoring) and skip replays (2/3 conceding, 1/3 scoring)', () => {
+  const game = onlineGame({ opponentBot: { elo: 600 } }); let quits = 0;
+  game.hooks.onBotQuit = () => quits++;
+  game.botRandom = () => .04;
+  assert.equal(game.maybeBotQuits(1), true, 'conceded: 0.04 < 1/20'); assert.equal(game.maybeBotQuits(-1), false, 'scored: 0.04 >= 1/50');
+  game.botRandom = () => .015; assert.equal(game.maybeBotQuits(-1), true); assert.equal(quits, 2);
+  // Never when the rival side has a person, nor for the guest.
+  const people = onlineGame({}); people.botRandom = () => 0; assert.equal(people.maybeBotQuits(1), false);
+  // Replay skips over many goals.
+  const rate = leftScored => {
+    let skipped = 0; game.botRandom = Math.random;
+    for (let i = 0; i < 3000; i++) {
+      game.state.goalSide = leftScored ? 1 : -1; game.replayClip = Array.from({ length: 40 }, (_, k) => ({ t: k / 30 })); game.settings.goalReplays = true;
+      game.replaysEnabled = () => true;
+      game.startReplay(); if (game.replay.botSkips.length) { skipped++; assert.ok(game.replay.botSkips[0].at >= .4 && game.replay.botSkips[0].at <= 2); }
+    }
+    return skipped / 3000;
+  };
+  assert.ok(Math.abs(rate(true) - 2 / 3) < .04, 'the bot that conceded skips 2/3');
+  assert.ok(Math.abs(rate(false) - 1 / 3) < .04, 'the bot that scored lets it play 2/3');
+  // The skip lands after its moment.
+  game.state.goalSide = 1; game.botRandom = () => 0; game.startReplay();
+  game.updateReplay(.2); assert.equal(game.replay.remoteSkip, false);
+  game.updateReplay(.3); assert.equal(game.replay.remoteSkip, true);
 });
 
 test('2v2: bot seats are moved by the host, people keep their own input', () => {

@@ -4,6 +4,19 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-20 · Claude · Renombrar los bots que ya existen en producción
+**Commit:** rama `ranking-nombres` (pendiente de pasar a main)
+**Archivos:** supabase/online-ranking-nombres.sql, NOTAS_IA.md
+**Qué y por qué:** al comprobar producción, online-ranking.sql estaba aplicado en su primera versión. Los 300 bots se habían creado con el generador antiguo: 34 bots repetían letras y había muchos formatos iguales.
+**Cómo:**
+- `supabase/online-ranking-nombres.sql` redefine `bot_name()` igual que la versión actual de online-ranking.sql.
+- Renombra todos los bots en dos pasos: primero a `b_000001`… para que los nombres viejos no bloqueen los nuevos, y luego uno a uno con `bot_name()`, actualizando también `bot_profile.name`.
+- No toca ELO, récords ni historial (van por id). Se puede repetir sin problema.
+- Probado en local sobre la versión antigua: de 52 repetidos a 0, y otra ejecución sigue en 0.
+**Para el otro asistente:** en instalaciones nuevas basta con online-ranking.sql.
+
+---
+
 ## 2026-10-20 · Claude · Clasificación Ranked poblada con 300 bots
 **Commit:** fusionado en main (rama `ranking-ficticio`, merge ceff6e8). Para deshacerlo: `git revert -m 1 ceff6e8`
 **Archivos:** supabase/online-ranking.sql, supabase/online-ranking-test.sql, supabase/online-bots-test.sql, src/ui/UI.js, index.html, src/styles.css, tools/e2e-online/e2e.cjs, tools/e2e-online/README.md, NOTAS_IA.md

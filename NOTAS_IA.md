@@ -4,6 +4,25 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-20 · Claude · Ajustes → Descargar (versión de Windows) en la web
+**Commit:** rama `descarga-ajustes` (pendiente de pasar a main)
+**Archivos:** index.html, src/ui/DesktopDownload.js (nuevo), src/ui/UI.js, src/styles.css, tests/DesktopDownload.test.js (nuevo), NOTAS_IA.md
+**Qué y por qué:** Ale pidió poder descargar el juego desde los ajustes de la web y que se expliquen las cosas.
+**Cómo:**
+- Nueva pestaña «Descargar» en Ajustes, con `data-web-only` en la pestaña y en el panel `#settings-panel-download`:
+  - Dos tarjetas: el Instalador (recomendado) y el Portable, cada una con su explicación, su botón y la versión con el tamaño.
+  - Una lista de explicaciones: actualizaciones automáticas, qué funciona sin internet, progreso separado y sincronizado con la cuenta, Google con el navegador y el aviso de SmartScreen («Más información → Ejecutar de todas formas», firmado por alecola).
+  - Una nota para móvil y Mac con el enlace a la página de descargas.
+- Los nombres de los archivos llevan la versión, así que `DesktopDownload` pide la release `windows-latest` a la API de GitHub al abrir la pestaña (una vez por carga). Solo acepta URLs de github.com y rellena enlaces, versión y tamaño. Si falla, los botones abren la página de la release.
+- En la app de escritorio (`arcade:`) se eliminan los elementos `data-web-only`, y `showSettingsTab('download')` cae en «Juego».
+- CSS:
+  - Las pestañas de ajustes pasan a columnas automáticas para que quepan las 5 en 390 px.
+  - El panel de descarga usa bloque (no la rejilla de 2 columnas de los otros paneles); las explicaciones van en 2 columnas desde 900 px.
+- Probado en el navegador a 1366 y 390 px con la API simulada.
+**Para el otro asistente:** si cambian los nombres de los EXE (`Futbol-Arcade-Setup|Portable-x.y.z.exe`), actualiza `readRelease`.
+
+---
+
 ## 2026-10-20 · Claude · Escritorio 1.3.0: firma «alecola», instalador y Google
 **Commit:** fusionado en main (rama `firma-google`, merge a990151). Para deshacerlo: `git revert -m 1 a990151`
 **Archivos:** desktop/oauth.cjs (nuevo), desktop/preload.cjs (nuevo), desktop/main.cjs, desktop/package.json, desktop/README.md, .github/workflows/windows.yml, src/account/GoogleSignIn.js, src/account/AccountService.js, src/ui/UI.js, tests/GoogleSignIn.test.js, tests/DesktopOAuth.test.js (nuevo), NOTAS_IA.md

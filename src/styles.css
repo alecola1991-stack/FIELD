@@ -1856,3 +1856,26 @@ body.gameplay-tactical.match-online .arcade-hint{display:flex!important}
 .leaderboard-row.is-you{background:#65e6a51c;box-shadow:inset 3px 0 0 var(--green)}
 .leaderboard-row.is-you .leaderboard-name{color:#bff7d6;font-weight:700}
 .leaderboard-gap{text-align:center;color:#5f7168;font:12px var(--mono);letter-spacing:.3em;padding:6px 0}
+/* Settings → Descargar (web only): Windows installer and Portable. */
+.settings-tabs{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:auto}
+@media(max-width:480px){.settings-tabs{gap:2px}.settings-tabs button{font-size:13px;padding:8px 5px}}
+.settings-panel.download-panel:not([hidden]){display:block}
+@media(min-width:900px){.download-facts{grid-template-columns:1fr 1fr}.download-facts>div:last-child{grid-column:1/-1}}
+.download-intro{color:#b9cbe4;font-size:14px;line-height:1.6;margin:0 0 14px}
+.download-intro span{display:block;margin-top:4px;color:#7fa4d8;font:12px var(--mono);letter-spacing:.04em}
+.download-options{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.download-card{position:relative;display:flex;flex-direction:column;gap:8px;padding:16px;border:1px solid #91b9ff30;border-radius:14px;background:#0c1832}
+.download-card.recommended{border-color:#65e6a566;background:linear-gradient(160deg,#10283a,#0c1832)}
+.download-card b{font-size:17px;color:#eef5ff}
+.download-card p{margin:0;flex:1;color:#a9bddb;font-size:13px;line-height:1.55}
+.download-card small{color:#7f95b8;font:12px var(--mono)}
+.download-tag{align-self:flex-start;padding:3px 8px;border-radius:6px;background:#65e6a522;color:#7ff0b6;font:700 10px var(--mono);letter-spacing:.12em}
+.download-button{justify-content:center;text-decoration:none;text-align:center;margin:4px 0 0}
+.download-card .plain-button.download-button{display:flex;align-items:center;min-height:46px;border:1px solid #91b9ff44;border-radius:11px;color:#dcecff;font:600 15px Manrope,sans-serif}
+.download-card .plain-button.download-button:hover{background:#ffffff0d;color:#fff}
+.download-facts{display:grid;gap:10px;margin:0 0 14px}
+.download-facts>div{padding:11px 13px;border-radius:11px;background:#ffffff07;border:1px solid #ffffff10}
+.download-facts dt{color:#e6f0ff;font-weight:700;font-size:14px;margin-bottom:3px}
+.download-facts dd{margin:0;color:#a3b7d6;font-size:13px;line-height:1.55}
+.download-note{margin:0;color:#8aa0c2;font-size:13px;line-height:1.5}.download-note a{color:#9fd0ff}
+@media(max-width:640px){.download-options{grid-template-columns:1fr}}

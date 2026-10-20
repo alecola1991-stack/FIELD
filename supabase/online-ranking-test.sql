@@ -11,6 +11,10 @@ begin
  if (select count(*) from field_private.players where ladder_target is not null and elo>=1000)>12 then raise exception 'Too many at the top'; end if;
  if exists(select 1 from field_private.players where ladder_target is not null and (ranked_wins>ranked_played or ranked_wins<0)) then raise exception 'Bad record'; end if;
  if field_private.seed_ladder(300)<>0 then raise exception 'Seeding twice'; end if;
+ -- Names: no two bots share the same letters, and no format dominates.
+ if (select count(*)<>count(distinct regexp_replace(lower(username),'[^a-z]','','g')) from field_private.players where is_bot) then raise exception 'Bots look alike'; end if;
+ if (select count(*) from field_private.players where lower(username) like 'soydel%')>8 or (select count(*) from field_private.players where lower(username) like 'thereal%')>8 then raise exception 'One format dominates'; end if;
+ if exists(select 1 from field_private.players where is_bot and username !~ '^[A-Za-z0-9_]{3,20}$') then raise exception 'Bad bot username'; end if;
  execute 'set local role authenticated';
  perform set_config('request.jwt.claim.sub',me::text,true);
  r:=public.field_online('claim_username',jsonb_build_object('username','qr'||substr(replace(me::text,'-',''),1,8)));

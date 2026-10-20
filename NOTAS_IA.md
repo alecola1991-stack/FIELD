@@ -30,6 +30,14 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
   - supabase/online-ranking-test.sql: siembra, rango y récord; top 100, total y puesto; perfil de un bot con 10 partidos estables; deriva de 3 días; nada de deriva repetida el mismo día.
   - online-bots-test.sql se adapta: con la escalera, el bot reutilizado puede ser otro del rango, y los bots ya salen en la tabla.
   - e2e: escenario `ladder`; bots1v1 y ranked1v1 siguen bien.
+- Nombres de bots (a petición de Ale: demasiado parecidos entre sí). online-ranking.sql redefine `bot_name()`, que también usan los bots de las salas:
+  - 34 formatos de gamertag con vocabularios amplios: nombres (también de chica), apellidos, futbolistas, palabras, palabras gamer en inglés, ciudades y siglas, clubes y sufijos de peña. Los formatos van de nombre+apellido, iniciales y diminutivos a leet, «soydel…», «…yt/ttv», «ElTigreDeVigo», «TheReal…», etc.
+  - Ningún bot puede tener las mismas letras que otro jugador (sin contar dígitos ni `_`).
+  - Ninguna raíz (nombre, apellido, futbolista, palabra) puede aparecer ya en 3 o más usuarios.
+  - Los formatos reconocibles tienen un tope de 7 usos (regex por formato).
+  - Si se pasa de 20 caracteres, se descarta el nombre en vez de recortarlo.
+  - Cuando cuesta encontrar uno, los límites se relajan a partir del intento 150, y a partir del 400 se usa un nombre de respaldo.
+  - La prueba SQL comprueba que todos son distintos y que ningún formato domina.
 **Para el otro asistente:**
 - Las solicitudes de amistad a bots se quedan pendientes, igual que antes.
 - Si cambias `field_private.action`, parte de online-ranking.sql: es la versión vigente.

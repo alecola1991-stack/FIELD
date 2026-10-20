@@ -24,8 +24,8 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -59,7 +59,7 @@ jobs:
           Get-Content "$env:RUNNER_TEMP/updated-stderr.log" -ErrorAction SilentlyContinue
           if ($process.ExitCode -ne 0) { throw "Updated offline game test failed: $($process.ExitCode)" }
       - name: Save Windows executables
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Futbol-Arcade-Windows
           path: |
@@ -93,7 +93,7 @@ jobs:
               if ($LASTEXITCODE -ne 0) { throw "Could not remove installer: $asset" }
             }
           }
-          gh release edit windows-latest --repo $env:GITHUB_REPOSITORY --notes 'Windows de 64 bits. Solo Portable: abrir sin instalar. Desde 1.2.1, una pantalla comprueba las actualizaciones de GitHub antes de abrir el juego y aplica la última versión disponible. Modos contra la IA disponibles sin internet; online y cuenta requieren conexión. El progreso local es independiente del navegador. Compilación sin firma digital.'
+          gh release edit windows-latest --repo $env:GITHUB_REPOSITORY --notes 'Windows de 64 bits. Solo Portable: abrir sin instalar. Desde 1.2.1, una pantalla comprueba las actualizaciones de GitHub antes de abrir el juego y aplica la última versión disponible. 1.2.2: Electron 44.9.1 y actualizaciones del juego de hasta 48 MB (las anteriores aceptan hasta 12 MB: conviene descargar este EXE). Modos contra la IA disponibles sin internet; online y cuenta requieren conexión. El progreso local es independiente del navegador. Compilación sin firma digital.'
           if ($LASTEXITCODE -ne 0) { throw 'Could not update Windows release description' }
       - name: Verify published update download with Electron
         env:

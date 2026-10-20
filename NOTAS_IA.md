@@ -4,6 +4,25 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-20 · Claude · Portable al día: compilación de Windows reparada, Electron 44.9.1 y tests estables
+**Commit:** rama `portable-actualizado` (pendiente de pasar a main)
+**Archivos:** vite.config.js, desktop/package.json, desktop/package-lock.json, desktop/updates.cjs, desktop/README.md, .github/workflows/windows.yml, .github/workflows/deploy-pages.yml, src/game/OnlineBotAI.js, tests/OnlineBots.test.js, NOTAS_IA.md
+**Qué y por qué:** Ale pidió mejorar el Portable y poner al día lo que no lo estuviera.
+- La acción «Windows executable» fallaba en cada subida desde que se añadió `public/ads.txt` (AdSense). `create-update.cjs` valida el paquete y solo admite extensiones de juego, así que el EXE y `game-update.json` llevaban días sin publicarse y los Portables no recibían las novedades.
+- El despliegue web también falló una vez por tests inestables.
+**Cómo:**
+- vite.config.js: el plugin `field-desktop-files` borra `desktop/game/ads.txt` al compilar con `--mode desktop`.
+- Escritorio 1.2.2:
+  - Electron 44.7.0 → 44.9.1. El lock sigue en una línea.
+  - `updates.cjs` sube los límites del paquete de 16/12 MB a 64/48 MB (descarga/contenido). El juego ya ocupaba 10,5 de 12 MB. Los lanzadores ≤ 1.2.1 mantienen sus 12 MB: si el juego los supera, abren su copia local hasta que se baje el EXE nuevo.
+- Acciones de GitHub en sus versiones actuales (dejan de usar Node 20): checkout v7, setup-node v7, upload-artifact v7, configure-pages v6, upload-pages-artifact v5, deploy-pages v5.
+- Fallo real del bot online (era la causa de un test inestable): con el balón quieto en su campo y el humano parado, `BotAI` elegía «defend» y el bot se quedaba de portero para siempre. `OnlineBotAI` ahora va a por un balón suelto y quieto (humano a más de 150 px): se coloca detrás, lo conduce y tira. En 200 simulaciones contra un humano quieto pasó de 4 bloqueos de cada 60 a ninguno.
+- Tests: «aggressive bot» juega hasta que el bot marque y tire más de 3 veces (máx. 110 s). El de 2v2 mide el desplazamiento máximo de cada bot, porque un gol los devuelve a su sitio. La suite pasó 25 de 25 veces seguidas.
+- e2e bots1v1, botsQuit y botsDuo: OK.
+**Para el otro asistente:** cualquier archivo nuevo en `public/` debe tener una extensión que admita `validateBundle` (desktop/updates.cjs), o quedarse fuera del build de escritorio como `ads.txt`.
+
+---
+
 ## 2026-10-20 · Claude · Renombrar los bots que ya existen en producción
 **Commit:** fusionado en main (rama `ranking-nombres`, merge 9cb5e7a). Para deshacerlo: `git revert -m 1 9cb5e7a`
 **Archivos:** supabase/online-ranking-nombres.sql, NOTAS_IA.md

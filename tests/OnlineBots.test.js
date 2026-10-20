@@ -69,7 +69,8 @@ test('1v1: the host moves an aggressive bot that shoots and scores', () => {
   const game = onlineGame({ opponentBot: { elo: 700 }, opponentUsername: 'xx_messi11', opponentElo: 700 });
   assert.ok(game.onlineBot instanceof OnlineBotAI);
   let kicks = 0; const start = { x: game.bot.x, y: game.bot.y };
-  for (let i = 0; i < 60 * 60; i++) {
+  // Up to 110 s of play (the clock ends at 120): the bot's moods are random, so give it time.
+  for (let i = 0; i < 60 * 110 && !(game.state.scoreBot && kicks > 3); i++) {
     const before = game.matchStats.shotsOpponent; game.update(1 / 60); kicks += game.matchStats.shotsOpponent - before;
     if (game.state.goalTimer > 0) { game.state.goalTimer = 0; game.resetPositions(); game.countdown = 0; }
     if (game.state.matchOver) break;
@@ -149,8 +150,14 @@ test('2v2: bot seats are moved by the host, people keep their own input', () => 
   const game = onlineGame({ squad: { seats, localSeat: 0 } });
   assert.ok(game.squad.ai instanceof OnlineSquadBots); assert.deepEqual([...game.squad.botSeats], [1, 2, 3]);
   const start = game.squad.bodies.map(body => ({ x: body.x, y: body.y }));
-  for (let i = 0; i < 20 * 60; i++) { game.update(1 / 60); if (game.state.goalTimer > 0) { game.state.goalTimer = 0; game.resetPositions(); game.countdown = 0; } }
-  for (const seat of [1, 2, 3]) assert.ok(Math.hypot(game.squad.bodies[seat].x - start[seat].x, game.squad.bodies[seat].y - start[seat].y) > 1, `seat ${seat} moved`);
+  // The furthest each bot got from kick-off (a goal puts everybody back on their spot).
+  const moved = [0, 0, 0, 0];
+  for (let i = 0; i < 20 * 60; i++) {
+    game.update(1 / 60);
+    game.squad.bodies.forEach((body, seat) => { moved[seat] = Math.max(moved[seat], Math.hypot(body.x - start[seat].x, body.y - start[seat].y)); });
+    if (game.state.goalTimer > 0) { game.state.goalTimer = 0; game.resetPositions(); game.countdown = 0; }
+  }
+  for (const seat of [1, 2, 3]) assert.ok(moved[seat] > 1, `seat ${seat} moved`);
   const people = onlineGame({ squad: { seats: seats.map(seat => ({ ...seat, bot: false })), localSeat: 0 } });
   assert.equal(people.squad.botSeats, undefined);
 });

@@ -4,8 +4,9 @@ const crypto = require('node:crypto');
 
 const RELEASE_URL = 'https://api.github.com/repos/alecola1991-stack/FIELD/releases/tags/windows-latest';
 const ASSET_NAME = 'game-update.json';
-const MAX_DOWNLOAD = 16 * 1024 * 1024;
-const MAX_CONTENT = 12 * 1024 * 1024;
+// Room for more music and art: launchers up to 1.2.1 accept up to 16 MB (12 MB of files).
+const MAX_DOWNLOAD = 64 * 1024 * 1024;
+const MAX_CONTENT = 48 * 1024 * 1024;
 const hash = data => crypto.createHash('sha256').update(data).digest('hex');
 
 function validateBundle(bundle) {

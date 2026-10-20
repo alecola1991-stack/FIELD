@@ -6,7 +6,7 @@ No forma parte de `npm test`: necesita Postgres, Chromium y unos minutos.
 
 ## Preparación
 
-1. Postgres local en `/tmp:5499` (o variables `PGHOST`, `PGPORT`, `PGUSER`, `PGDATABASE`) con una base `field` y, en este orden: `shim.sql`, `supabase/online.sql`, `supabase/online-rematch.sql`, `supabase/online-teams.sql`, `supabase/online-swap.sql`, `supabase/online-profiles.sql`, `supabase/online-bots.sql` y `supabase/online-bots-2.sql`.
+1. Postgres local en `/tmp:5499` (o variables `PGHOST`, `PGPORT`, `PGUSER`, `PGDATABASE`) con una base `field` y, en este orden: `shim.sql`, `supabase/online.sql`, `supabase/online-rematch.sql`, `supabase/online-teams.sql`, `supabase/online-swap.sql`, `supabase/online-profiles.sql`, `supabase/online-bots.sql`, `supabase/online-bots-2.sql` y `supabase/online-tiempo.sql`.
 2. `npm install` dentro de esta carpeta.
 3. Servidor de desarrollo del juego apuntando al Supabase falso:
    `VITE_SUPABASE_URL=http://localhost:54321 VITE_SUPABASE_PUBLISHABLE_KEY=test npx vite --port 5180` (desde la raíz del repo). En modo desarrollo, `src/main.js` expone `window.__field` para que las pruebas puedan forzar goles.

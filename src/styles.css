@@ -1796,3 +1796,57 @@ body.gameplay-tactical.match-online .arcade-hint{display:flex!important}
 .career-offer{position:relative}
 .career-offer-crest{position:absolute;top:10px;right:10px;width:34px;height:42px;pointer-events:none;filter:drop-shadow(0 2px 5px #0008)}
 .career-market .career-offer-crest{top:8px;right:8px;width:26px;height:32px}
+/* Crests in the scoreboard and in the pre-match presentation. */
+.intro-badges{display:flex;align-items:center;justify-content:center;gap:12px}
+.intro-crest{width:78px;height:97px;flex:none;filter:drop-shadow(0 8px 16px #0009)}
+.intro-team .intro-badges .match-team-preview{width:64px;height:64px}
+@media(max-width:600px){.intro-badges{gap:6px}.intro-crest{width:52px;height:64px}.intro-team .intro-badges .match-team-preview{width:44px;height:44px}}
+/* Broadcast scoreboard (big-league style): crest + code on each team's colour, score box, clock;
+   player names outside, left and right. Effects: entrance, a light sweep, live dot, goal flash. */
+.game-header .scoreboard{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:14px;min-width:0}
+.game-header .score-team{display:flex;justify-content:flex-end;min-width:0;font:inherit;letter-spacing:0}
+.game-header .score-team.bot-team{justify-content:flex-start}
+.game-header .score-team .hud-identity{text-align:right;align-items:flex-end}
+.game-header .bot-team .hud-identity{text-align:left;align-items:flex-start}
+.game-header .hud-identity>span{font:800 13px Manrope,system-ui,sans-serif;letter-spacing:.06em;color:#eef4ff;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-shadow:0 1px 6px #0009}
+.score-bug{--home-color:#68746e;--away-color:#f19676;--home-ink:#fff;--away-ink:#fff;--home-accent:#fff;--away-accent:#fff;position:relative;display:flex;align-items:stretch;height:38px;border-radius:9px;overflow:hidden;background:#0b1220;box-shadow:0 6px 18px #0008,inset 0 0 0 1px #ffffff1f;isolation:isolate}
+.score-bug::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,#ffffff40 50%,transparent 65%);transform:translateX(-110%);animation:bugSheen 9s ease-in-out 2s infinite;pointer-events:none;z-index:2}
+.bug-side{display:flex;align-items:center;gap:8px;padding:0 12px;position:relative;transition:filter .2s}
+.bug-side.home{background:linear-gradient(90deg,color-mix(in srgb,var(--home-color) 78%,#000),var(--home-color));color:var(--home-ink);box-shadow:inset 0 -3px var(--home-accent)}
+.bug-side.away{background:linear-gradient(90deg,var(--away-color),color-mix(in srgb,var(--away-color) 78%,#000));color:var(--away-ink);box-shadow:inset 0 -3px var(--away-accent)}
+.bug-side i{display:block;width:8px;height:8px;border-radius:50%;flex:none}
+.bug-side i.has-crest{width:24px;height:30px;border-radius:0;background:none!important;filter:drop-shadow(0 1px 2px #0009)}
+.bug-code{font:900 15px Manrope,system-ui,sans-serif;letter-spacing:.07em;min-width:36px;text-align:center}
+.bug-score{display:flex;align-items:center;justify-content:center;gap:7px;min-width:76px;padding:0 12px;background:linear-gradient(#ffffff,#dfe6f2);color:#0b1220;font:900 22px Manrope,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.bug-sep{font-weight:700;color:#7c8aa6;font-size:16px}
+.bug-goals{display:inline-block;min-width:14px;text-align:center}
+.bug-clock{display:flex;align-items:center;gap:7px;padding:0 11px;background:#060b16;color:#e9eef8;font:500 13px var(--mono);letter-spacing:.04em;border-left:1px solid #ffffff1c}
+.bug-clock i{width:7px;height:7px;border-radius:50%;background:#ff4d5e;box-shadow:0 0 0 0 #ff4d5e88;animation:bugLive 1.6s ease-out infinite}
+.game-header #timer{font:inherit;color:inherit}
+.score-bug.enter{animation:bugEnter .75s cubic-bezier(.2,.9,.25,1.15) both}
+.score-bug.enter .bug-side.home{animation:bugSideLeft .7s .1s cubic-bezier(.2,.9,.25,1) both}
+.score-bug.enter .bug-side.away{animation:bugSideRight .7s .1s cubic-bezier(.2,.9,.25,1) both}
+.score-bug.goal-home .bug-side.home,.score-bug.goal-away .bug-side.away{animation:bugGoal .5s ease-in-out 4}
+.score-bug.goal-home::after,.score-bug.goal-away::after{animation:bugSheen .9s ease-out 2}
+.bug-goals.pop{animation:bugPop .8s cubic-bezier(.2,1.6,.4,1) both;color:#d6283a}
+@keyframes bugEnter{from{opacity:0;transform:translateY(-16px) scale(.92)}to{opacity:1;transform:none}}
+@keyframes bugSideLeft{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
+@keyframes bugSideRight{from{opacity:0;transform:translateX(-30px)}to{opacity:1;transform:none}}
+@keyframes bugSheen{0%{transform:translateX(-110%)}18%,100%{transform:translateX(110%)}}
+@keyframes bugGoal{0%,100%{filter:none}50%{filter:brightness(1.55) saturate(1.2);box-shadow:inset 0 -3px #fff,0 0 22px #ffffffaa}}
+@keyframes bugPop{0%{transform:scale(1)}35%{transform:scale(1.75)}100%{transform:scale(1)}}
+@keyframes bugLive{0%{box-shadow:0 0 0 0 #ff4d5e88}70%{box-shadow:0 0 0 6px #ff4d5e00}100%{box-shadow:0 0 0 0 #ff4d5e00}}
+@media(max-width:700px){.game-header .scoreboard{gap:6px}.score-bug{height:32px;border-radius:7px}.bug-side{gap:5px;padding:0 7px}.bug-side i.has-crest{width:18px;height:22px}.bug-code{font-size:12px;min-width:28px}.bug-score{min-width:56px;padding:0 8px;gap:4px;font-size:18px}.bug-sep{font-size:13px}.bug-clock{padding:0 7px;gap:5px;font-size:11px}.game-header .hud-identity>span{font-size:11px;letter-spacing:.02em}}
+@media(max-width:420px){.bug-code{display:none}.bug-clock i{display:none}}
+@media(prefers-reduced-motion:reduce){.score-bug::after,.score-bug.enter,.score-bug.enter .bug-side,.score-bug.goal-home .bug-side,.score-bug.goal-away .bug-side,.bug-goals.pop,.bug-clock i{animation:none}}
+@media(min-width:701px){.game-header{grid-template-columns:minmax(0,.55fr) minmax(0,2.4fr) minmax(0,.3fr)}.game-header .hud-identity>span{max-width:240px}}
+/* Match clock: last seconds in red, extra time (golden goal) in gold. */
+.bug-clock{transition:background .3s,color .3s}
+.bug-clock.final-seconds{color:#ff8a94;animation:clockTick 1s steps(1) infinite}
+.bug-clock.overtime{background:linear-gradient(180deg,#f5c84a,#d99a1c);color:#2a1a00;font-weight:700}
+.bug-clock.overtime i{background:#2a1a00;box-shadow:none;animation:none}
+.bug-clock.overtime::after{content:"PRÓRROGA";font:700 9px var(--mono);letter-spacing:.12em;opacity:.8}
+.goal-banner.overtime-banner span{color:#ffd45c}.goal-banner.overtime-banner small,.goal-banner.golden-goal small{color:#ffd45c}
+@keyframes clockTick{50%{color:#e9eef8}}
+@media(max-width:700px){.bug-clock.overtime::after{content:"PR"}}
+@media(prefers-reduced-motion:reduce){.bug-clock.final-seconds{animation:none}}

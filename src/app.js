@@ -12,7 +12,8 @@ const sound = new Sound(() => ui.settings);
 const onlineMatch = new OnlineMatch(accountService.getRealtimeClient());
 const game = new Game(document.querySelector('#game-canvas'), ui.settings, sound, {
   onScore: (player, bot) => { ui.updateScore(player, bot); ui.saveCurrentCompetition(); },
-  onTime: time => ui.updateTime(time),
+  onTime: (time, info) => ui.updateTime(time, info),
+  onOvertime: () => ui.showOvertime(),
   onCountdown: value => ui.showCountdown(value),
   onAutosave: () => ui.saveCurrentCompetition(),
   onPowerCooldown: seconds => ui.updatePowerCooldown(seconds),

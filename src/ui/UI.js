@@ -18,6 +18,7 @@ import { Confetti } from './Confetti.js';
 import { clearCompetitionSave, loadCompetitionSave, setCompetitionSaveScope, storeCompetitionSave } from '../game/CompetitionSave.js';
 import { MISSION_TIERS } from '../game/Missions.js';
 import { Ads } from './Ads.js';
+import { DesktopDownload, isDesktopApp } from './DesktopDownload.js';
 import { TROPHY_ART } from './TrophyArt.js';
 import { CareerScreen } from './CareerScreen.js';
 import { ProgressScreen, isProgressTrophy } from './ProgressScreen.js';
@@ -340,6 +341,7 @@ export class UI {
       event.preventDefault(); const next = tabs[(index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length];
       this.showSettingsTab(next.dataset.settingsTab); next.focus();
     });
+    if (isDesktopApp()) document.querySelectorAll('[data-web-only]').forEach(element => element.remove());
     this.showSettingsTab('game');
     const fullscreen = document.getElementById('fullscreen-toggle');
     document.getElementById('fullscreen-line').hidden = !document.fullscreenEnabled;
@@ -406,6 +408,8 @@ export class UI {
   }
 
   showSettingsTab(name) {
+    // The desktop app has no download tab: it is already the downloaded game.
+    if (name === 'download') { if (isDesktopApp()) name = 'game'; else (this.desktopDownload ||= new DesktopDownload()).load(); }
     for (const tab of document.querySelectorAll('[data-settings-tab]')) {
       const active = tab.dataset.settingsTab === name;
       tab.classList.toggle('active', active); tab.setAttribute('aria-selected', String(active)); tab.tabIndex = active ? 0 : -1;

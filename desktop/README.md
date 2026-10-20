@@ -1,6 +1,6 @@
-# Fútbol arcade Portable para Windows
+# Fútbol arcade para Windows
 
-Solo se distribuye Portable, para Windows de 64 bits. Descarga la última versión en:
+Para Windows de 64 bits hay instalador (`Futbol-Arcade-Setup`: acceso directo, menú Inicio y desinstalación) y Portable (abrir sin instalar). Ambos comparten datos y actualizaciones. Descarga la última versión en:
 https://github.com/alecola1991-stack/FIELD/releases/tag/windows-latest
 
 Desde Portable 1.2.1 se muestra «Buscando actualizaciones» antes de iniciar. Descarga y verifica el paquete de juego publicado por GitHub; aplica las novedades en ese mismo inicio. Si falla la comprobación, muestra un aviso y abre la copia local. El menú Juego → Buscar actualizaciones permite volver a comprobarlo.
@@ -18,3 +18,11 @@ Después: `npm ci --prefix desktop` y `npm run start --prefix desktop`.
 Genera Portable con `npm run package:win --prefix desktop`.
 
 La acción Windows executable prueba los menús y el juego empaquetado sin internet y comprueba la descarga real del paquete publicado. Las reglas online son fijas; los modificadores se reservan a los modos sin conexión.
+
+## Firma digital
+
+Los EXE se firman como «alecola» (Authenticode SHA-256 con sello de tiempo). Con los secretos de GitHub `WINDOWS_CERT_PFX` (el .pfx en base64) y `WINDOWS_CERT_PASSWORD` se usa ese certificado; si es de una autoridad (Certum, Sectigo, SSL.com…), Windows muestra «alecola» como editor verificado y SmartScreen deja de avisar con el tiempo. Sin ellos, la acción crea un certificado autofirmado CN=alecola: la firma aparece en Propiedades → Firmas digitales, pero Windows no la considera de confianza.
+
+## Inicio de sesión con Google (1.3.0)
+
+El botón de Google abre el navegador del sistema. Al terminar, Google vuelve a una dirección local que sirve el propio juego (`http://127.0.0.1:47821/auth/callback`, o los puertos 47822 y 47823 si está ocupado) y la sesión se abre en el juego (OAuth con PKCE). En Supabase → Authentication → URL Configuration → Redirect URLs deben figurar esas tres direcciones. Las copias anteriores a 1.3.0 (sin ese puente) piden descargar la versión nueva.

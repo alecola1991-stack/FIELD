@@ -4,6 +4,34 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-20 · Claude · Escritorio 1.3.0: firma «alecola», instalador y Google
+**Commit:** rama `firma-google` (pendiente de pasar a main)
+**Archivos:** desktop/oauth.cjs (nuevo), desktop/preload.cjs (nuevo), desktop/main.cjs, desktop/package.json, desktop/README.md, .github/workflows/windows.yml, src/account/GoogleSignIn.js, src/account/AccountService.js, src/ui/UI.js, tests/GoogleSignIn.test.js, tests/DesktopOAuth.test.js (nuevo), NOTAS_IA.md
+**Qué y por qué:** Ale pidió firma digital «alecola» en la descarga de Windows e inicio de sesión con Google. Decidió:
+- Preparar la firma con su certificado (secretos) y, mientras no tenga uno, usar un autofirmado.
+- Añadir un instalador además del Portable.
+**Cómo:**
+- Firma:
+  - En windows.yml, «Prepare code signing certificate» usa `WINDOWS_CERT_PFX`/`WINDOWS_CERT_PASSWORD` si existen. Si no, crea un CodeSigningCert autofirmado CN=alecola. Exporta `CSC_LINK`/`CSC_KEY_PASSWORD` y electron-builder firma (sha256 con sello de DigiCert).
+  - «Check signatures» exige CN=alecola en el Setup, el Portable y el EXE de win-unpacked. Con certificado real exige además `Valid`.
+  - author pasa a «alecola» (aparece como CompanyName) y hay copyright.
+- Instalador: target `nsis` además de `portable`. Es asistido, por usuario, permite elegir carpeta y crea accesos directos; se llama `Futbol-Arcade-Setup-${version}.exe`.
+  - Se quita el paso que borraba los Setup antiguos.
+  - El nuevo paso «Keep only the current version in downloads» deja en la release solo el Portable y el Setup de la versión actual y `game-update.json`.
+  - Los pasos que publican solo corren en main, así que se puede lanzar la acción en una rama para probar.
+- Google en escritorio (OAuth con PKCE en el navegador del sistema):
+  - `desktop/oauth.cjs` levanta un servidor en 127.0.0.1:47821, o 47822/47823 si está ocupado, que solo atiende `/auth/callback`. Muestra una página «Sesión iniciada» y entrega `{code}` o `{error}`; caduca a los 5 min.
+  - `isGoogleAuthorizeUrl` solo deja abrir la URL `https://*.supabase.co/auth/v1/authorize?provider=google` con ese `redirect_to`.
+  - `preload.cjs` expone `window.fieldDesktop.googleSignIn.{start,open,cancel}`. Las IPC de main solo aceptan llamadas de `arcade://game/`.
+  - El cliente de Supabase usa `flowType: 'pkce'` solo en `arcade:`; la web sigue con implicit.
+  - `startGoogleSignIn` en escritorio: `start()` → `signInWithOAuth({redirectTo, skipBrowserRedirect})` → `open(url)` → `exchangeCodeForSession(code)` → `{session}`. `submitGoogleAccount` activa la cuenta como con el correo.
+  - Un lanzador anterior a 1.3.0 que recibe este juego por actualización avisa de que hay que bajar el EXE nuevo.
+- Hace falta en Supabase → Authentication → URL Configuration → Redirect URLs: `http://127.0.0.1:47821/auth/callback`, `http://127.0.0.1:47822/auth/callback` y `http://127.0.0.1:47823/auth/callback`. Si faltan, Supabase manda al usuario a la Site URL y el juego espera hasta agotar el tiempo.
+- Tests: GoogleSignIn (flujo de escritorio y error) y DesktopOAuth (servidor, puertos ocupados, tiempo agotado, validación de la URL).
+**Para el otro asistente:** si cambias los puertos, cámbialos también en las Redirect URLs de Supabase.
+
+---
+
 ## 2026-10-20 · Claude · Portable al día: compilación de Windows reparada, Electron 44.9.1 y tests estables
 **Commit:** fusionado en main (rama `portable-actualizado`, merge c6587c9). Para deshacerlo: `git revert -m 1 c6587c9`
 **Archivos:** vite.config.js, desktop/package.json, desktop/package-lock.json, desktop/updates.cjs, desktop/README.md, .github/workflows/windows.yml, .github/workflows/deploy-pages.yml, src/game/OnlineBotAI.js, tests/OnlineBots.test.js, NOTAS_IA.md

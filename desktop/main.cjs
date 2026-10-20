@@ -1,10 +1,11 @@
-const { app, BrowserWindow, Menu, protocol, net, shell, session, dialog } = require('electron');
+const { app, BrowserWindow, Menu, protocol, net, shell, session, dialog, ipcMain } = require('electron');
 const { join, resolve, sep } = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { mkdtempSync, readFileSync } = require('node:fs');
 const { tmpdir } = require('node:os');
 const { readCached, checkForUpdate, stageBundle } = require('./updates.cjs');
 const bundledBuild = require('./build-info.json');
+const { startCallback, isGoogleAuthorizeUrl } = require('./oauth.cjs');
 
 const updateCheckTest = process.argv.includes('--update-check-test');
 const smokeTest = updateCheckTest || process.argv.includes('--smoke-test');
@@ -17,6 +18,27 @@ let window;
 function external(url) {
   try { if (new URL(url).protocol === 'https:') shell.openExternal(url); } catch { /* Invalid links remain closed. */ }
 }
+
+// Google sign-in: the game page asks for a callback address, then for the browser to open.
+let googleFlow = null;
+const fromGame = event => event.senderFrame?.url?.startsWith('arcade://game/');
+ipcMain.handle('google-sign-in:start', async event => {
+  if (!fromGame(event)) throw new Error('Origen no permitido.');
+  googleFlow?.cancel(); googleFlow?.close();
+  googleFlow = await startCallback();
+  return googleFlow.redirectTo;
+});
+ipcMain.handle('google-sign-in:open', async (event, url) => {
+  const flow = googleFlow;
+  if (!fromGame(event) || !flow || !isGoogleAuthorizeUrl(url, flow.redirectTo)) throw new Error('Inicio de sesión no válido.');
+  try {
+    await shell.openExternal(url);
+    const result = await flow.wait();
+    if (window && !window.isDestroyed()) { if (window.isMinimized()) window.restore(); window.focus(); }
+    return result;
+  } finally { flow.close(); if (googleFlow === flow) googleFlow = null; }
+});
+ipcMain.handle('google-sign-in:cancel', event => { if (fromGame(event)) googleFlow?.cancel(); });
 
 app.whenReady().then(async () => {
   const updateBase = join(app.getPath('userData'), 'game-updates');
@@ -84,7 +106,7 @@ app.whenReady().then(async () => {
   window = new BrowserWindow({
     width: 1280, height: 850, minWidth: smokeTest ? 320 : 800, minHeight: smokeTest ? 480 : 600, title: 'Fútbol arcade',
     backgroundColor: '#0b1115', icon: join(__dirname, 'icon.png'), show: !smokeTest,
-    webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true },
+    webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, preload: join(__dirname, 'preload.cjs') },
   });
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { label: 'Juego', submenu: [{ id: 'game-update', label: 'Buscar actualizaciones', click: () => updates(true) }, { label: 'Salir', role: 'quit' }] },

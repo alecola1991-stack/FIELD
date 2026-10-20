@@ -9,7 +9,8 @@ const projectUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || defaultProjectUr
 const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() || defaultPublishableKey;
 const supabase = projectUrl && publishableKey
   ? createClient(projectUrl, publishableKey, {
-      auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true },
+      // The desktop app signs in with Google through the system browser, which needs PKCE.
+      auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true, flowType: globalThis.location?.protocol === 'arcade:' ? 'pkce' : 'implicit' },
     })
   : null;
 
@@ -59,7 +60,11 @@ export class AccountService {
   }
 
   async signInWithGoogle() {
-    try { return await startGoogleSignIn(this.requireClient(), { projectUrl, publishableKey, location: window.location }); }
+    try {
+      const result = await startGoogleSignIn(this.requireClient(), { projectUrl, publishableKey, location: window.location });
+      // Desktop: the session opens here (on the web the page reloads with it).
+      return result?.session ? { user: toAccountUser(result.session.user) } : result;
+    }
     catch (error) { throw new Error(authErrorMessage(error, 'google')); }
   }
 

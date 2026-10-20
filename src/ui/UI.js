@@ -1905,27 +1905,45 @@ export class UI {
     this.leaderboard_message.textContent = 'Cargando resultados…';
     this.leaderboard_list.replaceChildren(); this.renderLeaderboardPodium([]);
     try {
-      const rows = await this.accountService?.onlineAction('leaderboard');
+      const data = await this.accountService?.onlineAction('leaderboard');
+      // v8: {rows (top 100), total, me: {position…}}; older servers: the rows only.
+      const rows = Array.isArray(data) ? data : data?.rows, total = Array.isArray(data) ? rows?.length : Number(data?.total) || rows?.length, me = Array.isArray(data) ? null : data?.me || null;
       if (!Array.isArray(rows)) throw new Error('No se pudo conectar con la clasificación.');
       if (!rows.length) { this.leaderboard_message.textContent = 'Aún no hay resultados. Juega online e inicia sesión para aparecer aquí.'; return; }
       this.leaderboard_message.textContent = this.user
-        ? 'Clasificación Ranked · resultados confirmados.'
+        ? `Clasificación Ranked · ${total} jugadores.`
         : 'Inicia sesión para consultar la clasificación Ranked.';
-      rows.forEach((row, index) => {
+      const mine = me?.username || this.hub?.identity?.username;
+      const row = (entry, place) => {
         const item = document.createElement('li'); item.className = 'leaderboard-row';
-        const place = document.createElement('b'); place.className = 'leaderboard-place'; place.textContent = String(index + 1).padStart(2, '0');
-        const name = document.createElement('span'); name.className = 'leaderboard-name'; name.textContent = '@' + row.username; name.prepend(rankBadge(row.elo, { size: 20 }));
-        const record = document.createElement('small'); record.textContent = `${row.elo} ELO · ${row.ranked_wins}V · ${row.ranked_played}P`;
-        item.append(place, name, record); this.leaderboard_list.append(item);
-      });
-      this.renderLeaderboardPodium(rows);
+        if (mine && entry.username === mine) item.classList.add('is-you');
+        const placeTag = document.createElement('b'); placeTag.className = 'leaderboard-place'; placeTag.textContent = String(place).padStart(2, '0');
+        const name = document.createElement('span'); name.className = 'leaderboard-name'; name.textContent = '@' + entry.username; name.prepend(rankBadge(entry.elo, { size: 20 }));
+        const record = document.createElement('small'); record.textContent = `${entry.elo} ELO · ${entry.ranked_wins}V · ${entry.ranked_played}P`;
+        item.append(placeTag, name, record);
+        // Any name opens that player's public profile.
+        if (this.social?.profilesSupported) {
+          item.tabIndex = 0; item.setAttribute('role', 'button'); item.setAttribute('aria-label', `Ver perfil de @${entry.username}`);
+          const open = () => this.social.openPlayer(entry.id ? { userId: entry.id } : { username: entry.username });
+          item.addEventListener('click', open);
+          item.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); } });
+        }
+        return item;
+      };
+      rows.forEach((entry, index) => this.leaderboard_list.append(row(entry, index + 1)));
+      // Outside the top: your own row at the end with your real place.
+      if (me?.position > rows.length) {
+        const gap = document.createElement('li'); gap.className = 'leaderboard-gap'; gap.setAttribute('aria-hidden', 'true'); gap.textContent = '···';
+        this.leaderboard_list.append(gap, row(me, me.position));
+      }
+      this.renderLeaderboardPodium(rows, { total, me });
     } catch (error) {
       this.leaderboard_message.textContent = error?.message || 'No se pudo cargar la clasificación.';
     } finally { this.leaderboard_refresh.disabled = false; }
   }
 
-  // Top three as panels plus the signed-in player's position (when in the top 50).
-  renderLeaderboardPodium(rows) {
+  // Top three as panels plus the signed-in player's place.
+  renderLeaderboardPodium(rows, { total = rows.length, me = null } = {}) {
     const podium = document.getElementById('leaderboard-podium'), you = document.getElementById('leaderboard-you');
     if (!podium || !you) return;
     podium.replaceChildren(...rows.slice(0, 3).map((row, index) => {
@@ -1937,9 +1955,11 @@ export class UI {
       tile.append(place, badge, name, detail); return tile;
     }));
     if (!rows.length) podium.append(Object.assign(document.createElement('p'), { className: 'online-match-hint', textContent: 'El podio aparecerá con los primeros resultados Ranked.' }));
-    const identity = this.hub?.identity, at = identity ? rows.findIndex(row => row.username === identity.username) : -1;
-    you.classList.toggle('hidden', !identity);
-    if (identity) you.textContent = at >= 0 ? `Tu posición: ${at + 1}.º de ${rows.length} · ${identity.elo} ELO` : `Aún no estás en el top ${rows.length || 50} · ${identity.elo} ELO`;
+    const identity = this.hub?.identity;
+    const at = me?.position || (identity ? rows.findIndex(row => row.username === identity.username) + 1 : 0);
+    const elo = me?.elo ?? identity?.elo;
+    you.classList.toggle('hidden', !(me || identity));
+    if (me || identity) you.textContent = at > 0 ? `Tu posición: ${at}.º de ${total} · ${elo} ELO` : `Aún no estás en el top ${rows.length || 100} · ${elo} ELO`;
   }
 
   async cancelOnlineRoom() { return this.hub.action('leave'); }

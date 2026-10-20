@@ -524,9 +524,31 @@ scenarios.staleRoom = async function () {
   check(!/Sal de la sala|No perteneces/.test(msg), `y puede volver a buscar (${msg})`);
   await leaveAll(players); check(!errorsOf(players).length, `sin errores de página ${errorsOf(players).join(' | ')}`); await closePlayers(players);
 };
+scenarios.ladder = async function () {
+  note('▶ Clasificación Ranked con bots y perfil de un bot');
+  const [player] = await makePlayers(1, 'ql');
+  const page = player.page;
+  await page.setViewport({ width: 1280, height: 860 });
+  await page.evaluate(() => window.__field.ui.selectMode('leaderboard'));
+  await page.waitForFunction(() => document.querySelectorAll('#leaderboard-list .leaderboard-row').length > 0, { timeout: 15000 });
+  const info = await page.evaluate(() => ({ rows: document.querySelectorAll('#leaderboard-list .leaderboard-row').length, you: document.getElementById('leaderboard-you').textContent,
+    last: document.querySelector('#leaderboard-list .leaderboard-row:last-child')?.classList.contains('is-you'), top: document.querySelector('#leaderboard-list .leaderboard-row small')?.textContent }));
+  check(info.rows === 101 && info.last, `top 100 y tu fila al final (${info.rows} filas)`);
+  check(/Tu posición: \d+\.º de \d+/.test(info.you), `tu posición (${info.you})`);
+  check(Number.parseInt(info.top) > 1000, `el primero pasa de 1000 ELO (${info.top})`);
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/ladder.png` });
+  await page.click('#leaderboard-list .leaderboard-row:nth-child(4)');
+  await page.waitForFunction(() => document.querySelectorAll('#player-card-body .result-chip').length > 0, { timeout: 15000 });
+  const card = await page.evaluate(() => ({ visible: !document.getElementById('player-card-overlay').classList.contains('hidden'), chips: document.querySelectorAll('#player-card-body .result-chip').length, who: document.querySelector('#player-card-body small')?.textContent }));
+  check(card.visible && card.chips === 10, `perfil del bot con 10 partidos (${card.chips})`);
+  check(/amigos/.test(card.who || ''), `equipo y amigos (${card.who})`);
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/ladder-profile.png` });
+  check(!player.errors.length, `sin errores de página ${player.errors.join(' | ')}`);
+  await closePlayers([player]);
+};
 const plans = {
   serverForfeit: () => scenarios.serverForfeit(), comeback: () => scenarios.comeback(), staleRoom: () => scenarios.staleRoom(),
-  profile: () => scenarios.profile(),
+  profile: () => scenarios.profile(), ladder: () => scenarios.ladder(),
   probe2: () => scenarios.probe(2), probe4: () => scenarios.probe(4),
   quick1v1: () => scenarios.quick1v1(), private1v1: () => scenarios.private1v1(), ranked1v1: () => scenarios.ranked1v1(),
   duoQuickPublic: () => scenarios.duo('quick', true), duoQuickPrivate: () => scenarios.duo('quick', false), duoRanked: () => scenarios.duo('ranked', true),

@@ -4,6 +4,38 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-20 · Claude · Clasificación Ranked poblada con 300 bots
+**Commit:** rama `ranking-ficticio` (pendiente de pasar a main)
+**Archivos:** supabase/online-ranking.sql, supabase/online-ranking-test.sql, supabase/online-bots-test.sql, src/ui/UI.js, index.html, src/styles.css, tools/e2e-online/e2e.cjs, tools/e2e-online/README.md, NOTAS_IA.md
+**Qué y por qué:** Ale quiere que la clasificación Ranked mezcle bots y jugadores reales, con al menos 300 usuarios entre 1200 y algo menos de 300 de ELO. Decisiones:
+- Reparto en pirámide.
+- Los bots se mueven cada día.
+- Un bot tiene historial generado en su perfil.
+- La tabla muestra el top 100 y tu puesto.
+**Cómo:**
+- `supabase/online-ranking.sql` (versión 8). Ejecutar después de online-tiempo.sql.
+  - Columna `players.ladder_target`: el ELO ancla de los bots de la escalera.
+  - Tabla `field_private.ladder_state`: el último día jugado.
+  - `seed_ladder(300)` crea los bots por tramos: 1 por encima de 1188, 7 entre 1000 y 1180, 20 entre 850 y 999, 50 entre 700 y 849, 90 entre 550 y 699, 85 entre 400 y 549, y 47 entre 282 y 399. Usan `bot_name` y `bot_profile`, y su récord sale de `bot_record` (victorias − derrotas ≈ (ELO − 500) / 16). Si ya existen no hace nada.
+  - `ladder_tick()` se llama en `leaderboard` y en `profile` y juega los días que falten, hasta 7, sin necesitar cron. Cada día, un 35 % de los bots juega de 1 a 5 partidas; la probabilidad de ganar va del 25 % al 75 % según la distancia a su ancla, para que la pirámide no se deforme. El ancla también se mueve ±8 al día. El ELO queda entre 250 y 1250.
+  - `bot_history(id)` genera partidos estables por día con `hrand(clave)` (md5): un partido en la mayoría de los días, entre las 9:00 y las 23:00, con victorias según su porcentaje, marcadores de 1 a 5 y ±10–21 ELO en los Ranked. En `profile` se mezcla con sus partidos reales contra personas, y se muestran los 10 últimos.
+  - En el perfil de un bot también salen partidos casuales, amigos (0–13), su equipo y un nivel según las partidas que lleva.
+  - `leaderboard` devuelve `{rows: top 100 con id, total, me: {position…}}` y ya no excluye bots. `pick_bot` ya reutilizaba cualquier bot libre a ±35 de ELO, así que los rivales bot son los de la tabla.
+- Cliente (UI.js):
+  - `loadLeaderboard` acepta el formato nuevo y el antiguo (array).
+  - Muestra el top 100. Si estás fuera, añade «···» y tu fila con tu puesto real.
+  - Tu fila va resaltada (`.is-you`).
+  - Cada fila abre el perfil del jugador (`social.openPlayer`). Para eso, `#player-card-overlay` sale de `#profile-screen` y queda al nivel de las pantallas.
+- Pruebas:
+  - supabase/online-ranking-test.sql: siembra, rango y récord; top 100, total y puesto; perfil de un bot con 10 partidos estables; deriva de 3 días; nada de deriva repetida el mismo día.
+  - online-bots-test.sql se adapta: con la escalera, el bot reutilizado puede ser otro del rango, y los bots ya salen en la tabla.
+  - e2e: escenario `ladder`; bots1v1 y ranked1v1 siguen bien.
+**Para el otro asistente:**
+- Las solicitudes de amistad a bots se quedan pendientes, igual que antes.
+- Si cambias `field_private.action`, parte de online-ranking.sql: es la versión vigente.
+
+---
+
 ## 2026-10-20 · Claude · Partidos con tiempo: 2/3/4 minutos y prórroga con gol de oro
 **Commit:** fusionado en main (rama `escudos-partido`, merge d7f2c34). Para deshacerlo: `git revert -m 1 d7f2c34`
 **Archivos:** src/game/Game.js, src/game/Sound.js, src/app.js, src/ui/UI.js, src/ui/OnlineHub.js, src/styles.css, supabase/online-tiempo.sql, supabase/online-tiempo-test.sql, tests/MatchClock.test.js, tools/e2e-online/README.md, NOTAS_IA.md

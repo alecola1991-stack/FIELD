@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-20 · Claude · Clasificación Ranked poblada con 300 bots
-**Commit:** rama `ranking-ficticio` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `ranking-ficticio`, merge ceff6e8). Para deshacerlo: `git revert -m 1 ceff6e8`
 **Archivos:** supabase/online-ranking.sql, supabase/online-ranking-test.sql, supabase/online-bots-test.sql, src/ui/UI.js, index.html, src/styles.css, tools/e2e-online/e2e.cjs, tools/e2e-online/README.md, NOTAS_IA.md
 **Qué y por qué:** Ale quiere que la clasificación Ranked mezcle bots y jugadores reales, con al menos 300 usuarios entre 1200 y algo menos de 300 de ELO. Decisiones:
 - Reparto en pirámide.

@@ -88,9 +88,10 @@ export class Game {
     this.applyModifiers();
     this.setupKickoff();
     this.setupOnlineBots(mode, options);
+    this.setupClock(mode, options);
     this.beginCountdown();
     if (!this.raf) this.raf = requestAnimationFrame(this.boundLoop);
-    this.hooks.onStart?.(mode); this.hooks.onScore?.(0, 0); this.hooks.onTime?.('00:00');
+    this.hooks.onStart?.(mode); this.hooks.onScore?.(0, 0); this.hooks.onTime?.(this.clockText(), this.clockInfo());
   }
   applyModifiers() {
     this.modifiers = normalizeModifiers(this.modifiers); this.world = modifierWorld(this.modifiers, this.fieldScale || 1);
@@ -173,7 +174,7 @@ export class Game {
     this.shotRangeTimer = Math.max(0, this.shotRangeTimer - dt);
     this.powerHudClock -= dt;
     if (this.powerHudClock <= 0) { this.powerHudClock = .1; this.hooks.onPowerCooldown?.(this.player.powerCooldown); }
-    this.state.elapsed += dt; this.hooks.onTime?.(this.state.formatTime());
+    this.state.elapsed += dt; this.hooks.onTime?.(this.clockText(), this.clockInfo());
     if (this.state.goalTimer > 0) {
       this.state.goalTimer = Math.max(0, this.state.goalTimer - dt);
       // The ball keeps rolling into the goal and sinks into the soft net while the goal is celebrated.
@@ -181,6 +182,7 @@ export class Game {
       if (this.state.goalTimer <= 0 && !this.startReplay()) this.finishGoalSequence();
       return;
     }
+    if (this.checkClock()) return;
     if (this.squad) { this.updateSquad(dt); return; }
     const move = this.input.axes(); this.player.move(move.x, move.y, dt);
     const shotInput = this.readKick();
@@ -264,6 +266,11 @@ export class Game {
   }
   finishGoalSequence() {
     this.resetReplay();
+    // Time ran out during the celebration: a winner ends the match; a draw goes to golden goal.
+    if (!this.state.matchOver && this.timeUp() && this.onlineAuthority) {
+      if (this.state.scorePlayer !== this.state.scoreBot) this.state.matchOver = true;
+      else this.startOvertime();
+    }
     if (this.state.matchOver) {
       this.state.paused = true; this.input.enabled = false;
       // The normal network tick stops while paused: deliver the terminal state first.
@@ -464,6 +471,8 @@ export class Game {
     this.markGoalForReplay();
     const target = this.goalTarget;
     if (this.state.mode !== 'training' && Math.max(this.state.scorePlayer, this.state.scoreBot) >= target) this.state.matchOver = true;
+    // Golden goal: in extra time the first goal wins.
+    if (this.overtime) this.state.matchOver = true;
     this.sound.play('goal'); this.renderer.burst(this.ball.x, this.ball.y, '#b8f4ce', 24, 190);
     this.hooks.onScore?.(this.state.scorePlayer, this.state.scoreBot); this.hooks.onGoal?.(side);
     this.maybeBotQuits(side);
@@ -475,7 +484,7 @@ export class Game {
     return {
       mode: this.state.mode, elapsed: this.state.elapsed, scorePlayer: this.state.scorePlayer, scoreBot: this.state.scoreBot,
       // While a replay runs the goal phase is still open (a restored save resumes the reset, old guests keep waiting).
-      goalTimer: this.replay ? Math.max(this.state.goalTimer, .01) : this.state.goalTimer, goalSide: this.state.goalSide, matchOver: this.state.matchOver, goalTarget: this.goalTarget,
+      goalTimer: this.replay ? Math.max(this.state.goalTimer, .01) : this.state.goalTimer, goalSide: this.state.goalSide, matchOver: this.state.matchOver, goalTarget: this.goalTarget, duration: this.matchDuration ?? null, overtime: !!this.overtime,
       ...(online ? { replay: this.replay ? { active: true, skipHost: this.replay.localSkip, skipGuest: this.replay.remoteSkip, ...(this.squad ? { seats: [...(this.replay.remoteSeats || [])] } : {}) } : null } : {}),
       countdown: this.countdown, countdownClock: this.countdownClock, trajectory: this.trajectory,
       ...(online ? {} : { modifiers: this.modifiers, gameplay: this.gameplay, fieldTheme: this.fieldTheme, competitionRound: this.competitionRound }),
@@ -500,6 +509,8 @@ export class Game {
     this.state.goalSide = [-1, 1].includes(Number(snapshot.goalSide)) ? Number(snapshot.goalSide) : 0;
     this.state.matchOver = !!snapshot.matchOver; this.state.paused = false;
     this.goalTarget = this.state.mode === 'online' ? 5 : Number(snapshot.goalTarget) || this.goalTarget; this.countdown = Number(snapshot.countdown) || 0;
+    if ('duration' in snapshot) this.matchDuration = Number(snapshot.duration) || null;
+    if ('overtime' in snapshot) { const was = this.overtime; this.overtime = !!snapshot.overtime; if (!was && this.overtime && this.state.mode === 'online' && !this.state.matchOver) { this.sound.play?.('whistle'); this.hooks.onOvertime?.(); } }
     this.countdownClock = Number(snapshot.countdownClock) || 0; this.trajectory = !!this.settings?.trajectory;
     this.fieldTheme = snapshot.fieldTheme || this.fieldTheme; this.competitionRound = Number(snapshot.competitionRound) || this.competitionRound;
     const savedStats = snapshot.matchStats;
@@ -508,7 +519,7 @@ export class Game {
     if (Array.isArray(snapshot.others)) (this.others || []).forEach((body, index) => restoreBody(body, snapshot.others[index]));
     if (snapshot.ai) Object.assign(this.botAI, snapshot.ai);
     if (notify) {
-      this.hooks.onScore?.(this.state.scorePlayer, this.state.scoreBot); this.hooks.onTime?.(this.state.formatTime());
+      this.hooks.onScore?.(this.state.scorePlayer, this.state.scoreBot); this.hooks.onTime?.(this.clockText(), this.clockInfo());
       this.hooks.onCountdown?.(this.countdown > 0 ? this.countdown : null); this.hooks.onPowerCooldown?.(this.player.powerCooldown || 0);
     }
     return true;
@@ -566,7 +577,7 @@ export class Game {
       authoritative.vy += (predictedPlayer.vy - authoritative.vy) * .7;
       authoritative.faceX = predictedPlayer.faceX; authoritative.faceY = predictedPlayer.faceY;
     }
-    this.hooks.onTime?.(this.state.formatTime());
+    this.hooks.onTime?.(this.clockText(), this.clockInfo());
     if (this.countdown !== priorCountdown) this.hooks.onCountdown?.(this.countdown > 0 ? this.countdown : null);
     this.hooks.onPowerCooldown?.(this.player.powerCooldown || 0);
     if (priorScorePlayer !== this.state.scorePlayer || priorScoreBot !== this.state.scoreBot) {
@@ -602,7 +613,7 @@ export class Game {
     this.state.elapsed = Math.max(0, Math.min(3600, Number(resume.elapsed) || 0));
     const goals = Array.isArray(resume.goals) ? resume.goals.slice(-9) : [];
     this.matchStats.goals = goals.filter(goal => ['player', 'opponent'].includes(goal?.side)).map(goal => ({ side: goal.side, minute: Math.max(1, Math.floor(Number(goal.minute) || 1)), elapsedSeconds: Math.max(0, Number(goal.elapsedSeconds) || 0) }));
-    this.hooks.onScore?.(this.state.scorePlayer, this.state.scoreBot); this.hooks.onTime?.(this.state.formatTime());
+    this.hooks.onScore?.(this.state.scorePlayer, this.state.scoreBot); this.hooks.onTime?.(this.clockText(), this.clockInfo());
     return true;
   }
   // ---- 2v2 online ------------------------------------------------------------
@@ -754,6 +765,39 @@ export class Game {
       if (d < gap) { const k = gap / (d || 1); body.x = cx + (d ? dx * k : side * gap); body.y = cy + dy * (d ? k : 0); }
     });
   }
+  // ---- Match clock ------------------------------------------------------------------------------
+  // Every match lasts a set time: 2 min (1v1), 3 min (2v2 and 3v3), 4 min (7v7). It also ends early
+  // when a side reaches the goal target. At full time the side ahead wins; a draw goes to extra time
+  // with golden goal (the next goal wins). Training has no clock. `options.matchDuration` overrides
+  // it (null: no time limit). The host decides online; guests follow the snapshots.
+  setupClock(mode, options) {
+    this.overtime = false;
+    if (options.matchDuration !== undefined) { this.matchDuration = options.matchDuration ? Number(options.matchDuration) : null; return; }
+    const players = this.squad?.bodies.length || 2;
+    this.matchDuration = mode === 'training' ? null : players >= 14 ? 240 : players >= 4 ? 180 : 120;
+  }
+  timeUp() { return !!this.matchDuration && this.state.elapsed >= this.matchDuration; }
+  startOvertime() { if (this.overtime) return; this.overtime = true; this.sound.play?.('whistle'); this.hooks.onOvertime?.(); }
+  // Called every frame of play: ends the match at full time or starts extra time on a draw.
+  checkClock() {
+    if (!this.timeUp() || this.state.matchOver || !this.onlineAuthority) return false;
+    if (this.state.scorePlayer === this.state.scoreBot) { this.startOvertime(); return false; }
+    this.state.matchOver = true; this.input.enabled = false;
+    this.sound.play?.('whistle');
+    this.finishGoalSequence();
+    return true;
+  }
+  // Countdown to full time (mm:ss); in extra time, "+m:ss" played since.
+  clockText() {
+    const pad = value => String(value).padStart(2, '0');
+    if (!this.matchDuration) return this.state.formatTime();
+    const over = this.state.elapsed - this.matchDuration;
+    if (over >= 0 && (this.overtime || this.state.scorePlayer === this.state.scoreBot)) { const sec = Math.floor(over); return `+${Math.floor(sec / 60)}:${pad(sec % 60)}`; }
+    const sec = Math.max(0, Math.ceil(this.matchDuration - this.state.elapsed));
+    return `${pad(Math.floor(sec / 60))}:${pad(sec % 60)}`;
+  }
+  clockInfo() { return { overtime: !!this.overtime || (this.timeUp() && this.state.scorePlayer === this.state.scoreBot), duration: this.matchDuration, remaining: this.matchDuration ? Math.max(0, this.matchDuration - this.state.elapsed) : null }; }
+
   // ---- Online bots ------------------------------------------------------------------------------
   // Bots fill online rooms; the host (always a human) moves them. 1v1: `options.opponentBot`
   // ({ elo }). 2v2: the squad seats marked `bot`.

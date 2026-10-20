@@ -6,6 +6,7 @@ const SOUND_PATTERNS = {
         goal: [[390, 660, .3, .19, 'sine'], [520, 820, .22, .08, 'sine']], click: [[490, 380, .045, .04, 'triangle']],
         select: [[440, 560, .065, .045, 'sine']], win: [[392, 587, .14, .08, 'sine'], [523, 784, .24, .09, 'sine']],
         loss: [[260, 170, .23, .07, 'triangle']], trophy: [[523, 659, .12, .075, 'sine'], [659, 988, .27, .09, 'sine']],
+        whistle: [[2450, 2380, .16, .045, 'sine'], [2500, 2420, .5, .05, 'sine']],
       };
 
 export class Sound {

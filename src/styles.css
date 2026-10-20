@@ -1840,3 +1840,13 @@ body.gameplay-tactical.match-online .arcade-hint{display:flex!important}
 @media(max-width:420px){.bug-code{display:none}.bug-clock i{display:none}}
 @media(prefers-reduced-motion:reduce){.score-bug::after,.score-bug.enter,.score-bug.enter .bug-side,.score-bug.goal-home .bug-side,.score-bug.goal-away .bug-side,.bug-goals.pop,.bug-clock i{animation:none}}
 @media(min-width:701px){.game-header{grid-template-columns:minmax(0,.55fr) minmax(0,2.4fr) minmax(0,.3fr)}.game-header .hud-identity>span{max-width:240px}}
+/* Match clock: last seconds in red, extra time (golden goal) in gold. */
+.bug-clock{transition:background .3s,color .3s}
+.bug-clock.final-seconds{color:#ff8a94;animation:clockTick 1s steps(1) infinite}
+.bug-clock.overtime{background:linear-gradient(180deg,#f5c84a,#d99a1c);color:#2a1a00;font-weight:700}
+.bug-clock.overtime i{background:#2a1a00;box-shadow:none;animation:none}
+.bug-clock.overtime::after{content:"PRÓRROGA";font:700 9px var(--mono);letter-spacing:.12em;opacity:.8}
+.goal-banner.overtime-banner span{color:#ffd45c}.goal-banner.overtime-banner small,.goal-banner.golden-goal small{color:#ffd45c}
+@keyframes clockTick{50%{color:#e9eef8}}
+@media(max-width:700px){.bug-clock.overtime::after{content:"PR"}}
+@media(prefers-reduced-motion:reduce){.bug-clock.final-seconds{animation:none}}

@@ -4,6 +4,32 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-20 · Claude · Partidos con tiempo: 2/3/4 minutos y prórroga con gol de oro
+**Commit:** rama `escudos-partido` (pendiente de pasar a main)
+**Archivos:** src/game/Game.js, src/game/Sound.js, src/app.js, src/ui/UI.js, src/ui/OnlineHub.js, src/styles.css, supabase/online-tiempo.sql, supabase/online-tiempo-test.sql, tests/MatchClock.test.js, tools/e2e-online/README.md, NOTAS_IA.md
+**Qué y por qué:** Ale pidió un contador en los partidos. Duraciones: 2 min en 1v1, 3 min en 2v2 y 3v3, 4 min en 7v7. Gana quien vaya por delante al final. Si hay empate, prórroga sin límite con gol de oro. El partido sigue acabando antes si alguien llega al límite de goles (lo que pase primero). Vale para todos los modos (entrenamiento sin reloj) y también para el online.
+**Cómo:**
+- Game.js:
+  - `setupClock(mode, options)` fija `matchDuration` (120/180/240 s según el número de jugadores; `null` en entrenamiento). `options.matchDuration` lo sobrescribe (`null` = sin tiempo).
+  - `checkClock()` se llama cada frame de juego. Al llegar al final, si alguien gana termina el partido (silbato + `finishGoalSequence`); si hay empate llama a `startOvertime()`, que activa `overtime`, suena el silbato y llama al hook `onOvertime`.
+  - Si el tiempo se acaba durante la celebración de un gol, lo resuelve `finishGoalSequence`.
+  - `recordGoal`: en prórroga, cualquier gol acaba el partido.
+  - `clockText()` devuelve una cuenta atrás mm:ss, o «+m:ss» en prórroga. `clockInfo()` devuelve `{overtime, duration, remaining}`. `onTime` recibe ahora `(texto, info)`.
+  - Online decide el anfitrión. El snapshot lleva `duration` y `overtime`; el invitado los restaura y muestra el aviso de prórroga cuando cambia.
+- UI:
+  - `updateTime(time, info)` pone el reloj en rojo parpadeante en los últimos 10 s y en dorado con «PRÓRROGA» en la prórroga.
+  - `showOvertime()` muestra el banner «PRÓRROGA · GOL DE ORO». El banner de gol dice «GOL DE ORO» en la prórroga.
+  - La etiqueta del modo añade «2 MIN ·».
+  - Silbato nuevo en Sound.js.
+- Online:
+  - Antes, el servidor solo aceptaba resultados con un lado en 5. `supabase/online-tiempo.sql` (versión 7) solo cambia `field_private.action`, partiendo de la versión de online-bots-2.sql: `report` acepta cualquier marcador no empatado entre 0 y 30.
+  - El cliente juega con tiempo solo si `hub.supportsTimed` (versión ≥ 7); con un servidor antiguo sigue «a 5 goles» sin reloj.
+  - Hay que ejecutar online-tiempo.sql en el SQL Editor de producción.
+- Pruebas: tests/MatchClock.test.js (duraciones, final con ganador, prórroga sin límite, gol de oro, fin durante celebración, snapshot). supabase/online-tiempo-test.sql (empate y 31-0 rechazados, 2-1 aceptado y cerrado; todo con rollback).
+**Para el otro asistente:** si añades modos con otro número de jugadores, revisa `setupClock`. El servidor sigue rechazando empates: un partido online nunca debe reportar empate (la prórroga lo evita).
+
+---
+
 ## 2026-10-20 · Claude · Marcador estilo retransmisión (grandes ligas) con efectos y nombres a los lados
 **Commit:** rama `escudos-partido` (pendiente de pasar a main)
 **Archivos:** index.html, src/ui/UI.js, src/styles.css, NOTAS_IA.md

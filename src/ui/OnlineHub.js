@@ -138,7 +138,7 @@ export class OnlineHub {
   }
   async consume(data) {
     this.identity = data?.identity || null; this.friends = data?.friends || []; this.invites = data?.invites || []; this.lobby = data?.lobby || null;
-    if (data) { this.supportsTeams = Number(data.version) >= 2; this.supportsSwap = Number(data.version) >= 3; this.supportsProfiles = Number(data.version) >= 4; this.supportsBots = Number(data.version) >= 5; this.supportsBotQuit = Number(data.version) >= 6; }
+    if (data) { this.supportsTeams = Number(data.version) >= 2; this.supportsSwap = Number(data.version) >= 3; this.supportsProfiles = Number(data.version) >= 4; this.supportsBots = Number(data.version) >= 5; this.supportsBotQuit = Number(data.version) >= 6; this.supportsTimed = Number(data.version) >= 7; }
     if (this.ui.currentView === 'profile') { this.ui.social?.render(); this.ui.renderProfileOnline?.(); }
     this.render(); this.ui.trackOnlineRank?.(this.identity); this.ui.applyGoldName?.();
     if (this.lobby?.state === 'cancelled') {

@@ -1489,7 +1489,8 @@ export class UI {
     this.hud_player_name.classList.toggle('gold-name', mode === 'online' && gold);
     this.hud_opponent_name.classList.toggle('gold-name', mode === 'online' && !!options.opponentGold);
     const baseLabel = options.label || (mode === 'training' ? 'MODO ENTRENAMIENTO' : `PARTIDO · ${difficultyLabel(this.settings.difficulty).toUpperCase()}`);
-    const target = `A ${this.game.goalTarget} ${this.game.goalTarget === 1 ? 'GOL' : 'GOLES'}`;
+    const minutes = this.game.matchDuration ? `${Math.round(this.game.matchDuration / 60)} MIN · ` : '';
+    const target = `${minutes}A ${this.game.goalTarget} ${this.game.goalTarget === 1 ? 'GOL' : 'GOLES'}`;
     let label = mode === 'training' ? baseLabel : /\bA \d+(?: GOLES)?\b/.test(baseLabel) ? baseLabel.replace(/\bA \d+(?: GOLES)?\b/g, target) : `${baseLabel} · ${target}`;
     if (aiMode) label += ` · ${this.settings.customDifficulty ? 'IA' : `RIVAL ${'★'.repeat(Math.max(1, Math.min(5, options.opponentTeam?.stars || 3)))} · IA`} ${difficultyLabel(this.game.botAI.difficulty).toUpperCase()}`;
     const trio = !!this.game.trio, seven = !!this.game.seven;
@@ -1618,7 +1619,21 @@ export class UI {
     bug.classList.add(`goal-${side}`); goals[side === 'home' ? 0 : 1].classList.add('pop');
     this.goalFlashTimer = setTimeout(() => { bug.classList.remove('goal-home', 'goal-away'); goals.forEach(node => node.classList.remove('pop')); }, 2400);
   }
-  updateTime(time) { if (this.timer.textContent !== time) this.timer.textContent = time; }
+  // Match clock: countdown to full time; red in the last 10 s; gold "+m:ss" in extra time (golden goal).
+  updateTime(time, info = {}) {
+    if (this.timer.textContent !== time) this.timer.textContent = time;
+    const clock = this.timer.parentElement;
+    clock?.classList.toggle('overtime', !!info.overtime);
+    clock?.classList.toggle('final-seconds', !info.overtime && info.remaining != null && info.remaining > 0 && info.remaining <= 10);
+  }
+  showOvertime() {
+    const banner = this.goal_banner, big = banner.querySelector('span'), small = banner.querySelector('small');
+    const texts = [big.textContent, small.textContent];
+    big.textContent = 'PRÓRROGA'; small.textContent = 'GOL DE ORO · EL PRÓXIMO GOL GANA';
+    banner.classList.add('overtime-banner'); banner.classList.remove('hidden');
+    clearTimeout(this.overtimeBannerTimer);
+    this.overtimeBannerTimer = setTimeout(() => { banner.classList.add('hidden'); banner.classList.remove('overtime-banner'); [big.textContent, small.textContent] = texts; }, 2200);
+  }
   updatePowerCooldown(seconds) {
     const total = this.game?.modifiers?.powerCooldown || 20;
     const key = `${Math.ceil(seconds * 10)}|${total}`; if (key === this.lastPowerHud) return; this.lastPowerHud = key;
@@ -1682,6 +1697,8 @@ export class UI {
         opponentTeam: getTeamById(squad.seats[rivals[0]]?.teamId) || null, opponentUsername: names(rivals), opponentElo: elo(rivals), opponentName: squad.seats[rivals[0]]?.name || 'RIVAL', opponentNumber: squad.seats[rivals[0]]?.number });
       label += ' · 2V2';
     }
+    // Timed matches need server v7 (accepts final scores below 5); older servers keep first-to-5.
+    if (!this.hub?.supportsTimed) teamExtras.matchDuration = null;
     this.start('online', {
       modifiers: DEFAULT_MODIFIERS, localSide: info.localSide, opponentName: other.name || 'RIVAL', opponentNumber: other.number, opponentLevel: other.level || 1,
       opponentTeam: team, opponentUsername: other.username, opponentElo: other.elo, opponentGold: !!other.gold, opponentGoldKit: !!other.goldKit, roomCode: info.roomCode, label, ...teamExtras,
@@ -2000,7 +2017,14 @@ export class UI {
     this.countdown_banner.textContent = String(value); this.countdown_banner.classList.remove('hidden');
     this.countdown_banner.classList.remove('countdown-tick'); void this.countdown_banner.offsetWidth; this.countdown_banner.classList.add('countdown-tick');
   }
-  goal() { this.controller?.rumble(.5,240); this.goal_banner.classList.remove('hidden'); setTimeout(() => this.goal_banner.classList.add('hidden'), 1500); }
+  goal() {
+    this.controller?.rumble(.5,240);
+    const small = this.goal_banner.querySelector('small'), golden = !!this.game?.overtime;
+    clearTimeout(this.overtimeBannerTimer); this.goal_banner.classList.remove('overtime-banner');
+    this.goal_banner.querySelector('span').textContent = '¡GOOOL!'; small.textContent = golden ? 'GOL DE ORO' : 'QUÉ GOLAZO';
+    this.goal_banner.classList.toggle('golden-goal', golden);
+    this.goal_banner.classList.remove('hidden'); setTimeout(() => this.goal_banner.classList.add('hidden'), 1500);
+  }
 
   handleMatchEnd(result) {
     const won = result.winner === 'player';

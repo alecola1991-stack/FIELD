@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-20 · Claude · Renombrar los bots que ya existen en producción
-**Commit:** rama `ranking-nombres` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `ranking-nombres`, merge 9cb5e7a). Para deshacerlo: `git revert -m 1 9cb5e7a`
 **Archivos:** supabase/online-ranking-nombres.sql, NOTAS_IA.md
 **Qué y por qué:** al comprobar producción, online-ranking.sql estaba aplicado en su primera versión. Los 300 bots se habían creado con el generador antiguo: 34 bots repetían letras y había muchos formatos iguales.
 **Cómo:**

@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-20 · Claude · Escritorio 1.3.0: firma «alecola», instalador y Google
-**Commit:** rama `firma-google` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `firma-google`, merge a990151). Para deshacerlo: `git revert -m 1 a990151`
 **Archivos:** desktop/oauth.cjs (nuevo), desktop/preload.cjs (nuevo), desktop/main.cjs, desktop/package.json, desktop/README.md, .github/workflows/windows.yml, src/account/GoogleSignIn.js, src/account/AccountService.js, src/ui/UI.js, tests/GoogleSignIn.test.js, tests/DesktopOAuth.test.js (nuevo), NOTAS_IA.md
 **Qué y por qué:** Ale pidió firma digital «alecola» en la descarga de Windows e inicio de sesión con Google. Decidió:
 - Preparar la firma con su certificado (secretos) y, mientras no tenga uno, usar un autofirmado.

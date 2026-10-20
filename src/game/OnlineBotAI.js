@@ -99,6 +99,18 @@ export class OnlineBotAI extends BotAI {
       return { ...decision, x: move.x, y: move.y, speedMultiplier: move.speed, behavior: 'defend', powered: false };
     }
 
+    // A still, loose ball nobody is near: go and take it. (The base AI would keep guarding the goal,
+    // and with an idle human both would wait forever.)
+    const loose = !rolling && !humanOnBall && dist(player, ball) > 150;
+    if (loose && decision.behavior === 'defend') {
+      const goalY = centerY + (this.random() - .5) * 40;
+      const back = unit(ball.x - (world.left - 4), ball.y - goalY), offset = bot.radius + 14;
+      const behind = { x: clamp(ball.x + back.x * offset, world.left + bot.radius, world.right - bot.radius), y: clamp(ball.y + back.y * offset, world.top + bot.radius, world.bottom - bot.radius) };
+      const ready = botOnBall && bot.shotCooldown <= 0;
+      const move = ready ? this.steer(bot, ball, this.pace(bot, boost), 4) : this.steer(bot, behind, this.pace(bot, boost), 8);
+      return { ...decision, x: move.x, y: move.y, speedMultiplier: move.speed, kick: ready, kickDirection: ready ? { x: world.left - 4 - ball.x, y: goalY - ball.y } : null, powered: false, behavior: 'attack' };
+    }
+
     let { x, y } = decision;
     let speed = Math.max(decision.speedMultiplier || 0, this.pace(bot, boost));
     let kick = decision.kick, kickDirection = decision.kickDirection, powered = false, power;

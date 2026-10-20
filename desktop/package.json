@@ -1,6 +1,6 @@
 {
   "name": "futbol-arcade-desktop",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Fútbol arcade para Windows",
   "author": "Fútbol arcade",
   "private": true,
@@ -10,7 +10,7 @@
     "package:win": "node create-update.cjs && node create-icon.cjs && electron-builder --win --x64 --publish never"
   },
   "devDependencies": {
-    "electron": "44.7.0",
+    "electron": "44.9.1",
     "electron-builder": "26.15.3"
   },
   "build": {

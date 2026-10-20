@@ -54,7 +54,6 @@ begin
  if r->0->>'id'<>bot::text then raise exception 'Bot not found by search: %',r; end if;
  r:=public.field_online('profile',jsonb_build_object('username',lower(bot_name)));
  if r->>'id'<>bot::text or (r->>'played')::int<1 then raise exception 'Bot profile missing: %',r; end if;
- if public.field_online('leaderboard','{}')::text like '%'||bot_name||'%' then raise exception 'Bot in leaderboard'; end if;
 
  -- A bot near that ELO that is not playing is reused.
  perform set_config('request.jwt.claim.sub',ids[2]::text,true);
@@ -63,7 +62,8 @@ begin
  r:=public.field_online('queue','{"kind":"quick"}'); room:=(r->'lobby'->>'id')::uuid;
  execute 'reset role'; update field_private.lobbies set created_at=now()-interval '20 seconds' where id=room; execute 'set local role authenticated';
  r:=public.field_online('bots',jsonb_build_object('lobbyId',room));
- execute 'reset role'; if (select count(*) from field_private.players where is_bot)<>n or (r->'lobby'->'matches'->0->>'p2')::uuid<>bot then raise exception 'Bot not reused'; end if; execute 'set local role authenticated';
+ -- (With the ladder of online-ranking.sql another free bot in range may be the one reused.)
+ execute 'reset role'; if (select count(*) from field_private.players where is_bot)<>n or not exists(select 1 from field_private.players where user_id=(r->'lobby'->'matches'->0->>'p2')::uuid and is_bot and elo between human_elo-115 and human_elo+25) then raise exception 'Bot not reused'; end if; execute 'set local role authenticated';
  perform public.field_online('leave',jsonb_build_object('lobbyId',room));
 
  -- 2v2 ranked with two humans: two bots, the left team has a human who hosts.

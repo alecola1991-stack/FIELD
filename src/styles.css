@@ -1850,3 +1850,9 @@ body.gameplay-tactical.match-online .arcade-hint{display:flex!important}
 @keyframes clockTick{50%{color:#e9eef8}}
 @media(max-width:700px){.bug-clock.overtime::after{content:"PR"}}
 @media(prefers-reduced-motion:reduce){.bug-clock.final-seconds{animation:none}}
+/* Ranked ladder: rows open the player's profile; your row stands out (also when outside the top). */
+.leaderboard-row[role=button]{cursor:pointer;border-radius:8px;transition:background .15s}
+.leaderboard-row[role=button]:hover{background:#ffffff0a}
+.leaderboard-row.is-you{background:#65e6a51c;box-shadow:inset 3px 0 0 var(--green)}
+.leaderboard-row.is-you .leaderboard-name{color:#bff7d6;font-weight:700}
+.leaderboard-gap{text-align:center;color:#5f7168;font:12px var(--mono);letter-spacing:.3em;padding:6px 0}

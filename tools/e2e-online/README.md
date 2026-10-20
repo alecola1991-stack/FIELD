@@ -6,7 +6,7 @@ No forma parte de `npm test`: necesita Postgres, Chromium y unos minutos.
 
 ## Preparación
 
-1. Postgres local en `/tmp:5499` (o variables `PGHOST`, `PGPORT`, `PGUSER`, `PGDATABASE`) con una base `field` y, en este orden: `shim.sql`, `supabase/online.sql`, `supabase/online-rematch.sql`, `supabase/online-teams.sql`, `supabase/online-swap.sql`, `supabase/online-profiles.sql`, `supabase/online-bots.sql`, `supabase/online-bots-2.sql` y `supabase/online-tiempo.sql`.
+1. Postgres local en `/tmp:5499` (o variables `PGHOST`, `PGPORT`, `PGUSER`, `PGDATABASE`) con una base `field` y, en este orden: `shim.sql`, `supabase/online.sql`, `supabase/online-rematch.sql`, `supabase/online-teams.sql`, `supabase/online-swap.sql`, `supabase/online-profiles.sql`, `supabase/online-bots.sql`, `supabase/online-bots-2.sql`, `supabase/online-tiempo.sql` y `supabase/online-ranking.sql`.
 2. `npm install` dentro de esta carpeta.
 3. Servidor de desarrollo del juego apuntando al Supabase falso:
    `VITE_SUPABASE_URL=http://localhost:54321 VITE_SUPABASE_PUBLISHABLE_KEY=test npx vite --port 5180` (desde la raíz del repo). En modo desarrollo, `src/main.js` expone `window.__field` para que las pruebas puedan forzar goles.
@@ -21,6 +21,7 @@ No forma parte de `npm test`: necesita Postgres, Chromium y unos minutos.
 - `serverForfeit`: el servidor da el partido por abandono mientras se juega;
 - `comeback`: un jugador cierra el juego y vuelve en otra pestaña;
 - `staleRoom`: expulsión de una sala en espera por inactividad.
+- `ladder`: clasificación Ranked con los bots (top 100 y tu puesto) y el perfil de un bot con su historial.
 - `bots1v1`, `botsQuit` (el bot abandona tras un gol), `botsDuo`, `botsDuoMixed`, `botsTournament`: salas públicas que se completan con bots a los 16 s (Ranked 1v1 con ELO y revancha, 2v2 con una y con dos personas, y torneo de 4 con una persona). Conviene ejecutarlos con la base recién creada: una sala pública en espera de otra prueba se usaría como rival.
 
 El dibujado del campo se desactiva en las pestañas de prueba (`game.renderEnabled = false`). Aun así, en máquinas sin GPU el reloj del juego avanza más despacio, y por eso las pruebas fuerzan la cuenta atrás y los goles desde el anfitrión.

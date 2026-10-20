@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-20 · Claude · Portable al día: compilación de Windows reparada, Electron 44.9.1 y tests estables
-**Commit:** rama `portable-actualizado` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `portable-actualizado`, merge c6587c9). Para deshacerlo: `git revert -m 1 c6587c9`
 **Archivos:** vite.config.js, desktop/package.json, desktop/package-lock.json, desktop/updates.cjs, desktop/README.md, .github/workflows/windows.yml, .github/workflows/deploy-pages.yml, src/game/OnlineBotAI.js, tests/OnlineBots.test.js, NOTAS_IA.md
 **Qué y por qué:** Ale pidió mejorar el Portable y poner al día lo que no lo estuviera.
 - La acción «Windows executable» fallaba en cada subida desde que se añadió `public/ads.txt` (AdSense). `create-update.cjs` valida el paquete y solo admite extensiones de juego, así que el EXE y `game-update.json` llevaban días sin publicarse y los Portables no recibían las novedades.

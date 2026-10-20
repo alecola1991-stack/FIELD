@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-20 · Claude · Ajustes → Descargar (versión de Windows) en la web
-**Commit:** rama `descarga-ajustes` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `descarga-ajustes`, merge 6b34115). Para deshacerlo: `git revert -m 1 6b34115`
 **Archivos:** index.html, src/ui/DesktopDownload.js (nuevo), src/ui/UI.js, src/styles.css, tests/DesktopDownload.test.js (nuevo), NOTAS_IA.md
 **Qué y por qué:** Ale pidió poder descargar el juego desde los ajustes de la web y que se expliquen las cosas.
 **Cómo:**

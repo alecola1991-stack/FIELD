@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-20 · Claude · Partidos con tiempo: 2/3/4 minutos y prórroga con gol de oro
-**Commit:** rama `escudos-partido` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `escudos-partido`, merge d7f2c34). Para deshacerlo: `git revert -m 1 d7f2c34`
 **Archivos:** src/game/Game.js, src/game/Sound.js, src/app.js, src/ui/UI.js, src/ui/OnlineHub.js, src/styles.css, supabase/online-tiempo.sql, supabase/online-tiempo-test.sql, tests/MatchClock.test.js, tools/e2e-online/README.md, NOTAS_IA.md
 **Qué y por qué:** Ale pidió un contador en los partidos. Duraciones: 2 min en 1v1, 3 min en 2v2 y 3v3, 4 min en 7v7. Gana quien vaya por delante al final. Si hay empate, prórroga sin límite con gol de oro. El partido sigue acabando antes si alguien llega al límite de goles (lo que pase primero). Vale para todos los modos (entrenamiento sin reloj) y también para el online.
 **Cómo:**
@@ -31,7 +31,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-20 · Claude · Marcador estilo retransmisión (grandes ligas) con efectos y nombres a los lados
-**Commit:** rama `escudos-partido` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `escudos-partido`, merge d7f2c34). Para deshacerlo: `git revert -m 1 d7f2c34`
 **Archivos:** index.html, src/ui/UI.js, src/styles.css, NOTAS_IA.md
 **Qué y por qué:** Ale pidió mejorar el marcador con el formato de las grandes ligas, añadirle efectos y sacar los nombres de los jugadores a la izquierda y a la derecha, fuera del marcador.
 **Cómo:**
@@ -58,7 +58,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 **Para el otro asistente:** el resultado ya no es texto plano en `#score`: usa `ui.updateScore(local, visitante)`. Los nombres van en `.score-team .hud-identity` (el local alineado a la derecha y el visitante a la izquierda, junto al marcador).
 
 ## 2026-10-20 · Claude · Escudos en el marcador y en la presentación previa al partido
-**Commit:** rama `escudos-partido` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `escudos-partido`, merge d7f2c34). Para deshacerlo: `git revert -m 1 d7f2c34`
 **Archivos:** src/ui/UI.js, src/styles.css, NOTAS_IA.md
 **Qué y por qué:** Ale pidió que los escudos aparezcan también en los avisos antes de los partidos y en el marcador.
 **Cómo:**

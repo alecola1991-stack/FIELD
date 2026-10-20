@@ -430,7 +430,13 @@ export class UI {
     button.disabled = true; this.account_submit.disabled = true;
     this.setAccountMessage('Conectando con Google…');
     try {
-      await this.accountService.signInWithGoogle();
+      if (location.protocol === 'arcade:') this.setAccountMessage('Continúa en la ventana de Google que se ha abierto en tu navegador…');
+      const result = await this.accountService.signInWithGoogle();
+      if (result?.user) {
+        await this.activateAccount(result.user);
+        this.setAccountMessage('Cuenta conectada con Google. Tu progreso ya está sincronizado.', false, true);
+        this.show(this.hub?.identity ? 'account' : 'online');
+      }
     } catch (error) {
       this.setAccountMessage(error?.message || 'No se pudo conectar con Google. Inténtalo de nuevo.', true);
     } finally {

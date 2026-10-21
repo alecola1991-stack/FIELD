@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { getTeamById } from '../src/config/teams.js';
 import {
   careerCountries, createStartingOffers, createCareer, nextCareerMatch, recordCareerMatch, leagueOutcome, startNextSeason,
-  careerScore, careerTitle, careerLeagueOf, leagueTier, nationalTournamentFor, careerDifficulty, CAREER_SEASONS, simulateLeagueTable,
+  careerScore, careerTitle, careerLeagueOf, leagueTier, nationalTournamentFor, careerDifficulty, CAREER_SEASONS, CAREER_GOAL_TARGET, simulateLeagueTable,
 } from '../src/game/CareerMode.js';
 
 function seeded(seed = 7) { let s = seed; return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; }
@@ -25,7 +25,14 @@ test('starting offers: five distinct clubs of the country, mostly from lower div
   assert.equal(createStartingOffers('mexico', seeded(5)).length, 5);
 });
 
-test('league outcome follows the agreed scale', () => {
+test('league outcome: one decisive match (win champion, lose by one play-off, else lower half)', () => {
+  const m = (gf, ga) => ({ result: { goalsFor: gf, goalsAgainst: ga, won: gf > ga } });
+  assert.equal(leagueOutcome([m(2, 1)]).id, 'champion'); assert.equal(leagueOutcome([m(1, 0)]).id, 'champion');
+  assert.equal(leagueOutcome([m(1, 2)], () => .2).id, 'playoff-won'); assert.equal(leagueOutcome([m(0, 1)], () => .8).id, 'playoff-lost');
+  assert.equal(leagueOutcome([m(0, 2)]).id, 'low');
+});
+
+test('league outcome of careers saved with two key matches follows the earlier scale', () => {
   const m = (gf, ga) => ({ result: { goalsFor: gf, goalsAgainst: ga, won: gf > ga } });
   assert.equal(leagueOutcome([m(3, 1), m(3, 2)]).id, 'champion');
   assert.equal(leagueOutcome([m(3, 0), m(2, 3)]).id, 'runner-up');
@@ -59,11 +66,25 @@ test('winning everything climbs to the top flight and plays the national team', 
   assert.equal(careerTitle(careerScore(state)).id, 'legend');
 });
 
-test('losing a semi-final skips the final and losing keeps the division', () => {
+test('one match per competition, first to 2 goals: the league decider and cup finals', () => {
+  const random = seeded(31);
+  const state = createCareer({ countryId: 'spain', clubId: createStartingOffers('spain', random)[0], random });
+  assert.equal(CAREER_GOAL_TARGET, 2);
+  for (const stage of state.plan.stages) assert.equal(stage.matches.length, 1, stage.id);
+  assert.equal(state.plan.stages[0].matches[0].label, 'Partido decisivo');
+  recordCareerMatch(state, 2, 1, random);
+  assert.equal(state.plan.stages[0].status, 'done');
+  // A won league in the top flight brings next season's continental final, a single match.
+  while (nextCareerMatch(state)) recordCareerMatch(state, 2, 0, random);
+  startNextSeason(state, null, random);
+  for (const stage of state.plan.stages) assert.equal(stage.matches.length, 1, stage.id);
+});
+
+test('losing a final and losing keeps the division', () => {
   const random = seeded(19);
   const state = createCareer({ countryId: 'england', clubId: getTeamById('premier-arsenal') ? 'premier-arsenal' : createStartingOffers('england', random)[0], random });
   const league = careerLeagueOf(state, state.clubId);
-  while (nextCareerMatch(state)) recordCareerMatch(state, 0, 3, random);
+  while (nextCareerMatch(state)) recordCareerMatch(state, 0, 2, random);
   assert.ok(['low'].includes(state.history[0].outcome));
   assert.ok(state.offers.length >= 1);
   startNextSeason(state, null, random);
@@ -72,9 +93,9 @@ test('losing a semi-final skips the final and losing keeps the division', () => 
   const national = state.plan.stages.find(stage => stage.id === 'national');
   assert.equal(!!national, leagueTier(league) === 1);
   if (national) {
-    recordCareerMatch(state, 3, 0, random); recordCareerMatch(state, 3, 0, random); // league
-    recordCareerMatch(state, 1, 3, random); // semi-final lost
-    assert.equal(national.outcome, 'eliminated'); assert.equal(national.matches[1].result, null);
+    recordCareerMatch(state, 2, 0, random); // league
+    recordCareerMatch(state, 1, 2, random); // final lost
+    assert.equal(national.outcome, 'runner-up');
   }
 });
 

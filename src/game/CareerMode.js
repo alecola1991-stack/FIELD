@@ -1,10 +1,12 @@
 import { TEAM_LEAGUES, TEAM_COUNTRIES, TEAMS, NATIONAL_TEAMS, getTeamById } from '../config/teams.js';
 
-// Career mode: ten simulated seasons. Each season the player plays two matches per competition
-// their team is in (league, continental cup, Club World Cup and national team); those results
-// decide promotions, titles and the trophy cabinet. Pure logic, no DOM: the UI lives in CareerScreen.
+// Career mode: ten simulated seasons. Each season the player plays one match per competition
+// their team is in (the league's decisive match and the final of the continental cup, Club World
+// Cup and national team tournament), first to 2 goals; those results decide promotions, titles and
+// the trophy cabinet. Careers saved with the earlier format (two matches per competition) still
+// play out with it. Pure logic, no DOM: the UI lives in CareerScreen.
 export const CAREER_SEASONS = 10;
-export const CAREER_GOAL_TARGET = 3;
+export const CAREER_GOAL_TARGET = 2;
 export const CAREER_POINTS = Object.freeze({
   league: 100, promotion: 50, champions: 250, 'copa-libertadores': 250, 'club-world-cup': 300,
   euro: 250, 'copa-america': 250, 'world-cup': 500, loyalty: 100,
@@ -142,21 +144,21 @@ function leagueDifficulty(tier) { return tier >= 4 ? 'easy' : tier === 3 ? 'norm
 export function cupStage(competitionId, state, random = Math.random) {
   const national = ['world-cup', 'euro', 'copa-america'].includes(competitionId);
   const teamId = national ? state.nationalId : state.clubId;
-  const [semi, final] = cupOpponents(competitionId, teamId, national ? state.country : countryOfLeague(careerLeagueOf(state, state.clubId)), random);
+  const [, final] = cupOpponents(competitionId, teamId, national ? state.country : countryOfLeague(careerLeagueOf(state, state.clubId)), random);
   const hard = competitionId === 'world-cup' || competitionId === 'club-world-cup';
   return {
     id: national ? 'national' : competitionId === 'club-world-cup' ? 'club-world-cup' : 'continental', kind: 'cup', competitionId, teamId,
     name: COMPETITION_NAMES[competitionId], status: 'pending', outcome: null,
-    matches: [match(semi, 'Semifinal', hard ? 'pro' : 'hard'), match(final, 'Final', hard ? 'champions' : 'pro')],
+    matches: [match(final, 'Final', hard ? 'champions' : 'pro')],
   };
 }
 export function createSeasonPlan(state, random = Math.random) {
   const club = getTeamById(state.clubId), leagueId = careerLeagueOf(state, club.id), tier = leagueTier(leagueId);
-  const [first, second] = leagueOpponents(club.id, leagueId, random);
+  const [, rival] = leagueOpponents(club.id, leagueId, random);
   const difficulty = leagueDifficulty(tier);
   const stages = [{
     id: 'league', kind: 'league', competitionId: leagueId, teamId: club.id, name: leagueName(leagueId), status: 'pending', outcome: null,
-    matches: [match(first, 'Partido clave 1', difficulty), match(second, 'Partido clave 2', tier === 1 ? 'pro' : DIFFICULTY_ORDER[DIFFICULTY_ORDER.indexOf(difficulty) + 1])],
+    matches: [match(rival, 'Partido decisivo', difficulty)],
   }];
   if (state.qualified?.continental) stages.push(cupStage(state.qualified.continental, state, random));
   if (state.qualified?.clubWorldCup) stages.push(cupStage('club-world-cup', state, random));
@@ -212,12 +214,19 @@ export function recordCareerMatch(state, goalsFor, goalsAgainst, random = Math.r
   return event;
 }
 
-// League outcome from the two key matches (no draws: every match has a winner).
-// 2 wins: champion. 1 win: goal difference decides (positive: runner-up and promotion;
-// level: promotion play-off at 50 %; negative: mid-table). 0 wins: lower half. No relegation.
+// League outcome (no draws: every match has a winner). One decisive match (current format):
+// win: champion; lose by one goal: promotion play-off at 50 %; lose by more: lower half.
+// Two key matches (careers saved before): 2 wins: champion. 1 win: goal difference decides
+// (positive: runner-up and promotion; level: play-off; negative: mid-table). 0 wins: lower half.
+// No relegation.
 export function leagueOutcome(matches, random = Math.random) {
   const wins = matches.filter(item => item.result?.won).length;
   const difference = matches.reduce((sum, item) => sum + (item.result ? item.result.goalsFor - item.result.goalsAgainst : 0), 0);
+  if (matches.length === 1) {
+    if (wins) return { id: 'champion', wins, difference, points: 3 };
+    if (difference === -1) return { id: random() < .5 ? 'playoff-won' : 'playoff-lost', wins, difference, points: 0 };
+    return { id: 'low', wins, difference, points: 0 };
+  }
   if (wins >= 2) return { id: 'champion', wins, difference, points: 6 };
   if (wins === 1 && difference > 0) return { id: 'runner-up', wins, difference, points: 4 };
   if (wins === 1 && difference === 0) return { id: random() < .5 ? 'playoff-won' : 'playoff-lost', wins, difference, points: 3 };

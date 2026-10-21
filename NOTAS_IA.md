@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-21 · Claude · Modo carrera: un partido por competición, a 2 goles
-**Commit:** rama `carrera-corta` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `carrera-corta`, merge ba4d90e). Para deshacerlo: `git revert -m 1 ba4d90e`
 **Archivos:** src/game/CareerMode.js, src/ui/UI.js, src/ui/CareerScreen.js, tests/CareerMode.test.js, NOTAS_IA.md
 **Qué y por qué:** Ale pidió que en el modo carrera se juegue un partido por competición y a 2 goles, para que no se haga demasiado largo.
 **Cómo:**

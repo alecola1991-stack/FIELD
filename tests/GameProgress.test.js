@@ -13,9 +13,9 @@ const everything = () => [
   ...LEGEND_MATCHES.map(item => progressId('legend', item.id)), ...RANKS.map(rank => progressId('rank', rank.id)),
 ];
 
-test('weights add up to 100 and only top flights count as leagues', () => {
+test('weights add up to 100 and only the five big leagues count', () => {
   assert.equal(PROGRESS_CATEGORIES.reduce((sum, item) => sum + item.weight, 0), 100);
-  assert.equal(TOP_LEAGUES.length, 20);
+  assert.deepEqual(TOP_LEAGUES.map(league => league.id), ['laliga', 'premier', 'serie-a', 'bundesliga', 'ligue-1']);
   assert.ok(TOP_LEAGUES.every(league => (league.tier ?? 1) === 1));
 });
 
@@ -28,10 +28,12 @@ test('a new player starts near 0 % and a complete save reaches exactly 100 %', (
 });
 
 test('almost complete never rounds up to 100 %', () => {
-  const ids = everything().filter(id => id !== 'league-laliga');
-  const progress = computeProgress({ level: 100, trophyIds: ids });
+  // Everything but one level: 99.85 % shows as 99 %.
+  const progress = computeProgress({ level: 99, trophyIds: everything() });
   assert.equal(progress.percent, 99); assert.equal(progress.complete, false);
-  assert.equal(progress.nearest[0].item.id, 'laliga');
+  // Missing one of the five big leagues costs 4 %.
+  const noLaLiga = computeProgress({ level: 100, trophyIds: everything().filter(id => id !== 'league-laliga') });
+  assert.equal(noLaLiga.percent, 96); assert.equal(noLaLiga.nearest[0].item.id, 'laliga');
 });
 
 test('category weights apply', () => {

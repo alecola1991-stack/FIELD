@@ -4,6 +4,22 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-21 · Claude · Modo carrera: un partido por competición, a 2 goles
+**Commit:** rama `carrera-corta` (pendiente de pasar a main)
+**Archivos:** src/game/CareerMode.js, src/ui/UI.js, src/ui/CareerScreen.js, tests/CareerMode.test.js, NOTAS_IA.md
+**Qué y por qué:** Ale pidió que en el modo carrera se juegue un partido por competición y a 2 goles, para que no se haga demasiado largo.
+**Cómo:**
+- `CAREER_GOAL_TARGET` = 2. Sigue habiendo reloj (2 min en 1v1) con prórroga y gol de oro.
+- Liga: un solo «Partido decisivo» contra uno de los clubes más fuertes de la división, con la dificultad base de la categoría.
+  - `leagueOutcome` con 1 partido: ganar es campeón; perder por un gol, promoción (50 %); perder por más, mitad baja. Sin descenso.
+- Copas (continental, Mundial de Clubes y selección): solo la «Final», contra el rival de la final de antes, con la misma dificultad. Ganar da el título y perder, subcampeón.
+- Compatibilidad: las carreras guardadas con 2 partidos por competición siguen con su formato hasta terminar su temporada (`leagueOutcome` con 2 partidos mantiene la escala anterior; los textos distinguen por `matches.length`). Las temporadas nuevas salen con 1 partido.
+- Textos actualizados: pasos de la portada («1 partido por competición · A 2 goles»), objetivos de cada competición y resultado de la liga (ganada / a la promoción / perdida).
+- Tests: escala de un partido y de dos, una carrera nueva con 1 partido por competición, final perdida = subcampeón.
+**Para el otro asistente:** `nextCareerMatch` y `recordCareerMatch` funcionan con cualquier número de partidos por competición.
+
+---
+
 ## 2026-10-20 · Claude · Ajustes → Descargar (versión de Windows) en la web
 **Commit:** fusionado en main (rama `descarga-ajustes`, merge 6b34115). Para deshacerlo: `git revert -m 1 6b34115`
 **Archivos:** index.html, src/ui/DesktopDownload.js (nuevo), src/ui/UI.js, src/styles.css, tests/DesktopDownload.test.js (nuevo), NOTAS_IA.md

@@ -151,11 +151,11 @@ export class CareerScreen {
         <div class="career-intro">
           <p class="eyebrow">MODO CARRERA · ${CAREER_SEASONS} TEMPORADAS</p>
           <h2>De abajo <em>a leyenda.</em></h2>
-          <p class="career-lead">Empieza en un club modesto, gana los partidos clave de cada temporada, asciende y llena tu vitrina. Al llegar a primera, tu selección te llama.</p>
+          <p class="career-lead">Empieza en un club modesto, gana el partido decisivo de cada competición, asciende y llena tu vitrina. Al llegar a primera, tu selección te llama.</p>
           <ol class="career-steps">
             <li><b>1</b><span><strong>Elige país</strong><small>20 países con sus divisiones</small></span></li>
             <li><b>2</b><span><strong>Elige club</strong><small>5 ofertas, casi siempre de abajo</small></span></li>
-            <li><b>3</b><span><strong>2 partidos por competición</strong><small>Deciden títulos y ascensos</small></span></li>
+            <li><b>3</b><span><strong>1 partido por competición</strong><small>A 2 goles: decide títulos y ascensos</small></span></li>
             <li><b>4</b><span><strong>Vitrina final</strong><small>Suma puntos por cada trofeo</small></span></li>
           </ol>
           <div class="career-actions">
@@ -232,8 +232,10 @@ export class CareerScreen {
   stageCard(stage, next) {
     const isNext = next?.stage === stage;
     const goal = stage.kind === 'league'
-      ? (leagueTier(stage.competitionId) > 1 ? 'Gana los 2 y serás campeón. 1 victoria con mejor diferencia de goles también asciende.' : 'Gana los 2 y serás campeón de liga (+100) y jugarás la copa continental.')
-      : `Semifinal y final. Gánalas y levantas la copa (+${CAREER_POINTS[stage.competitionId] || 0}).`;
+      ? (stage.matches.length === 1
+        ? (leagueTier(stage.competitionId) > 1 ? 'Partido decisivo contra un rival por el título. Gana y serás campeón y subirás; si pierdes por un gol, jugarás la promoción.' : 'Partido decisivo contra un rival por el título. Gana y serás campeón de liga (+100) y jugarás la copa continental.')
+        : (leagueTier(stage.competitionId) > 1 ? 'Gana los 2 y serás campeón. 1 victoria con mejor diferencia de goles también asciende.' : 'Gana los 2 y serás campeón de liga (+100) y jugarás la copa continental.'))
+      : stage.matches.length === 1 ? `Final a partido único. Gánala y levantas la copa (+${CAREER_POINTS[stage.competitionId] || 0}).` : `Semifinal y final. Gánalas y levantas la copa (+${CAREER_POINTS[stage.competitionId] || 0}).`;
     const status = stage.status === 'done' ? (stage.outcome === 'champion' ? '<em class="stage-status win">CAMPEÓN</em>' : stage.outcome === 'runner-up' ? '<em class="stage-status">SUBCAMPEÓN</em>' : stage.outcome === 'eliminated' ? '<em class="stage-status loss">ELIMINADO</em>' : '<em class="stage-status">JUGADO</em>') : isNext ? '<em class="stage-status live">EN JUEGO</em>' : '';
     const team = getTeamById(stage.teamId);
     return `<article class="career-stage ${isNext ? 'is-next' : ''} ${stage.status === 'done' ? 'is-done' : ''}">

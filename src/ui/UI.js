@@ -30,17 +30,21 @@ const ROUND_NAMES = ['OCTAVOS DE FINAL', 'CUARTOS DE FINAL', 'SEMIFINAL', 'FINAL
 const ROUND_NAMES_32 = ['DIECISÉISAVOS DE FINAL', ...ROUND_NAMES];
 const roundName = (size, round) => (size === 32 ? ROUND_NAMES_32 : ROUND_NAMES)[Math.max(0, Math.min(size === 32 ? 4 : 3, round - 1))];
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-// Result screen text once the two league key matches are played.
+// Result screen text once the league is decided (one decisive match; two in older careers).
 function leagueResultText(state) {
-  const wins = state.plan.stages.find(stage => stage.id === 'league').matches.filter(item => item.result?.won).length;
+  const matches = state.plan.stages.find(stage => stage.id === 'league').matches, wins = matches.filter(item => item.result?.won).length;
   const last = state.phase === 'summary' ? state.history.at(-1) : null;
+  const single = matches.length === 1, lost = matches[0]?.result ? matches[0].result.goalsAgainst - matches[0].result.goalsFor : 0;
+  if (single && !last) return wins
+    ? { title: '¡Liga ganada!', copy: 'Campeón: el título se suma al final de la temporada.' }
+    : lost === 1 ? { title: 'A la promoción', copy: 'Derrota por la mínima: la promoción se decide al final de la temporada.' } : { title: 'Liga perdida', copy: 'Derrota clara en el partido decisivo.' };
   if (last) return {
     champion: { title: '¡Campeones de liga!', copy: `+100 puntos${last.promoted ? ' y ascenso (+50)' : ''}.` },
     'runner-up': { title: last.promoted ? '¡Ascenso!' : 'Subcampeones', copy: last.promoted ? 'Segundo puesto: subes de división (+50).' : 'Segundo puesto en la liga.' },
     'playoff-won': { title: last.promoted ? '¡Promoción ganada!' : 'Tercer puesto', copy: last.promoted ? 'Subes de división tras la promoción (+50).' : 'Buena temporada.' },
     'playoff-lost': { title: 'Promoción perdida', copy: 'Te quedas a las puertas del ascenso.' },
     mid: { title: 'Mitad de tabla', copy: 'Una victoria, pero la diferencia de goles no alcanza.' },
-    low: { title: 'Temporada difícil', copy: 'Sin victorias en los partidos clave. Sigues en la misma división.' },
+    low: { title: 'Temporada difícil', copy: single ? 'Derrota clara en el partido decisivo. Sigues en la misma división.' : 'Sin victorias en los partidos clave. Sigues en la misma división.' },
   }[last.outcome] || { title: 'Fin de la liga', copy: '' };
   return wins === 2 ? { title: '¡Liga ganada!', copy: 'Campeón: el título se suma al final de la temporada.' } : { title: 'Liga terminada', copy: 'Ahora tocan las copas de la temporada.' };
 }

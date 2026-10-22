@@ -1879,3 +1879,15 @@ body.gameplay-tactical.match-online .arcade-hint{display:flex!important}
 .download-facts dd{margin:0;color:#a3b7d6;font-size:13px;line-height:1.55}
 .download-note{margin:0;color:#8aa0c2;font-size:13px;line-height:1.5}.download-note a{color:#9fd0ff}
 @media(max-width:640px){.download-options{grid-template-columns:1fr}}
+/* Competition picker: bigger trophy drawings and the team kit kept in its corner. */
+.hub-tile.panel-tile.competition-tile .competition-tile-art{width:64px;height:77px;right:14px;bottom:12px;filter:drop-shadow(0 6px 10px #0009)}
+.hub-tile.panel-tile.competition-tile{padding-right:18px}
+.hub-tile.panel-tile.competition-tile:not(.competition-team-tile) small{padding-right:60px}
+.hub-tile.panel-tile.competition-tile .competition-tile-hint{right:84px}
+.hub-tile.panel-tile.competition-team-tile .competition-team-kit{position:absolute!important;right:16px;bottom:16px;width:58px;height:58px}
+.hub-tile.panel-tile.competition-team-tile small{padding-right:0}
+.competition-tile .competition-tile-art .trophy-svg{transition:transform .2s ease}
+.competition-tile:hover .competition-tile-art .trophy-svg,.competition-tile:focus-visible .competition-tile-art .trophy-svg{transform:translateY(-3px) scale(1.04)}
+.competition-trophy .trophy-svg{filter:drop-shadow(0 10px 18px #000a)}
+@media(max-width:600px){.hub-tile.panel-tile.competition-tile .competition-tile-art{width:44px;height:53px;right:10px;bottom:10px}.hub-tile.panel-tile.competition-tile:not(.competition-team-tile) small{padding-right:0}.hub-tile.panel-tile.competition-team-tile .competition-team-kit{width:44px;height:44px;right:10px;bottom:10px}.hub-tile.panel-tile.competition-tile .competition-tile-hint{right:60px}}
+@media(prefers-reduced-motion:reduce){.competition-tile .competition-tile-art .trophy-svg{transition:none}}

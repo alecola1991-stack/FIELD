@@ -4,6 +4,28 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 
 ---
 
+## 2026-10-22 · Claude · Selector de copas: trofeos nuevos y equipo en su sitio
+**Commit:** rama `copas-trofeos` (pendiente de pasar a main)
+**Archivos:** src/ui/TrophyArt.js, src/ui/CareerScreen.js, src/styles.css, tests/TrophyArt.test.js, NOTAS_IA.md
+**Qué y por qué:** Ale pidió corregir los fallos gráficos del selector de copas y crear un trofeo mejor para cada competición, parecido a los reales.
+**Cómo:**
+- Fallo gráfico: el escudo del equipo de la tarjeta «08 / Tu equipo» salía en medio del texto, porque `.player-circle-preview` fuerza `position:relative !important`. Ahora `.hub-tile.panel-tile.competition-team-tile .competition-team-kit` usa `position:absolute!important` en la esquina, con 58 px (44 en móvil).
+- Trofeos nuevos en TrophyArt.js, con gradientes metálicos de plata, oro, madera y base oscura y un brillo radial:
+  - Champions: copa de plata con asas grandes.
+  - Libertadores: copa de plata sobre una peana alta de madera con placas.
+  - Mundial de Clubes: dos órbitas de oro alrededor de una esfera.
+  - Mundial: globo de oro sobre una columna facetada, con bandas verdes.
+  - Eurocopa: ánfora de plata esbelta.
+  - Copa América: copa de plata con festón, sobre una peana ancha de madera.
+  - Liga: copa de oro con medallón de estrella.
+- Son diseños originales: recuerdan a cada competición por el metal, las proporciones y los colores, pero no copian los trofeos oficiales.
+- Cada lectura de `TROPHY_ART[id]` (getter) devuelve el SVG con ids de gradiente propios, así varias copias en la página (algunas ocultas) no comparten `<defs>`. `trophySvg(id)` y `TROPHY_IDS` se exportan.
+- El Mundial de Clubes ya tiene trofeo propio; antes la carrera usaba el del Mundial.
+- CSS de las tarjetas: trofeo de 64×77 con sombra y una pequeña elevación al pasar el ratón, hueco a la derecha para el texto y la pista «ELEGIRÁS…» sin pisar el trofeo.
+**Para el otro asistente:** las ilustraciones ya no usan `currentColor`; el color de acento de cada tarjeta queda solo en el borde superior.
+
+---
+
 ## 2026-10-21 · Claude · 100 %: solo cuentan las 5 grandes ligas
 **Commit:** fusionado en main (rama `ligas-grandes`, merge f701cfa). Para deshacerlo: `git revert -m 1 f701cfa`
 **Archivos:** src/game/GameProgress.js, tests/GameProgress.test.js, NOTAS_IA.md

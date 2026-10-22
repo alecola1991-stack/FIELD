@@ -46,7 +46,7 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp
 const fmt = value => Number(value || 0).toLocaleString('es-ES');
 const stars = count => '★'.repeat(Math.max(1, Math.min(5, count || 3)));
 const kit = (team, size = '') => `<i class="career-kit crest ${size}" aria-hidden="true">${crestSVG(team)}</i>`;
-function trophyArt(kind) { return kind === 'promotion' ? PROMOTION_ART : kind === 'club-world-cup' ? TROPHY_ART['world-cup'] : TROPHY_ART[kind] || TROPHY_ART.league; }
+function trophyArt(kind) { return kind === 'promotion' ? PROMOTION_ART : TROPHY_ART[kind] || TROPHY_ART.league; }
 function trophyIcon(kind, extra = '') { return `<span class="career-trophy-icon ${extra}" style="--trophy:${TROPHY_COLORS[kind] || '#8dc3ff'}">${trophyArt(kind)}</span>`; }
 
 export class CareerScreen {

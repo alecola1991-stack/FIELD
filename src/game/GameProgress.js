@@ -1,4 +1,4 @@
-import { TEAM_LEAGUES, FEDERATION_LEAGUE_IDS } from '../config/teams.js';
+import { TEAM_LEAGUES } from '../config/teams.js';
 import { ACHIEVEMENTS } from './Achievements.js';
 import { LEGEND_MATCHES } from '../config/legends.js';
 import { DIFFICULTIES } from '../config/settings.js';
@@ -10,7 +10,9 @@ export const PROGRESS_PREFIX = 'progress-';
 export const MAX_LEVEL = 100;
 export const CUP_IDS = ['champions', 'copa-libertadores', 'club-world-cup', 'world-cup', 'euro', 'copa-america'];
 const CUP_NAMES = { champions: 'Champions', 'copa-libertadores': 'Copa Libertadores', 'club-world-cup': 'Mundial de Clubes', 'world-cup': 'Mundial', euro: 'Eurocopa', 'copa-america': 'Copa América' };
-export const TOP_LEAGUES = TEAM_LEAGUES.filter(league => (league.tier ?? 1) === 1 && !FEDERATION_LEAGUE_IDS.has(league.id));
+// For 100 % only the five big leagues count (the other leagues still give their trophy).
+export const BIG_FIVE = ['laliga', 'premier', 'serie-a', 'bundesliga', 'ligue-1'];
+export const TOP_LEAGUES = BIG_FIVE.map(id => TEAM_LEAGUES.find(league => league.id === id)).filter(Boolean);
 export const CAREER_MILESTONES = [
   { id: 'finish', label: 'Termina una carrera', hint: 'Juega las 10 temporadas del Modo Carrera.' },
   { id: 'pro', label: 'Carrera de Profesional', hint: 'Termina una carrera con 300 puntos o más.' },
@@ -23,7 +25,7 @@ export const progressId = (category, id) => `${PROGRESS_PREFIX}${category}-${id}
 
 export const PROGRESS_CATEGORIES = [
   { id: 'cups', label: 'Copas', weight: 20, icon: 'cup', action: 'competitions' },
-  { id: 'leagues', label: 'Ligas', weight: 20, icon: 'league', action: 'competitions' },
+  { id: 'leagues', label: 'Grandes ligas', weight: 20, icon: 'league', action: 'competitions' },
   { id: 'career', label: 'Modo Carrera', weight: 15, icon: 'career', action: 'career' },
   { id: 'level', label: 'Nivel', weight: 15, icon: 'level', action: 'bot' },
   { id: 'difficulty', label: 'Dificultades', weight: 10, icon: 'difficulty', action: 'bot' },

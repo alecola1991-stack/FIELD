@@ -5,7 +5,7 @@ Registro compartido entre ChatGPT y Claude. Las entradas más recientes van arri
 ---
 
 ## 2026-10-21 · Claude · 100 %: solo cuentan las 5 grandes ligas
-**Commit:** rama `ligas-grandes` (pendiente de pasar a main)
+**Commit:** fusionado en main (rama `ligas-grandes`, merge f701cfa). Para deshacerlo: `git revert -m 1 f701cfa`
 **Archivos:** src/game/GameProgress.js, tests/GameProgress.test.js, NOTAS_IA.md
 **Qué y por qué:** Ale no quiere que para el 100 % haga falta ganar todas las ligas, solo las 5 grandes.
 **Cómo:**
